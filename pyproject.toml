@@ -1,0 +1,12 @@
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = ["D", "ANN", "TD", "FIX002", "COM812", "PLR2004"]
+
+dependencies = [
+    "fastapi==0.141.1"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pre-commit==4.5.1"
+]
