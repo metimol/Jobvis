@@ -1,6 +1,6 @@
-[tool.ruff.lint]
-select = ["ALL"]
-ignore = ["D", "ANN", "TD", "FIX002", "COM812", "PLR2004"]
+[project]
+name = "jobvis"
+version = "0.1.0"
 
 dependencies = [
     "fastapi==0.141.1"
@@ -10,3 +10,8 @@ dependencies = [
 dev = [
     "pre-commit==4.5.1"
 ]
+
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = ["D", "ANN", "TD", "FIX002", "COM812", "PLR2004"]
