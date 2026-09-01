@@ -1,0 +1,158 @@
+/* page-gallery.css — rules that belong to gallery.html and nothing else.
+   Shared styling lives in subpage.css, sections.css and parts.css; treat those as read only.
+   The block classes (.vy-reel-stack, .vy-groups) are already defined there, so
+   this file carries only what makes the gallery different:
+
+   1. an extra column that turns a plain list into a render log with a thumbnail per row
+   2. a split ratio tuned for log on the left, large viewer on the right
+   3. a form reset, because the rows are buttons rather than links (a row selects, it does
+      not navigate)
+   4. the viewer panel, which keeps the archive component from the index gallery and only
+      releases its grid, so both screens read as one product
+
+   Colours and rules come from the bridge variables, easing and duration from the motion
+   tokens, and there is no radius anywhere. Thumbnails are greyscale until selected, which
+   is the achromatic rule turned into a state rather than a decoration. */
+
+/* ── 1. Log section: split ratio ─────────────────────────────────────────────
+   The stock ratio assumes prose on the left. With a sixteen row list the names wrap to
+   three lines and stop reading as a log, so the left column is widened while the viewer
+   keeps roughly 500px. */
+.vy-out {
+  grid-template-columns: minmax(0, 1.12fr) minmax(0, 0.88fr);
+  gap: clamp(32px, 4vw, 72px);
+  padding-top: clamp(40px, 6vh, 72px);
+}
+
+/* ── 2. Log rows ───────────────────────────────────────────────────────────
+   A thumbnail column is added to the three stock columns (index, name, spec). A list of
+   renders with no renders in it is a table, not a log. */
+.vy-out .vy-reel-cell {
+  box-sizing: border-box;          /* Keep the hover padding from widening the row, so nothing overflows horizontally */
+  width: 100%;
+  grid-template-columns: 32px 64px minmax(0, 1fr) auto;
+  gap: clamp(12px, 1.6vw, 22px);
+  padding: clamp(16px, 2.2vh, 24px) 0;
+  align-items: center;
+  /* Form reset, because each row is a button */
+  appearance: none;
+  -webkit-appearance: none;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--color-line);
+  font: inherit;
+  text-align: left;
+}
+
+.vy-out .vy-reel-cell__name {
+  /* Row names sit one step below the display size the stock list uses; they stay inside
+     the existing type scale rather than adding a new step */
+  font-size: clamp(20px, 1.8vw, 28px);
+  line-height: 1.12;
+  display: block;
+}
+
+.vy-out .vy-reel-cell__group { margin-top: 8px; }
+
+.vy-out .vy-reel-cell__spec {
+  white-space: normal;             /* Two lines of spec (resolution, then steps and seed) instead of one nowrap line */
+  line-height: 1.5;
+  font-size: var(--vy-t-12);
+  min-width: 12ch;
+}
+
+/* Selected state reuses the hover offset rather than introducing a second motion */
+.vy-out .vy-reel-cell[aria-pressed="true"] { padding-left: clamp(8px, 1.5vw, 24px); }
+.vy-out .vy-reel-cell[aria-pressed="true"] .vy-reel-cell__name { color: var(--color-accent); }
+.vy-out .vy-reel-cell:focus-visible { outline: 1px solid var(--vy-text-primary); outline-offset: 2px; }
+
+/* ── 3. Row thumbnails ─────────────────────────────────────────────────────
+   Greyscale by default, full colour only for the selected one. That is the achromatic
+   rule expressed as a state: colour tells you which render you are looking at. */
+.vy-out__thumb {
+  display: block;
+  width: 64px;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: var(--vy-bg-secondary);
+}
+.vy-out__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  filter: var(--media-grade);
+  transition: filter var(--vy-dur-micro) var(--vy-ease);
+}
+.vy-out .vy-reel-cell[aria-pressed="true"] .vy-out__thumb img { filter: none; }
+
+/* ── 4. Viewer ─────────────────────────────────────────────────────────────
+   It carries the archive component from the index gallery, so the metadata table, the
+   title hierarchy and the underline hover are all inherited. The only thing released
+   here is that component's two column grid. */
+.vy-out .vy-out__viewer {
+  display: block;
+  position: sticky;
+  top: clamp(104px, 13vh, 132px);  /* Below the fixed nav */
+  align-self: start;
+}
+
+/* The ratio changes per item, and it is the same number as the size shown in the
+   metadata, so the varying card shape is data rather than decoration. */
+.vy-out .vy-out__viewer .vy-work-pic {
+  grid-column: auto;
+  grid-row: auto;
+  aspect-ratio: var(--vy-out-ratio, 419 / 291);
+}
+.vy-out .vy-out__viewer .vy-work-pic img {
+  transition: opacity var(--vy-dur-micro) var(--vy-ease);
+}
+.vy-out .vy-out__viewer[data-swapping="1"] .vy-work-pic img { opacity: 0; }
+.vy-out .vy-out__viewer .vy-meta { grid-column: auto; grid-row: auto; margin-top: clamp(18px, 2vw, 26px); }
+
+/* ── 5. Filter tabs: stock component, with touch target and count corrections ─── */
+.vy-groups button { min-height: 44px; display: inline-flex; align-items: center; }
+.vy-groups button:focus-visible { outline: 1px solid var(--vy-text-primary); outline-offset: 4px; }
+.vy-groups .vy-console-count { align-self: center; }
+
+/* ── 6. Responsive ────────────────────────────────────────────────────────
+   Below 1180 the spec column folds away. The shared file does the same thing at 900,
+   but here the left column is already half the width, so the point arrives earlier.
+   The values stay visible in the viewer. */
+@media (max-width: 1180px) {
+  .vy-out .vy-reel-cell { grid-template-columns: 32px 56px minmax(0, 1fr); }
+  .vy-out .vy-reel-cell__spec { display: none; }
+}
+
+@media (max-width: 900px) {
+  /* The single column collapse is declared again here. The media query in the shared file
+     has the same specificity as the two column rule above, and this file loads later, so the
+     two column rule was winning: a media query does not raise specificity. Measured at 375
+     the viewer was 165px wide with the two columns still in place. */
+  .vy-out { grid-template-columns: 1fr; }
+
+  /* The viewer moves above the list. It is not sticky on small screens: a pinned viewer eats
+     half the screen and the list becomes unreadable. Selecting a row scrolls to the viewer
+     instead (page-gallery.js does this through Lenis, which owns scrolling on this page). */
+  .vy-out .vy-out__viewer { order: -1; position: static; margin-bottom: clamp(28px, 5vw, 40px); }
+  .vy-out .vy-reel-cell { grid-template-columns: 28px 52px minmax(0, 1fr); }
+  .vy-out__thumb { width: 52px; }
+  .vy-groups .vy-console-count { margin-left: 0; width: 100%; }
+}
+
+/* Info bar, narrow viewport. The pricing, about and contact pages apply the same correction
+   in their own scope rather than editing the shared file. This page had no page level class on
+   its info bar, so it is scoped through the section id instead.
+   At 375 the three fixed columns are about 95px each and all three wrap to three lines, which
+   breaks phrases mid word. Nothing overflows horizontally, so an overflow check does not catch
+   this one; it has to be looked at. */
+@media (max-width: 720px) {
+  .vy-leaf-statbar[data-section-id="output-summary"] { grid-template-columns: 1fr; gap: 10px; }
+  .vy-leaf-statbar[data-section-id="output-summary"] span:nth-child(2),
+  .vy-leaf-statbar[data-section-id="output-summary"] span:last-child { text-align: left; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vy-out__thumb img,
+  .vy-out .vy-out__viewer .vy-work-pic img { transition: none; }
+}

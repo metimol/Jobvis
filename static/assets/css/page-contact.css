@@ -1,0 +1,250 @@
+/* page-contact.css — rules that belong to contact.html and nothing else.
+   Shared styling lives in subpage.css, sections.css and parts.css; treat those as read only.
+
+   This page is self contained: .vy-reach-stack, .vy-reach-entry and .vy-reach-fact
+   are declared here and appear nowhere else.
+
+   Two decisions worth knowing before you edit:
+
+   1. The form carries .vy-tail-entry as well as its own class, so the inputs and the button
+      inherit the rules in parts.css instead of copying their values. Copy the values and the
+      two forms drift apart the first time one of them is changed; inheritance cannot drift.
+      What is added here is only the layout a vertical form needs, plus the two elements the
+      short form does not have (textarea and select).
+   2. There is no green success or red error state. The palette is achromatic, so status is
+      shown with a one pixel rule on the left and with words.
+
+   The form action is left empty on purpose; the note in the HTML tells the buyer where to put
+   their endpoint. Tokens only: no hardcoded colours, radius 0 or 4, one easing token. */
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * 1. Two column body
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+.vy-reach-stack {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  gap: clamp(48px, 7vw, 120px);
+  padding: clamp(64px, 10vh, 128px) var(--page-gutter);
+  align-items: start;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * 2. Form: inherits the footer form, corrected for a vertical layout
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+/* .vy-tail-entry is a single line inline form on index, so it carries a min width of 300px
+   and a 12px gap. Here each field owns its own spacing, so both are reset. */
+.vy-reach-entry {
+  min-width: 0;
+  gap: 0;
+}
+
+.vy-reach-entry__lede {
+  margin: 0 0 clamp(32px, 4vw, 48px);
+  max-width: 52ch;
+  font-size: var(--vy-t-16);
+  line-height: var(--leading-body);
+  color: var(--vy-text-secondary);
+}
+
+.vy-slot { margin-bottom: clamp(24px, 3vw, 34px); }
+
+.vy-slot__cap {
+  display: block;
+  font-family: var(--vy-font-mono);
+  font-size: var(--vy-t-12);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--vy-text-secondary);
+  margin-bottom: 12px;
+}
+
+/* Two fields side by side. The minmax(0, 1fr) is what keeps them from overflowing. */
+.vy-slot-mesh {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0 clamp(24px, 3vw, 48px);
+}
+
+/* Only the elements the short form does not have. The values match .vy-tail-entry input.
+   Inputs and buttons are absent here on purpose: they are inherited, and this is exactly
+   where the two forms would start to diverge. */
+.vy-reach-entry textarea,
+.vy-reach-entry select {
+  width: 100%;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--color-line);
+  color: var(--color-text-primary);
+  font-size: var(--vy-t-16);
+  padding: 10px 2px;
+  font-family: var(--vy-font-body);
+  min-height: 44px;
+  outline: none;
+  /* Border width stays 1px in every state, so no state change shifts the layout. */
+  transition: border-color var(--vy-dur-micro) var(--vy-ease);
+}
+
+.vy-reach-entry textarea {
+  resize: vertical;
+  min-height: 132px;
+  line-height: var(--leading-body);
+}
+
+.vy-reach-entry textarea::placeholder { color: var(--color-text-secondary); }
+.vy-reach-entry textarea:hover,
+.vy-reach-entry select:hover { border-bottom-color: var(--color-text-secondary); }
+.vy-reach-entry textarea:focus-visible,
+.vy-reach-entry select:focus-visible { outline: 2px solid var(--color-text-primary); outline-offset: 3px; }
+
+/* Select: the native control renders light on a dark background, so appearance is reset
+   and the caret is drawn in CSS (no inline data URL, this template stays static file only). */
+.vy-reach-entry select {
+  appearance: none;
+  -webkit-appearance: none;
+  border-radius: 0;
+  cursor: pointer;
+}
+.vy-slot--pick { position: relative; }
+.vy-slot--pick::after {
+  content: "";
+  position: absolute;
+  right: 6px;
+  bottom: 22px;
+  width: 7px;
+  height: 7px;
+  border-right: 1px solid var(--vy-text-secondary);
+  border-bottom: 1px solid var(--vy-text-secondary);
+  transform: rotate(45deg);
+  pointer-events: none;
+}
+
+/* Invalid state. There is no red in this palette, so the underline is raised to the primary
+   colour and contrast carries the message. */
+.vy-reach-entry [aria-invalid="true"] { border-bottom-color: var(--color-text-primary); }
+
+.vy-slot__warn {
+  display: none;
+  margin: 10px 0 0;
+  font-family: var(--vy-font-mono);
+  font-size: var(--vy-t-12);
+  letter-spacing: var(--tracking-label);
+  color: var(--vy-text-primary);
+}
+.vy-slot__warn.is-shown { display: block; }
+
+.vy-reach-entry__acts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 20px;
+  margin-top: clamp(8px, 1.5vw, 16px);
+}
+
+/* Status area after submit. Again the one pixel rule on the left rather than colour. */
+.vy-reach-state {
+  min-height: 1lh;
+  font-family: var(--vy-font-mono);
+  font-size: var(--vy-t-12);
+  letter-spacing: var(--tracking-label);
+  line-height: var(--leading-body);
+  color: var(--vy-text-secondary);
+  max-width: 42ch;
+}
+.vy-reach-state.is-shown {
+  padding-left: 14px;
+  border-left: 1px solid var(--color-line);
+  color: var(--vy-text-primary);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * 3. Contact detail column
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+.vy-reach-flank__cap {
+  font-family: var(--vy-font-mono);
+  font-size: var(--vy-t-12);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--vy-text-secondary);
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--color-line);
+  margin: 0 0 32px;
+}
+
+.vy-reach-fact { margin-bottom: 28px; }
+
+.vy-reach-fact__key {
+  display: block;
+  font-family: var(--vy-font-mono);
+  font-size: var(--vy-t-12);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--vy-text-secondary);
+  margin-bottom: 9px;
+}
+
+.vy-reach-fact__val {
+  font-family: var(--vy-font-display);
+  font-size: var(--vy-t-20);
+  line-height: 1.3;
+  color: var(--vy-text-primary);
+  text-decoration: none;
+  transition: color var(--vy-dur-micro) var(--vy-ease);
+}
+a.vy-reach-fact__val { border-bottom: 1px solid transparent; }
+a.vy-reach-fact__val:hover,
+a.vy-reach-fact__val:focus-visible { border-bottom-color: var(--color-line); }
+
+.vy-reach-share {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 24px;
+  margin-top: 18px;
+}
+.vy-reach-share a {
+  font-family: var(--vy-font-mono);
+  font-size: var(--vy-t-12);
+  letter-spacing: var(--tracking-ui);
+  text-transform: uppercase;
+  color: var(--vy-text-secondary);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  padding-bottom: 2px;
+  transition: color var(--vy-dur-micro) var(--vy-ease),
+              border-color var(--vy-dur-micro) var(--vy-ease);
+}
+.vy-reach-share a:hover,
+.vy-reach-share a:focus-visible {
+  color: var(--vy-text-primary);
+  border-bottom-color: var(--color-line);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * 4. Closing section rhythm. Reuses the value grid block; spacing only.
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+.vy-contact-next { border-top: 1px solid var(--color-line-soft); padding-bottom: clamp(88px, 13vh, 168px); }
+.vy-contact-next > .vy-leaf-kickercap { display: block; margin-bottom: clamp(36px, 4vw, 60px); }
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * 5. Responsive. Uses the 900px break from subpage.css, not a break of its own.
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 900px) {
+  .vy-reach-stack { grid-template-columns: 1fr; gap: clamp(56px, 9vw, 80px); }
+}
+
+/* The shared info bar keeps three columns, which squeezes each one to about a word on a
+   narrow screen. The about page applies the same correction in its own scope. */
+@media (max-width: 720px) {
+  .vy-contact-meta { grid-template-columns: 1fr; gap: 10px; }
+  .vy-contact-meta span:nth-child(2),
+  .vy-contact-meta span:last-child { text-align: left; }
+}
+
+@media (max-width: 560px) {
+  .vy-slot-mesh { grid-template-columns: 1fr; }
+}

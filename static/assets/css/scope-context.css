@@ -1,0 +1,106 @@
+/* ============================================================================
+ * Vayra — scale, layer and dimension variables
+ *
+ * _tokens-bridge.css holds the palette and the motion tokens. This file holds the
+ * rest of what the components read: the type scale, tracking and weight, radius,
+ * z-index layers, dimensions and the media grade.
+ *
+ * They are separated so that retheming (colour, type, motion) is one file, while the
+ * structural scale that the components assume is another. If a var() here is removed
+ * the component that reads it does not fall back to something sensible: it renders at
+ * font-size 0 or with no stacking order at all.
+ * ============================================================================ */
+
+:root {
+  /* ── Type scale (12 14 16 20 28 40 64 96) ─────────────────────────────────── */
+  --vy-t-12: 12px;
+  --vy-t-14: 14px;
+  --vy-t-16: 16px;
+  --vy-t-20: 20px;
+  --vy-t-28: 28px;
+  --vy-t-40: 40px;
+  --vy-t-64: 64px;
+  --vy-t-96: 96px;
+
+  /* Fluid sizes move between the eight steps above; no new step is introduced */
+  --vy-fluid-body: clamp(14px, 0.6vw + 12px, 16px);
+  --vy-fluid-lede: clamp(24px, 2.4vw, 40px);
+  --vy-fluid-title: clamp(40px, 5.4vw, 96px);
+  --vy-fluid-giant: clamp(64px, 11vw, 200px);
+
+  /* The names the components read, mapped onto the eight steps */
+  --type-root: var(--vy-fluid-body);
+  --text-2xs: var(--vy-t-12);
+  --text-xs: var(--vy-t-12);
+  --text-sm: var(--vy-t-14);
+  --text-base: var(--vy-t-16);
+  --text-md: var(--vy-t-16);
+  --text-lg: var(--vy-t-20);
+  --text-display-xs: clamp(28px, 3.4vw, 40px);
+  --text-display-sm: clamp(40px, 5vw, 64px);
+  --text-display-md: clamp(40px, 7vw, 96px);
+  --text-display-lg: var(--vy-fluid-giant);
+
+  /* ── Tracking, leading, weight (names the components read) ── */
+  --leading-tight: 1;
+  --leading-display: 0.92;
+  --leading-body: 1.65;
+  --tracking-tight: -0.03em;
+  --tracking-display: -0.02em;
+  --tracking-brand: 0.02em;
+  --tracking-meta: 0.12em;
+  --tracking-ui: 0.05em;
+  --tracking-label: 0.08em;
+  --tracking-wide: 0.1em;
+  --tracking-caps: 0.18em;
+  /* The subpage components use a copy tracking value that has to be declared
+     somewhere. Undeclared, the letter-spacing is simply dropped. */
+  --tracking-copy: 0.005em;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-black: 800;
+
+  /* ── Radius: 0 and 4 only. No pills, no circles ──
+     The cursor ring is a square mark rather than a circle. That is a substitution to
+     match the straight edged language, not something removed. */
+  --radius-sm: 0;
+  --radius-md: var(--vy-radius);
+  --radius-lg: 0;
+
+  /* ── z-index layers (shared by every component) ── */
+  --layer-scene: 1;
+  --layer-content: 2;
+  --layer-veil: 3;
+  --layer-mask: 10;
+  --layer-ui: 11;
+  --layer-ui-raised: 12;
+  --layer-stage: 15;
+  --layer-overlay: 20;
+  --layer-section: 30;
+  --layer-caption: 50;
+  --layer-chrome: 600;
+  --layer-loader: 99000;
+  --layer-cursor: 99998;
+
+  /* ── Dimensions ── */
+  --sq: 32px;
+  --stroke-w: 1.5;
+  --thumb-width: 144px;
+  --line-spacing: 10px;
+  --line-base-height: 12px;
+  --line-max-height: 44px;
+  --ns-row-rest: transparent;
+
+  /* ── Media grade. The palette is achromatic, so saturation is removed ──
+     Thumbnails and portraits that sit inside the interface are greyscale; the generated
+     output itself keeps its colour. That way the renders are the only colour on screen. */
+  --media-grade: grayscale(1) contrast(1.04);
+
+  /* ── Clip values for the scroll driven curtain ── */
+  --curtain-closed: inset(100% 0 0 0);
+  --curtain-open: inset(0% 0 0 0);
+
+  /* ── Cursor intensity. Declared here so a component cannot override the bridge ── */
+  --cursor-ring-size: 28px;
+  --cursor-ring-rest-scale: 0.55;
+}

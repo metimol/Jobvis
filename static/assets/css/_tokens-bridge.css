@@ -1,0 +1,127 @@
+/* ============================================================================
+ * Vayra — token bridge
+ *
+ * What it does: the components in this template read a set of generic CSS
+ * variables (--color-bg-primary, --color-text-primary, --color-accent and so on).
+ * This file is the one place where those names are pointed at the Vayra tokens.
+ *
+ * How to retheme: change the values in this file. Do not write colours, fonts or
+ * easings directly inside a component stylesheet — if you do, this file stops being
+ * the single switch and the next change has to be made in two places.
+ * ============================================================================ */
+
+:root {
+  /* ── Palette. These five colours are the whole set ─────────────────────────── */
+  --vy-bg-primary: #0A0A0B;
+  --vy-bg-secondary: #141416;
+  --vy-text-primary: #F4F4F5;
+  --vy-text-secondary: #8A8A90;
+  --vy-accent: #F4F4F5;          /* No chromatic accent. That is deliberate: the generated images are the only colour on screen. */
+
+  /* Alpha derivatives of the five above. No new hue is introduced. */
+  --vy-line: rgba(244, 244, 245, 0.12);
+  --vy-line-soft: rgba(244, 244, 245, 0.06);
+  --vy-ink-55: rgba(244, 244, 245, 0.55);
+  --vy-scrim: rgba(10, 10, 11, 0.72);
+
+  /* ── Type ────────────────────────────────────────────────────────────────── */
+  --vy-font-display: "Plus Jakarta Sans", system-ui, sans-serif;
+  --vy-font-body: "Plus Jakarta Sans", system-ui, sans-serif;
+  --vy-font-mono: "JetBrains Mono", ui-monospace, monospace;   /* Labels and numbers */
+
+  /* ── Motion (one signature curve, mirrored in CSS) ────────────────────────── */
+  --vy-ease: cubic-bezier(0.16, 1, 0.3, 1);   /* ≒ gsap expo.out */
+  --vy-dur-hero: 1.2s;
+  --vy-dur-section: 0.8s;
+  --vy-dur-micro: 0.3s;
+
+  /* ── Layout ──────────────────────────────────────────────────────────────── */
+  --vy-radius: 4px;              /* Radius is 0 or 4. Pill shapes (999) are not used anywhere. */
+  --vy-container: 1440px;
+  --vy-col-gap: 24px;
+  --vy-section-sm: 96px;
+  --vy-section-lg: 180px;
+
+  /* ══════════════════════════════════════════════════════════════════════════
+   * Component variables mapped onto the palette above.
+   * The component stylesheets read only these names.
+   * ══════════════════════════════════════════════════════════════════════════ */
+
+  /* Shared by every component */
+  --color-bg-primary: var(--vy-bg-primary);
+  --color-bg-secondary: var(--vy-bg-secondary);
+  --color-text-primary: var(--vy-text-primary);
+  --color-text-secondary: var(--vy-text-secondary);
+  --color-accent: var(--vy-accent);
+  --color-line: var(--vy-line);
+
+  /* Used by the hero, nav and cursor components */
+  --color-bg: var(--vy-bg-primary);
+  --color-text: var(--vy-text-primary);
+  --color-text-dim: var(--vy-text-secondary);
+  --color-ink-55: var(--vy-ink-55);
+  --color-line-soft: var(--vy-line-soft);
+  --color-scrim: var(--vy-scrim);
+  --ink-invert: brightness(0) invert(1);
+  --font-family-display: var(--vy-font-display);
+  --font-family-body: var(--vy-font-body);
+  --font-family-accent: var(--vy-font-mono);
+  --ease-primary: var(--vy-ease);
+  --duration-fast: var(--vy-dur-micro);
+  --duration-normal: var(--vy-dur-section);
+  --duration-snap: 0.18s;
+
+  /* Used by the archive, gate and footer components */
+  --color-bg-deep: var(--vy-bg-primary);
+  --color-line-deep: var(--vy-line-soft);
+  --color-text-muted: var(--vy-text-secondary);
+  --color-invert: var(--vy-bg-primary);
+  --font-display: var(--vy-font-display);
+  --font-body: var(--vy-font-body);
+  --container: var(--vy-container);
+  --col-gap: var(--vy-col-gap);
+
+  /* ── Intensity. The effects stay, turned down ─────────────────────────────── */
+  --cursor-ring-size: 28px;            /* Smaller than the stock value */
+  --cursor-ring-rest-scale: 0.55;      /* Idle scale of the cursor ring. Raise it and the ring gets more assertive. */
+  --cursor-label-enter-duration: 0.22s;
+  --cursor-label-exit-duration: 0.16s;
+  --cursor-label-ease: var(--vy-ease);
+
+  /* Pixel curtain: short, and it plays once */
+  --pt-bg: var(--vy-bg-primary);
+  --pt-depth: 48vh;                    /* Reduced from 60vh */
+  --pt-top: -102%;
+  --pt-bottom: 102%;
+}
+
+/* Cursor off switch. Put data-vy-cursor="off" on <html> or <body> and the custom
+   cursor disappears and the system cursor comes back. */
+html[data-vy-cursor="off"] #vy-probe-bead,
+html[data-vy-cursor="off"] #vy-probe-halo,
+body[data-vy-cursor="off"] #vy-probe-bead,
+body[data-vy-cursor="off"] #vy-probe-halo {
+  display: none !important;
+}
+html[data-vy-cursor="off"] body,
+body[data-vy-cursor="off"] {
+  cursor: auto;
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --vy-dur-hero: 0.01s;
+    --vy-dur-section: 0.01s;
+    --vy-dur-micro: 0.01s;
+  }
+}
+
+/* Manual motion switch: same result as the OS setting, chosen in the markup.
+   It has to sit outside the media query, or it would only work while the OS setting is on. */
+html[data-vy-motion="off"],
+body[data-vy-motion="off"] {
+  --vy-dur-hero: 0.01s;
+  --vy-dur-section: 0.01s;
+  --vy-dur-micro: 0.01s;
+}

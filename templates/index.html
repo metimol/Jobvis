@@ -1,0 +1,989 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vayra — text-to-image studio</title>
+<meta name="description" content="A text-to-image studio that keeps the seed, the settings and the license attached to every frame it makes.">
+<meta name="color-scheme" content="dark">
+<!-- Favicon: swap assets/img/favicon.svg for your own mark. SVG stays sharp at every size. -->
+<link rel="icon" type="image/svg+xml" href="assets/img/favicon.svg">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;800&display=swap" rel="stylesheet">
+
+<!-- The token bridge loads first: it maps the variables the components read onto the Vayra tokens. -->
+<link rel="stylesheet" href="assets/css/_tokens-bridge.css">
+<link rel="stylesheet" href="assets/css/scope-context.css">
+<link rel="stylesheet" href="assets/css/parts.css">
+<link rel="stylesheet" href="assets/css/sections.css">
+</head>
+
+<!-- Add data-vy-motion="off" or data-vy-cursor="off" to <body> to disable motion or the custom cursor. See documentation/index.html -->
+<body>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     Global slots: cursor, page transition, chrome
+     ══════════════════════════════════════════════════════════════════════════ -->
+
+<!-- Custom cursor. Its size and idle scale come from the cursor ring tokens in _tokens-bridge.css. -->
+<div id="vy-probe-bead"></div>
+<div id="vy-probe-halo" data-vy-probe-cap="EXPLORE" data-vy-probe-side="right"></div>
+
+<!-- Page transition curtain. It plays once, on arrival. -->
+<div class="vy-view-swap-rig vy-js-view-swap-rig" aria-hidden="true">
+  <div class="vy-view-swap-drape vy-js-view-swap-drape"></div>
+</div>
+
+<!-- Side rail: low contrast, small type. -->
+<div class="vy-rail left" aria-hidden="true">© 2026</div>
+<div class="vy-rail right" aria-hidden="true">v3 ENGINE</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     0. Loader (counts 0 to 100, capped at 1.5s)
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div class="vy-door" id="vy-door" role="status" aria-label="Loading" data-section-id="loader">
+  <span>VAYRA</span><span class="vy-door-num" id="vy-probe">0</span><span>STUDIO</span>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     1. Nav (hover preview)
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div id="vy-topbar_glide_frame" class="vy-hdr-depart" data-section-id="nav" inert>
+  <div id="vy-topbar_glide">
+    <a class="vy-hdr-glyph" href="#cta" data-vy-probe="CONTACT" aria-label="Go to contact">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="2.5" y="5" width="19" height="14" rx="0"></rect>
+        <path d="M2.5 7.5 12 14l9.5-6.5"></path>
+      </svg>
+    </a>
+    <a class="vy-hdr-brand" href="#top" data-vy-probe="HOME" aria-label="Vayra home">VAYRA</a>
+    <button class="vy-hdr-glyph vy-hdr-burger" id="vy-topbar-glide-panel-btn" type="button"
+            data-vy-probe="OPEN" aria-label="Open menu" aria-expanded="false"
+            aria-controls="vy-topbar-glide-flyout" data-vy-probe-side="right">
+      <svg class="vy-hdr-bun-svg" viewBox="0 0 24 24" aria-hidden="true">
+        <line class="vy-hdr-bun-l1" x1="5" y1="9" x2="19" y2="9"></line>
+        <line class="vy-hdr-bun-l2" x1="5" y1="15" x2="19" y2="15"></line>
+      </svg>
+    </button>
+  </div>
+
+  <div class="vy-hdr-flyout" id="vy-topbar-glide-flyout" aria-hidden="true">
+    <div class="vy-hdr-flyout__mid" id="vy-topbar-glide-flyout-content">
+      <div class="vy-hdr-panel-deck">
+        <div class="vy-hdr-panel-strips">
+
+          <a class="vy-hdr-reel-strip vy-hdr-flyout__cell" href="#top" aria-label="Top">
+            <span class="vy-hdr-reel-strip__seq">( Start )</span>
+            <span class="vy-hdr-reel-strip__chip vy-is-start" aria-hidden="true">
+              <img class="vy-ph" src="/assets/img/gen/nav-thumb-01.webp" data-status="approved" data-tool="gemini" data-mode="generate" data-role="mood" alt=""
+                   data-prompt="Wide monochrome studio still: a single softbox lighting an empty seamless backdrop, deep shadows, 35mm, no people, no text">
+            </span>
+            <span class="vy-hdr-reel-strip__head">
+              <span class="vy-hdr-reel-strip__head-groove">
+                <span class="vy-hdr-reel-strip__head-plane vy-is-prime">HOME</span>
+                <span class="vy-hdr-reel-strip__head-plane vy-is-hot" aria-hidden="true">HOME</span>
+              </span>
+            </span>
+            <span class="vy-hdr-reel-strip__chip vy-is-end" aria-hidden="true">
+              <img class="vy-ph" src="/assets/img/gen/nav-thumb-02.webp" data-status="approved" data-tool="gemini" data-mode="generate" data-role="mood" alt=""
+                   data-prompt="Monochrome macro of a camera sensor edge on matte black, hard rim light, extreme detail, no text">
+            </span>
+          </a>
+
+          <a class="vy-hdr-reel-strip vy-hdr-flyout__cell" href="/gallery" aria-label="Gallery">
+            <span class="vy-hdr-reel-strip__seq">( Output )</span>
+            <span class="vy-hdr-reel-strip__chip vy-is-start" aria-hidden="true">
+              <img class="vy-ph" src="/assets/img/gen/nav-thumb-03.webp" data-status="approved" data-tool="gemini" data-mode="generate" data-role="mood" alt=""
+                   data-prompt="Grid of nine generated portrait crops in muted grayscale, contact-sheet layout, film edge markings, no text">
+            </span>
+            <span class="vy-hdr-reel-strip__head">
+              <span class="vy-hdr-reel-strip__head-groove">
+                <span class="vy-hdr-reel-strip__head-plane vy-is-prime">GALLERY</span>
+                <span class="vy-hdr-reel-strip__head-plane vy-is-hot" aria-hidden="true">GALLERY</span>
+              </span>
+            </span>
+            <span class="vy-hdr-reel-strip__chip vy-is-end" aria-hidden="true">
+              <img class="vy-ph" src="/assets/img/gen/nav-thumb-04.webp" data-status="approved" data-tool="gemini" data-mode="generate" data-role="mood" alt=""
+                   data-prompt="Ceramic vase on a concrete plinth, single hard light, charcoal background, product photography, no text">
+            </span>
+          </a>
+
+          <a class="vy-hdr-reel-strip vy-hdr-flyout__cell" href="/pricing" aria-label="Pricing">
+            <span class="vy-hdr-reel-strip__seq">( Plans )</span>
+            <span class="vy-hdr-reel-strip__chip vy-is-start" aria-hidden="true">
+              <img class="vy-ph" src="/assets/img/gen/nav-thumb-05.webp" data-status="approved" data-tool="gemini" data-mode="generate" data-role="mood" alt=""
+                   data-prompt="Stack of blank matte cards fanned on dark stone, raking light, shallow depth of field, no text">
+            </span>
+            <span class="vy-hdr-reel-strip__head">
+              <span class="vy-hdr-reel-strip__head-groove">
+                <span class="vy-hdr-reel-strip__head-plane vy-is-prime">PRICING</span>
+                <span class="vy-hdr-reel-strip__head-plane vy-is-hot" aria-hidden="true">PRICING</span>
+              </span>
+            </span>
+            <span class="vy-hdr-reel-strip__chip vy-is-end" aria-hidden="true">
+              <img class="vy-ph" src="/assets/img/gen/nav-thumb-06.webp" data-status="approved" data-tool="gemini" data-mode="generate" data-role="mood" alt=""
+                   data-prompt="Overhead of a dark desk with a graphite pencil and a folded paper sheet, low key, no text">
+            </span>
+          </a>
+
+          <a class="vy-hdr-reel-strip vy-hdr-flyout__cell" href="/about" aria-label="About">
+            <span class="vy-hdr-reel-strip__seq">( Studio )</span>
+            <span class="vy-hdr-reel-strip__chip vy-is-start" aria-hidden="true">
+              <img class="vy-ph" src="/assets/img/gen/capability-console.webp" data-status="approved" data-tool="gemini" data-mode="generate" data-role="identity" alt=""
+                   data-prompt="Dark neutral UI screenshot of a render queue console: left sidebar with prompt history, centre grid of four generating thumbnails with progress bars, right panel showing seed, sampler and step count fields, monospace labels, near-black background, no logo, no filler copy">
+            </span>
+            <span class="vy-hdr-reel-strip__head">
+              <span class="vy-hdr-reel-strip__head-groove">
+                <span class="vy-hdr-reel-strip__head-plane vy-is-prime">ABOUT</span>
+                <span class="vy-hdr-reel-strip__head-plane vy-is-hot" aria-hidden="true">ABOUT</span>
+              </span>
+            </span>
+            <span class="vy-hdr-reel-strip__chip vy-is-end" aria-hidden="true">
+              <img class="vy-ph" src="/assets/img/gen/nav-thumb-01.webp" data-status="approved" data-tool="gemini" data-mode="generate" data-role="mood" alt=""
+                   data-prompt="Wide monochrome studio still: a single softbox lighting an empty seamless backdrop, deep shadows, 35mm, no people, no text">
+            </span>
+          </a>
+
+          <a class="vy-hdr-reel-strip vy-hdr-flyout__cell" href="/contact" aria-label="Contact">
+            <span class="vy-hdr-reel-strip__seq">( Say hi )</span>
+            <span class="vy-hdr-reel-strip__chip vy-is-start" aria-hidden="true">
+              <img class="vy-ph" src="/assets/img/gen/nav-thumb-09.webp" data-status="approved" data-tool="gemini" data-mode="generate" data-role="mood" alt=""
+                   data-prompt="Hand holding a blank white card against a dark wall, single light source, monochrome, no text">
+            </span>
+            <span class="vy-hdr-reel-strip__head">
+              <span class="vy-hdr-reel-strip__head-groove">
+                <span class="vy-hdr-reel-strip__head-plane vy-is-prime">CONTACT</span>
+                <span class="vy-hdr-reel-strip__head-plane vy-is-hot" aria-hidden="true">CONTACT</span>
+              </span>
+            </span>
+            <span class="vy-hdr-reel-strip__chip vy-is-end" aria-hidden="true">
+              <img class="vy-ph" src="/assets/img/gen/nav-thumb-08.webp" data-status="approved" data-tool="gemini" data-mode="generate" data-role="mood" alt=""
+                   data-prompt="Empty archival box with a lifted lid on charcoal seamless, top light, no text">
+            </span>
+          </a>
+
+          <a class="vy-hdr-reel-strip vy-hdr-flyout__cell" href="#faq" aria-label="FAQ">
+            <span class="vy-hdr-reel-strip__seq">( Answers )</span>
+            <span class="vy-hdr-reel-strip__chip vy-is-start" aria-hidden="true">
+              <img class="vy-ph" src="/assets/img/gen/nav-thumb-07.webp" data-status="approved" data-tool="gemini" data-mode="generate" data-role="mood" alt=""
+                   data-prompt="Close-up of layered translucent film sheets on a lightbox, monochrome, soft glow, no text">
+            </span>
+            <span class="vy-hdr-reel-strip__head">
+              <span class="vy-hdr-reel-strip__head-groove">
+                <span class="vy-hdr-reel-strip__head-plane vy-is-prime">FAQ</span>
+                <span class="vy-hdr-reel-strip__head-plane vy-is-hot" aria-hidden="true">FAQ</span>
+              </span>
+            </span>
+            <span class="vy-hdr-reel-strip__chip vy-is-end" aria-hidden="true">
+              <img class="vy-ph" src="/assets/img/gen/nav-thumb-08.webp" data-status="approved" data-tool="gemini" data-mode="generate" data-role="mood" alt=""
+                   data-prompt="Empty archival box with a lifted lid on charcoal seamless, top light, no text">
+            </span>
+          </a>
+
+          <a class="vy-hdr-reel-strip vy-hdr-flyout__cell" href="#cta" aria-label="Get started">
+            <span class="vy-hdr-reel-strip__seq">( Get it )</span>
+            <span class="vy-hdr-reel-strip__chip vy-is-start" aria-hidden="true">
+              <img class="vy-ph" src="/assets/img/gen/nav-thumb-09.webp" data-status="approved" data-tool="gemini" data-mode="generate" data-role="mood" alt=""
+                   data-prompt="Hand holding a blank white card against a dark wall, single light source, monochrome, no text">
+            </span>
+            <span class="vy-hdr-reel-strip__head">
+              <span class="vy-hdr-reel-strip__head-groove">
+                <span class="vy-hdr-reel-strip__head-plane vy-is-prime">START</span>
+                <span class="vy-hdr-reel-strip__head-plane vy-is-hot" aria-hidden="true">START</span>
+              </span>
+            </span>
+            <span class="vy-hdr-reel-strip__chip vy-is-end" aria-hidden="true">
+              <img class="vy-ph" src="/assets/img/gen/nav-thumb-10.webp" data-status="approved" data-tool="gemini" data-mode="generate" data-role="mood" alt=""
+                   data-prompt="Long exposure of a doorway opening into dark space, grain, monochrome, no people, no text">
+            </span>
+          </a>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<main id="top">
+
+<h1 class="vy-sr-only">Vayra — a text-to-image studio that keeps the seed, the settings and the license with every frame</h1>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     2. Hero (signature section)
+     Renders stream across a WebGL plane: cover fit in the shader, pointer parallax, crossfade.
+     ══════════════════════════════════════════════════════════════════════════ -->
+<section class="vy-banner-band" data-section-id="hero" data-section-role="hero"
+         data-variant="fullbleed-gl-plane" data-page-dna="product-console">
+
+  <div id="vy-webgl-frame"></div>
+
+  <div class="vy-hud-ui">
+    <div class="vy-hud-top">
+      <div class="vy-top-masthead">
+        <div class="vy-mega-copy"><div>PROMPT</div></div>
+        <div class="vy-mini-tag"><div>( Text-to-image studio )</div></div>
+        <div class="vy-mega-copy"><div>FRAME</div></div>
+      </div>
+
+      <div class="vy-mesh-4 vy-banner-stacks">
+        <div>
+          <ul class="vy-crafts-stack">
+            <li><div>Photoreal</div></li>
+            <li><div>Product</div></li>
+            <li><div>Illustration</div></li>
+            <li><div>Upscale</div></li>
+          </ul>
+        </div>
+        <div class="vy-span-end">
+          <ul class="vy-crafts-stack vy-crafts-stack_en vy-edged">
+            <li><div>Flux + SDXL</div></li>
+            <li><div>4096 px</div></li>
+            <li><div>12 presets</div></li>
+            <li><div>REST + SDK</div></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="vy-hud-low">
+
+      <!-- The hero console stays in normal flow. Position it absolutely and it overlaps the three rows below. -->
+      <div class="vy-low-ui-frame">
+        <div class="vy-shot-band">Recent output</div>
+        <div class="vy-shot-tally">
+          <button class="vy-tally-topbar vy-prev-shot" type="button" aria-label="Previous frame">&#8592;</button>
+          <div class="vy-tally-readout">
+            <span class="vy-now-shot">01</span>
+            <span class="vy-tally-sep">//</span>
+            <span class="vy-sum-shots">05</span>
+          </div>
+          <button class="vy-tally-topbar vy-next-shot" type="button" aria-label="Next frame">&#8594;</button>
+        </div>
+        <div class="vy-shot-meter">
+          <div class="vy-meter-groove">
+            <div class="vy-meter-bar vy-meter-brief"></div>
+            <div class="vy-meter-bar vy-meter-rest"></div>
+          </div>
+        </div>
+        <div class="vy-shot-head-frame">
+          <div class="vy-shot-head">Studio portrait</div>
+        </div>
+        <div class="vy-pull-cue" aria-hidden="true"><div class="vy-rules-frame"></div></div>
+        <div class="vy-chips-frame">
+          <div class="vy-shot-chips"></div>
+        </div>
+      </div>
+
+      <div class="vy-mesh-4 vy-banner-fast-paths-strip">
+        <nav class="vy-banner-fast-paths" aria-label="Hero quick links">
+          <div>
+            <a href="#problem">Problem</a>
+            <a href="#vy-core-skills">Pipeline</a>
+            <a href="#gallery">Gallery</a>
+            <a href="#metrics">Numbers</a>
+            <a href="#pricing">Pricing</a>
+          </div>
+        </nav>
+      </div>
+
+      <div class="vy-mesh-4 vy-edge-top-rule">
+        <div><div>( Prompt to frame )</div></div>
+        <div><div>( Seed locked )</div></div>
+        <div><div>( Batch rendering )</div></div>
+        <div><div>( Commercial use )</div></div>
+      </div>
+
+      <div class="vy-mesh-4 vy-low-outro">
+        <div class="vy-outro-span"><div>
+          Every render keeps its prompt, seed<br>
+          and settings, so the frame you liked<br>
+          in March still rebuilds in November.
+        </div></div>
+        <div class="vy-outro-span"><div>
+          hello@vayra.studio<br>
+          Docs · API · Changelog<br>
+          Vayra 2026©
+        </div></div>
+        <div class="vy-outro-span vy-span-end vy-outro-paths"><div>
+          <a href="#gallery">Gallery</a>
+          <a href="#pricing">Pricing</a>
+          <a href="#faq">FAQ</a>
+        </div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Slide data source. These img tags carry the data; the WebGL plane does the drawing. -->
+  <div class="vy-shots">
+    <div class="vy-shot">
+      <div class="vy-shot__pic" data-vy-pic="assets/img/gen/hero-slide-1.webp" data-vy-chip="assets/img/gen/hero-slide-1.webp" data-vy-head="Studio portrait">
+        <img class="vy-ph" src="assets/img/gen/hero-slide-1.webp" data-status="approved" data-tool="gemini" data-mode="generate" data-role="mood" alt="Generated studio portrait"
+             data-prompt="Editorial studio portrait of a person in a charcoal wool coat against a seamless graphite backdrop, single large softbox from camera left, 85mm, shallow depth of field, muted neutral grade, no text">
+      </div>
+    </div>
+    <div class="vy-shot">
+      <div class="vy-shot__pic" data-vy-pic="assets/img/gen/hero-slide-2.webp" data-vy-chip="assets/img/gen/hero-slide-2.webp" data-vy-head="Product on seamless">
+        <img class="vy-ph" src="assets/img/gen/hero-slide-2.webp" data-status="approved" data-tool="gemini" data-mode="generate" data-role="mood" alt="Generated product shot"
+             data-prompt="Matte black cylindrical speaker on a dark seamless sweep, single hard key light with a long soft shadow, product photography, neutral grade, no text, no branding">
+      </div>
+    </div>
+    <div class="vy-shot">
+      <div class="vy-shot__pic" data-vy-pic="assets/img/gen/hero-slide-3.webp" data-vy-chip="assets/img/gen/hero-slide-3.webp" data-vy-head="Editorial still life">
+        <img class="vy-ph" src="assets/img/gen/hero-slide-3.webp" data-status="approved" data-tool="gemini" data-mode="generate" data-role="mood" alt="Generated still life"
+             data-prompt="Still life of folded raw linen and a stone bowl on a dark oak table, window light from the left, editorial food-magazine framing, muted neutral grade, no text">
+      </div>
+    </div>
+    <div class="vy-shot">
+      <div class="vy-shot__pic" data-vy-pic="assets/img/gen/hero-slide-4.webp" data-vy-chip="assets/img/gen/hero-slide-4.webp" data-vy-head="Architectural interior">
+        <img class="vy-ph" src="assets/img/gen/hero-slide-4.webp" data-status="approved" data-tool="gemini" data-mode="generate" data-role="mood" alt="Generated interior"
+             data-prompt="Brutalist concrete stairwell interior with one skylight shaft, wide angle, deep shadows, no people, architectural photography, neutral grade, no text">
+      </div>
+    </div>
+    <div class="vy-shot">
+      <div class="vy-shot__pic" data-vy-pic="assets/img/gen/hero-slide-5.webp" data-vy-chip="assets/img/gen/hero-slide-5.webp" data-vy-head="Type and texture">
+        <img class="vy-ph" src="assets/img/gen/hero-slide-5.webp" data-status="approved" data-tool="gemini" data-mode="generate" data-role="mood" alt="Generated texture study"
+             data-prompt="Macro texture of torn dark paper layered over wet slate, raking light, high micro contrast, abstract, monochrome, no text">
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     3. Problem — deliberately still.
+     The one scroll driven colour shift on this page starts at this boundary.
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div class="vy-night-hull-veil" id="vy-night-hull-veil">
+  <div class="vy-night-hull" id="vy-night-hull">
+    <div id="vy-dw-black-hud" aria-hidden="true"></div>
+
+    <section class="vy-problem" id="problem" data-section-id="problem" data-section-role="problem"
+             data-variant="lede-no-motion" data-page-dna="product-console">
+      <div class="vy-shell">
+        <div class="vy-problem__grid">
+          <p class="vy-problem__lede">
+            <span>Most image tools stop at the first render.</span>
+            <span>You get one frame and none of what made it.</span>
+            <span class="vy-dim">No seed. No settings. No way back.</span>
+            <span class="vy-dim">So the second frame never matches the first,</span>
+            <span class="vy-dim">and the team rebuilds the look every week.</span>
+          </p>
+          <figure class="vy-problem__media">
+            <img class="vy-ph" src="assets/img/gen/problem-pair.webp" data-status="approved" data-tool="gemini" data-mode="generate" data-role="mood" alt="Two near-identical generated frames that do not match"
+                 data-prompt="Two nearly identical dark studio still lifes printed and pinned side by side on a concrete wall, one slightly different in light and framing than the other, monochrome, documentary photograph, no text">
+          </figure>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     4. Features (masked reveal: title mask plus a clipped media panel)
+     ══════════════════════════════════════════════════════════════════════════ -->
+<section class="vy-scale-band" id="vy-core-skills" data-section-id="features"
+         data-section-role="features" data-variant="masked-reveal-stage" data-page-dna="product-console">
+  <div class="vy-halo-reel-pinned">
+    <div class="vy-banner-dom">
+      <div>
+        <div class="vy-jumbo-head">
+          <span class="vy-rise-case"><span class="vy-rise-mid">THE PIPELINE</span></span>
+        </div>
+
+        <div class="vy-leaf-head">
+          <div class="vy-rise-case"><span class="vy-rise-mid">From a line of text</span></div>
+          <div class="vy-rise-case"><span class="vy-rise-mid">to a frame you can ship</span></div>
+        </div>
+
+        <div class="vy-top-topbar">
+          <div class="vy-topbar-start">
+            <span class="vy-rise-case"><span class="vy-rise-mid">SEED_LOCKED</span></span>
+          </div>
+          <div class="vy-topbar-axis vy-rise-case"><span class="vy-rise-mid">BATCH_TO_64</span></div>
+          <div class="vy-topbar-end vy-rise-case"><span class="vy-rise-mid">RETRY_ON_FAIL</span></div>
+        </div>
+
+        <div class="vy-asset-reel">
+          <div class="vy-asset-groove">
+            <div class="vy-axis-sep">
+              <div class="vy-axis-film-pod">
+                <img class="vy-ph" src="assets/img/gen/capability-console.webp" data-status="approved" data-tool="gemini" data-mode="generate" data-role="identity" alt="The Vayra render queue"
+                     data-prompt="Dark neutral UI screenshot of a render queue console: left sidebar with prompt history, centre grid of four generating thumbnails with progress bars, right panel showing seed, sampler and step count fields, monospace labels, near-black background, no logo, no filler copy">
+              </div>
+              <div class="vy-craft-cap"><h2 class="vy-rise-case"><span class="vy-rise-mid">One engine, four output paths</span></h2></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="vy-craft-labels">
+          <span class="vy-rise-case"><span class="vy-rise-mid">( Photoreal )</span></span>
+          <span class="vy-rise-case"><span class="vy-rise-mid">( Product )</span></span>
+          <span class="vy-rise-case"><span class="vy-rise-mid">( Illustration )</span></span>
+          <span class="vy-rise-case"><span class="vy-rise-mid">( Upscale )</span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     5. Gallery (signature section)
+     Proximity magnet cards over a WebGL warp. The viewer keeps generation metadata on the
+     left and the large frame on the right; every card keeps its own aspect ratio.
+     ══════════════════════════════════════════════════════════════════════════ -->
+<section id="gallery" data-section-id="gallery" data-section-role="gallery"
+         data-variant="output-viewer-console" data-page-dna="product-console">
+
+  <div class="vy-vault">
+    <div class="vy-kicker">Output log — last 8 renders</div>
+
+    <div class="vy-console-bar" role="group" aria-label="Filter renders by path">
+      <button class="vy-filter" type="button" data-filter="all" aria-pressed="true">All</button>
+      <button class="vy-filter" type="button" data-filter="photoreal" aria-pressed="false">Photoreal</button>
+      <button class="vy-filter" type="button" data-filter="product" aria-pressed="false">Product</button>
+      <button class="vy-filter" type="button" data-filter="illustration" aria-pressed="false">Illustration</button>
+      <button class="vy-filter" type="button" data-filter="upscale" aria-pressed="false">Upscale</button>
+      <span class="vy-console-count" id="vy-gallery-count" aria-live="polite">8 / 8</span>
+    </div>
+
+    <div class="vy-vault-mesh" id="vy-gallery-grid">
+
+      <article class="vy-work" data-path="photoreal">
+        <div class="vy-work-pic">
+          <img class="vy-gl-pic vy-ph" src="assets/img/gen/hero-slide-1.webp" data-status="approved" data-tool="gemini" data-mode="generate" data-role="mood" alt="Generated studio portrait, front lit"
+               data-prompt="Editorial studio portrait of a person in a charcoal wool coat, seamless graphite backdrop, one large softbox camera left, 85mm, shallow depth of field, muted neutral grade, no text">
+        </div>
+        <div class="vy-meta">
+          <h3>Coat, seamless graphite</h3>
+          <h4>Photoreal</h4>
+          <dl class="vy-idx">
+            <dt>Model</dt><dd>vayra-photo-3</dd>
+            <dt>Steps</dt><dd>34</dd>
+            <dt>Seed</dt><dd>884213097</dd>
+            <dt>Size</dt><dd>2048 × 2560</dd>
+            <dt>Prompt</dt><dd class="vy-prompt-field">portrait, charcoal wool coat, seamless graphite, one softbox camera left, 85mm</dd>
+          </dl>
+          <button class="vy-copy-prompt" type="button">Copy prompt</button>
+        </div>
+      </article>
+
+      <article class="vy-work" data-path="product">
+        <div class="vy-work-pic">
+          <img class="vy-gl-pic vy-ph" src="assets/img/gen/hero-slide-2.webp" data-status="approved" data-tool="gemini" data-mode="generate" data-role="mood" alt="Generated product shot of a matte speaker"
+               data-prompt="Matte black cylindrical speaker on a dark seamless sweep, single hard key light, long soft shadow, product photography, neutral grade, no text, no branding">
+        </div>
+        <div class="vy-meta">
+          <h3>Cylinder, hard key</h3>
+          <h4>Product</h4>
+          <dl class="vy-idx">
+            <dt>Model</dt><dd>vayra-photo-3</dd>
+            <dt>Steps</dt><dd>28</dd>
+            <dt>Seed</dt><dd>119874402</dd>
+            <dt>Size</dt><dd>2560 × 1780</dd>
+            <dt>Prompt</dt><dd class="vy-prompt-field">matte black cylinder speaker, dark seamless sweep, hard key light, long shadow</dd>
+          </dl>
+          <button class="vy-copy-prompt" type="button">Copy prompt</button>
+        </div>
+      </article>
+
+      <article class="vy-work" data-path="photoreal">
+        <div class="vy-work-pic">
+          <img class="vy-gl-pic vy-ph" src="assets/img/gen/hero-slide-3.webp" data-status="approved" data-tool="gemini" data-mode="generate" data-role="mood" alt="Generated still life of linen and stone"
+               data-prompt="Still life of folded raw linen and a stone bowl on dark oak, window light from the left, editorial framing, muted neutral grade, no text">
+        </div>
+        <div class="vy-meta">
+          <h3>Linen and stone, window left</h3>
+          <h4>Photoreal</h4>
+          <dl class="vy-idx">
+            <dt>Model</dt><dd>vayra-photo-3</dd>
+            <dt>Steps</dt><dd>40</dd>
+            <dt>Seed</dt><dd>620017755</dd>
+            <dt>Size</dt><dd>2048 × 1808</dd>
+            <dt>Prompt</dt><dd class="vy-prompt-field">folded raw linen, stone bowl, dark oak table, window light left, editorial</dd>
+          </dl>
+          <button class="vy-copy-prompt" type="button">Copy prompt</button>
+        </div>
+      </article>
+
+      <article class="vy-work" data-path="upscale">
+        <div class="vy-work-pic">
+          <img class="vy-gl-pic vy-ph" src="assets/img/gen/hero-slide-4.webp" data-status="approved" data-tool="gemini" data-mode="generate" data-role="mood" alt="Generated concrete interior, upscaled"
+               data-prompt="Brutalist concrete stairwell with one skylight shaft, wide angle, deep shadows, no people, architectural photography, neutral grade, no text">
+        </div>
+        <div class="vy-meta">
+          <h3>Stairwell, one shaft</h3>
+          <h4>Upscale — 4×</h4>
+          <dl class="vy-idx">
+            <dt>Model</dt><dd>vayra-up-2</dd>
+            <dt>Steps</dt><dd>12</dd>
+            <dt>Seed</dt><dd>inherited</dd>
+            <dt>Size</dt><dd>4096 × 2660</dd>
+            <dt>Prompt</dt><dd class="vy-prompt-field">brutalist concrete stairwell, one skylight shaft, wide angle, deep shadow</dd>
+          </dl>
+          <button class="vy-copy-prompt" type="button">Copy prompt</button>
+        </div>
+      </article>
+
+      <article class="vy-work" data-path="illustration">
+        <div class="vy-work-pic">
+          <img class="vy-gl-pic vy-ph" src="assets/img/gen/gallery-5.webp" data-status="approved" data-tool="gemini" data-mode="generate" data-role="mood" alt="Generated ink illustration of a coastline"
+               data-prompt="Ink and wash illustration of a rocky coastline at dusk, heavy brush texture, limited gray palette, editorial book plate, no text">
+        </div>
+        <div class="vy-meta">
+          <h3>Coast, ink and wash</h3>
+          <h4>Illustration</h4>
+          <dl class="vy-idx">
+            <dt>Model</dt><dd>vayra-draw-2</dd>
+            <dt>Steps</dt><dd>26</dd>
+            <dt>Seed</dt><dd>043998120</dd>
+            <dt>Size</dt><dd>2048 × 1150</dd>
+            <dt>Prompt</dt><dd class="vy-prompt-field">ink and wash coastline at dusk, heavy brush texture, limited gray palette</dd>
+          </dl>
+          <button class="vy-copy-prompt" type="button">Copy prompt</button>
+        </div>
+      </article>
+
+      <article class="vy-work" data-path="product">
+        <div class="vy-work-pic">
+          <img class="vy-gl-pic vy-ph" src="assets/img/gen/gallery-6.webp" data-status="approved" data-tool="gemini" data-mode="generate" data-role="mood" alt="Generated flat lay of tools"
+               data-prompt="Overhead flat lay of three unbranded steel hand tools on dark slate, even soft light, catalogue photography, neutral grade, no text">
+        </div>
+        <div class="vy-meta">
+          <h3>Steel, flat lay</h3>
+          <h4>Product</h4>
+          <dl class="vy-idx">
+            <dt>Model</dt><dd>vayra-photo-3</dd>
+            <dt>Steps</dt><dd>30</dd>
+            <dt>Seed</dt><dd>771204538</dd>
+            <dt>Size</dt><dd>2400 × 2400</dd>
+            <dt>Prompt</dt><dd class="vy-prompt-field">overhead flat lay, three steel hand tools, dark slate, even soft light</dd>
+          </dl>
+          <button class="vy-copy-prompt" type="button">Copy prompt</button>
+        </div>
+      </article>
+
+      <article class="vy-work" data-path="illustration">
+        <div class="vy-work-pic">
+          <img class="vy-gl-pic vy-ph" src="assets/img/gen/gallery-7.webp" data-status="approved" data-tool="gemini" data-mode="generate" data-role="mood" alt="Generated isometric line drawing"
+               data-prompt="Isometric technical line drawing of a modular shelving unit, thin white strokes on near-black, blueprint feel, no dimensions text, no labels">
+        </div>
+        <div class="vy-meta">
+          <h3>Shelving, isometric line</h3>
+          <h4>Illustration</h4>
+          <dl class="vy-idx">
+            <dt>Model</dt><dd>vayra-draw-2</dd>
+            <dt>Steps</dt><dd>22</dd>
+            <dt>Seed</dt><dd>305881264</dd>
+            <dt>Size</dt><dd>2048 × 1808</dd>
+            <dt>Prompt</dt><dd class="vy-prompt-field">isometric technical line drawing, modular shelving, thin white strokes on black</dd>
+          </dl>
+          <button class="vy-copy-prompt" type="button">Copy prompt</button>
+        </div>
+      </article>
+
+      <article class="vy-work" data-path="photoreal">
+        <div class="vy-work-pic">
+          <img class="vy-gl-pic vy-ph" src="assets/img/gen/hero-slide-5.webp" data-status="approved" data-tool="gemini" data-mode="generate" data-role="mood" alt="Generated macro texture study"
+               data-prompt="Macro texture of torn dark paper layered over wet slate, raking light, high micro contrast, abstract, monochrome, no text">
+        </div>
+        <div class="vy-meta">
+          <h3>Torn paper on wet slate</h3>
+          <h4>Photoreal</h4>
+          <dl class="vy-idx">
+            <dt>Model</dt><dd>vayra-photo-3</dd>
+            <dt>Steps</dt><dd>36</dd>
+            <dt>Seed</dt><dd>958330471</dd>
+            <dt>Size</dt><dd>2560 × 1660</dd>
+            <dt>Prompt</dt><dd class="vy-prompt-field">macro torn dark paper over wet slate, raking light, high micro contrast</dd>
+          </dl>
+          <button class="vy-copy-prompt" type="button">Copy prompt</button>
+        </div>
+      </article>
+
+    </div>
+
+    <!-- This is the short list (8 most recent). gallery.html carries the full set with filters. -->
+    <a class="vy-deeplink" href="/gallery">
+      View all outputs <span class="vy-deeplink__arrow" aria-hidden="true">&#8594;</span>
+    </a>
+  </div>
+
+  <canvas id="vy-gl-vault" aria-hidden="true"></canvas>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     6. Capability (three columns, revealed line by line)
+     ══════════════════════════════════════════════════════════════════════════ -->
+<section class="vy-section" id="capability" data-section-id="capability" data-section-role="capability"
+         data-variant="three-column-hairline" data-page-dna="product-console">
+  <div class="vy-shell">
+    <h2 class="vy-h2 vy-rise">What your team actually needs</h2>
+    <p class="vy-lede-sub vy-rise" style="--i:1">These are the parts that break first when a launch is due.</p>
+
+    <div class="vy-cap__grid">
+      <div class="vy-cap__item vy-rise" style="--i:2">
+        <h3>The seed travels with the image</h3>
+        <p>Every render stores its prompt, seed, sampler and step count. Open a frame six months later and rebuild it exactly, or fork it and change one word.</p>
+        <dl>
+          <dt>Stored</dt><dd>prompt · seed · sampler · steps</dd>
+          <dt>Export</dt><dd>PNG + sidecar JSON</dd>
+        </dl>
+      </div>
+
+      <div class="vy-cap__item vy-rise" style="--i:3">
+        <h3>Batches, not one-offs</h3>
+        <p>Queue one prompt across 64 variations and keep the four that work. Failed renders retry automatically, and you are charged only for frames that finish.</p>
+        <dl>
+          <dt>Per batch</dt><dd>64 frames</dd>
+          <dt>Retries</dt><dd>3, automatic</dd>
+        </dl>
+      </div>
+
+      <div class="vy-cap__item vy-rise" style="--i:4">
+        <h3>A generation record your legal team can review</h3>
+        <p>Paid plans include commercial-use terms and a downloadable generation record for every image.</p>
+        <dl>
+          <dt>Receipt</dt><dd>model · version · date</dd>
+          <dt>Format</dt><dd>CSV export</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     7. Trust (logo marquee and quote)
+     ══════════════════════════════════════════════════════════════════════════ -->
+<section class="vy-trust" id="trust" data-section-id="trust" data-section-role="trust"
+         data-variant="marquee-plus-oversize-quote" data-page-dna="product-console">
+
+  <div class="vy-trust__marquee vy-crawl-rim">
+    <div class="vy-crawl-mid vy-js-glide-crawl" id="vy-crawl-mid" data-vy-belt-dir="-1" aria-hidden="true">
+      <div class="vy-crawl-kit">
+        <span class="vy-crawl-unit"><span class="vy-mega-head vy-crawl-cell">NORTHFIELD</span><span class="vy-crawl-cap">( Retail )</span></span>
+        <span class="vy-crawl-unit"><span class="vy-mega-head vy-crawl-cell">PALE BLUE</span><span class="vy-crawl-cap">( Studio )</span></span>
+        <span class="vy-crawl-unit"><span class="vy-mega-head vy-crawl-cell">MERIDIAN LABS</span><span class="vy-crawl-cap">( Product )</span></span>
+        <span class="vy-crawl-unit"><span class="vy-mega-head vy-crawl-cell">HOLLOW &amp; CO</span><span class="vy-crawl-cap">( Agency )</span></span>
+        <span class="vy-crawl-unit"><span class="vy-mega-head vy-crawl-cell">ATLAS COMMERCE</span><span class="vy-crawl-cap">( Marketplace )</span></span>
+      </div>
+    </div>
+    <span class="vy-sr-only">Studios using Vayra: Northfield, Pale Blue, Meridian Labs, Hollow &amp; Co, Atlas Commerce.</span>
+  </div>
+
+  <div class="vy-shell">
+    <div class="vy-trust__quote-grid">
+      <figure class="vy-trust__portrait">
+        <img class="vy-ph" src="assets/img/gen/trust-headshot.webp" data-status="approved" data-tool="gemini" data-mode="generate" data-role="identity" alt="Portrait of the quoted art director"
+             data-prompt="Black and white editorial headshot of a woman in her thirties against a plain dark studio wall, natural expression, soft window light from the left, 85mm, shallow depth of field, no text">
+      </figure>
+      <figure class="vy-trust__quote">
+        <blockquote>We shot forty product frames for one launch week and every one of them matched. That used to take a re-shoot.</blockquote>
+        <figcaption>
+          <b>Ines Warkentin</b>
+          Art director, Northfield
+        </figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     8. Metrics
+     Four SVG series with a count up. The series toggle and the cursor readout both work,
+     so this reads as a panel of numbers rather than a decorative chart.
+     ══════════════════════════════════════════════════════════════════════════ -->
+<section class="vy-section" id="metrics" data-section-id="metrics" data-section-role="metrics"
+         data-variant="multiseries-console-panel" data-page-dna="product-console">
+  <div class="vy-shell">
+    <h2 class="vy-h2 vy-rise">What a day looks like</h2>
+    <p class="vy-lede-sub vy-rise" style="--i:1">Throughput across the four output paths, sampled every fifteen minutes.</p>
+
+    <div class="vy-metrics__panel vy-rise" style="--i:2">
+      <div class="vy-metrics__head">
+        <span>Render throughput · thousands per hour</span>
+        <span class="vy-metrics__readout" id="vy-chart-readout">—</span>
+      </div>
+
+      <div class="vy-chart" id="vy-chart">
+        <svg viewBox="0 0 1200 420" role="img" aria-label="Line chart of render throughput across four output paths over 24 hours.">
+          <g class="vy-chart__grid" id="vy-chart-grid"></g>
+          <g class="vy-chart__axis" id="vy-chart-axis"></g>
+          <g class="vy-chart__series" id="vy-chart-series"></g>
+          <g class="vy-chart__cursor" id="vy-chart-cursor" data-on="0"><line y1="8" y2="360"></line></g>
+        </svg>
+      </div>
+
+      <div class="vy-legend" id="vy-chart-legend" role="group" aria-label="Toggle output paths">
+        <button type="button" data-series="0" aria-pressed="true"><span class="vy-swatch" aria-hidden="true"></span>Photoreal</button>
+        <button type="button" data-series="1" aria-pressed="true"><span class="vy-swatch" aria-hidden="true"></span>Product</button>
+        <button type="button" data-series="2" aria-pressed="true"><span class="vy-swatch" aria-hidden="true"></span>Illustration</button>
+        <button type="button" data-series="3" aria-pressed="true"><span class="vy-swatch" aria-hidden="true"></span>Upscale</button>
+      </div>
+    </div>
+
+    <dl class="vy-stats">
+      <div class="vy-stat"><dt>Frames rendered</dt><dd data-countup="184320">0</dd></div>
+      <div class="vy-stat"><dt>Median wait</dt><dd data-countup="7.4" data-decimals="1">0<small>s</small></dd></div>
+      <div class="vy-stat"><dt>Batch success</dt><dd data-countup="98.6" data-decimals="1">0<small>%</small></dd></div>
+      <div class="vy-stat"><dt>Studios on board</dt><dd data-countup="1247">0</dd></div>
+    </dl>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     9. Pricing (the calculator below is live)
+     ══════════════════════════════════════════════════════════════════════════ -->
+<section class="vy-section" id="pricing" data-section-id="pricing" data-section-role="pricing"
+         data-variant="tiers-plus-live-calculator" data-page-dna="product-console">
+  <div class="vy-shell">
+    <h2 class="vy-h2 vy-rise">Pricing</h2>
+    <p class="vy-lede-sub vy-rise" style="--i:1">Credits do not expire while a plan is active. One credit is one 1024&nbsp;px render; an upscale adds two credits on top of the frame cost.</p>
+
+    <div class="vy-tiers">
+
+      <div class="vy-tier" data-tier="starter">
+        <span class="vy-tier__name">Starter</span>
+        <p class="vy-tier__price">$0<small>/mo</small></p>
+        <p class="vy-tier__note">For trying the engine on real work before you commit.</p>
+        <ul class="vy-tier__list">
+          <li><b>200</b> credits a month</li>
+          <li>Up to <b>1024</b> px</li>
+          <li>Seed and settings stored</li>
+          <li>Personal use only</li>
+        </ul>
+        <a class="vy-btn vy-tier__cta" href="#cta">Start free</a>
+      </div>
+
+      <div class="vy-tier vy-tier--feature" data-tier="studio">
+        <span class="vy-tier__name">Studio</span>
+        <p class="vy-tier__price">$24<small>/mo</small></p>
+        <p class="vy-tier__note">For a small team shipping campaign work every week.</p>
+        <ul class="vy-tier__list">
+          <li><b>4,000</b> credits a month</li>
+          <li>Up to <b>4096</b> px</li>
+          <li>Batches of <b>64</b></li>
+          <li>Commercial license + receipts</li>
+        </ul>
+        <a class="vy-btn vy-tier__cta" href="#cta">Choose Studio</a>
+      </div>
+
+      <div class="vy-tier" data-tier="scale">
+        <span class="vy-tier__name">Scale</span>
+        <p class="vy-tier__price">$96<small>/mo</small></p>
+        <p class="vy-tier__note">For agencies running several brands off one queue.</p>
+        <ul class="vy-tier__list">
+          <li><b>20,000</b> credits a month</li>
+          <li>Priority queue</li>
+          <li>API keys per project</li>
+          <li>Shared prompt library</li>
+        </ul>
+        <a class="vy-btn vy-tier__cta" href="#cta">Choose Scale</a>
+      </div>
+    </div>
+
+    <!-- Calculator: inputs on the left, recommendation on the right -->
+    <div class="vy-calc">
+      <div class="vy-calc__inputs">
+        <p class="vy-calc__title">Which plan fits</p>
+
+        <div class="vy-calc__total">
+          <span class="vy-calc__total-label">
+            Credits per month
+            <small id="vy-calc-formula">(600 renders × 1) + (0 upscales × 2)</small>
+          </span>
+          <span class="vy-calc__total-value" id="vy-calc-total">600</span>
+        </div>
+
+        <div class="vy-field">
+          <div class="vy-field__row">
+            <label for="vy-calc-renders">Renders per month</label>
+            <output for="vy-calc-renders" id="vy-calc-renders-out">600</output>
+          </div>
+          <input type="range" id="vy-calc-renders" min="100" max="20000" step="100" value="600">
+        </div>
+
+        <div class="vy-field">
+          <div class="vy-field__row">
+            <label for="vy-calc-size">Longest edge</label>
+            <output for="vy-calc-size" id="vy-calc-size-out">1024 px</output>
+          </div>
+          <input type="range" id="vy-calc-size" min="0" max="3" step="1" value="0"
+                 aria-describedby="vy-calc-size-out">
+        </div>
+
+        <div class="vy-field">
+          <div class="vy-field__row">
+            <label id="vy-calc-up-label">Upscales per 10 renders</label>
+          </div>
+          <div class="vy-stepper" role="group" aria-labelledby="vy-calc-up-label">
+            <button type="button" id="vy-calc-up-minus" aria-label="Fewer upscales">&#8722;</button>
+            <output id="vy-calc-up-out">0</output>
+            <button type="button" id="vy-calc-up-plus" aria-label="More upscales">&#43;</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="vy-calc__result" aria-live="polite">
+        <!-- The four values below are what JavaScript writes on load. Keep them equal to the result of
+             the default inputs (600 renders, 1024 px, 0 upscales). If they differ, the page shows two
+             answers to the same question for one frame before the script runs. -->
+        <span class="vy-calc__badge">Recommended</span>
+        <p class="vy-calc__plan" id="vy-calc-plan">STUDIO</p>
+        <p class="vy-calc__why" id="vy-calc-why">600 credits is over starter's 200. Studio has 4,000.</p>
+        <p class="vy-calc__cost" id="vy-calc-cost"><b>$24</b> / mo</p>
+        <a class="vy-btn" href="#cta" id="vy-calc-cta" style="margin-top:24px">Choose Studio</a>
+      </div>
+    </div>
+
+    <!-- This is the short version (three tiers and a quick calculator). pricing.html carries the comparison table and the FAQ. -->
+    <a class="vy-deeplink" href="/pricing">
+      Compare all plans <span class="vy-deeplink__arrow" aria-hidden="true">&#8594;</span>
+    </a>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     10. FAQ (rows open by animating grid-template-rows from 0fr to 1fr)
+     ══════════════════════════════════════════════════════════════════════════ -->
+<section class="vy-section" id="faq" data-section-id="faq" data-section-role="faq"
+         data-variant="row-accordion" data-page-dna="product-console">
+  <div class="vy-shell">
+    <h2 class="vy-h2 vy-rise">Before you ask</h2>
+
+    <div class="vy-faq__list" id="vy-faq">
+      <div class="vy-faq__item">
+        <h3 style="margin:0"><button class="vy-faq__q" type="button" aria-expanded="false" aria-controls="faq-p1">Who owns what the engine makes?</button></h3>
+        <div class="vy-faq__panel" id="faq-p1" data-open="0"><div>
+          <p>You do, on any paid plan. Each image ships with a receipt recording the model version and the date. The free tier is personal use only.</p>
+        </div></div>
+      </div>
+
+      <div class="vy-faq__item">
+        <h3 style="margin:0"><button class="vy-faq__q" type="button" aria-expanded="false" aria-controls="faq-p2">Can I get the same image twice?</button></h3>
+        <div class="vy-faq__panel" id="faq-p2" data-open="0"><div>
+          <p>Yes, when the model version, seed, sampler and step count are unchanged. Those are stored with the frame, so re-running it returns the same result. Change one of them on purpose and you get a controlled variation instead of a fresh guess.</p>
+        </div></div>
+      </div>
+
+      <div class="vy-faq__item">
+        <h3 style="margin:0"><button class="vy-faq__q" type="button" aria-expanded="false" aria-controls="faq-p3">What happens when a render fails?</button></h3>
+        <div class="vy-faq__panel" id="faq-p3" data-open="0"><div>
+          <p>It retries up to three times on its own and only spends a credit once a frame lands. Failures stay in the queue view with the error attached, so a batch of sixty-four does not need babysitting.</p>
+        </div></div>
+      </div>
+
+      <div class="vy-faq__item">
+        <h3 style="margin:0"><button class="vy-faq__q" type="button" aria-expanded="false" aria-controls="faq-p4">Do unused credits roll over?</button></h3>
+        <div class="vy-faq__panel" id="faq-p4" data-open="0"><div>
+          <p>Credits do not expire while your plan is active. After you cancel, any remaining credits expire in 90 days. There is no separate credit purchase; changing plans is the only thing that changes the monthly number.</p>
+        </div></div>
+      </div>
+
+      <div class="vy-faq__item">
+        <h3 style="margin:0"><button class="vy-faq__q" type="button" aria-expanded="false" aria-controls="faq-p5">Is there an API?</button></h3>
+        <div class="vy-faq__panel" id="faq-p5" data-open="0"><div>
+          <p>A REST endpoint and a small SDK, both on the Studio plan and above. Keys are scoped per project so an agency can bill three brands off one account without sharing credentials.</p>
+        </div></div>
+      </div>
+
+      <div class="vy-faq__item">
+        <h3 style="margin:0"><button class="vy-faq__q" type="button" aria-expanded="false" aria-controls="faq-p6">Can I bring my own model?</button></h3>
+        <div class="vy-faq__panel" id="faq-p6" data-open="0"><div>
+          <p>Not yet. Fine-tuning on your own reference set is the next thing being built, and the queue and receipt system were designed around it. Vayra currently supports four output paths.</p>
+        </div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     11. Call to action (inline underlined email field)
+     ══════════════════════════════════════════════════════════════════════════ -->
+<section class="vy-cta" id="cta" data-section-id="cta" data-section-role="cta"
+         data-variant="inverted-band-inline-form" data-page-dna="product-console">
+  <div class="vy-shell">
+    <div class="vy-cta__grid">
+      <div>
+        <h2>Render one and see<br>if it holds up</h2>
+        <p class="vy-cta__note">Two hundred credits, no card. Compare two renders before you commit.</p>
+      </div>
+
+      <form class="vy-tail-entry" id="vy-cta-form" novalidate>
+        <span class="vy-tail-entry-cap">Changelog, when a new model ships.</span>
+        <div class="vy-tail-entry-strip">
+          <input type="email" id="vy-cta-email" placeholder="you@studio.com" aria-label="Email address" autocomplete="email" required>
+          <button type="submit" data-vy-probe="SEND">Send</button>
+        </div>
+        <span class="vy-tail-entry-memo" id="vy-cta-note" role="status"></span>
+      </form>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     12. Footer (staggered roll on the large nav)
+     ══════════════════════════════════════════════════════════════════════════ -->
+<footer class="vy-footer" data-section-id="footer" data-section-role="footer"
+        data-variant="oversize-nav-roll" data-page-dna="product-console">
+  <div class="vy-tail-case">
+    <div class="vy-tail-mid">
+      <div class="vy-tail-top">
+        <nav class="vy-tail-paths" aria-label="Footer">
+          <a href="#gallery" data-vy-roll>Gallery</a>
+          <a href="#pricing" data-vy-roll>Pricing</a>
+          <a href="#faq" data-vy-roll>Answers</a>
+        </nav>
+        <div class="vy-tail-asset">
+          <img class="vy-ph" src="assets/img/gen/footer-wall.webp" data-status="approved" data-tool="gemini" data-mode="generate" data-role="mood" alt="Slow pan across a wall of generated frames"
+               data-prompt="Slow lateral pan across a dark studio wall pinned with twenty small monochrome printed frames, raking light, shallow depth of field, no people, no text, 4 second loop">
+        </div>
+      </div>
+
+      <p class="vy-tail-biz">
+        <b>Vayra</b> — text-to-image studio<br>
+        hello@vayra.studio · Docs · API reference · Changelog
+        <!-- Replace the line above with your own business info -->
+      </p>
+
+      <!-- Remove this line when you replace the demo content -->
+      <p class="vy-tail-memo">Vayra is a fictional product. Names, testimonials, metrics and pricing are illustrative.</p>
+
+      <div class="vy-tail-share">
+        <a href="#top">Back to top</a><a href="#pricing">Plans</a><a href="#cta">Contact</a>
+      </div>
+
+      <button class="vy-cursor-toggle" type="button" id="vy-cursor-toggle" aria-pressed="false">
+        Custom cursor <span class="vy-toggle-state" id="vy-cursor-state">On</span>
+      </button>
+
+      <p class="vy-tail-stamp">Prompt in, frame out, seed kept.</p>
+    </div>
+  </div>
+</footer>
+
+</main>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     Libraries. Versions are pinned on purpose.
+     GSAP is free for commercial use, but its licence does not grant the right to redistribute
+     it inside a product you sell, so it is loaded from a CDN and never bundled.
+     three and lenis are MIT; they are loaded the same way for consistency.
+     ══════════════════════════════════════════════════════════════════════════ -->
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/ScrollTrigger.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lenis@1.3.25/dist/lenis.min.js"></script>
+
+<!-- three ships current builds as ESM only, so it is imported as a module and put on window for the other scripts. -->
+<script type="module">
+  import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.min.js';
+  window.THREE = THREE;
+  document.dispatchEvent(new CustomEvent('vy:three-ready'));
+</script>
+
+<script src="assets/js/vayra-shell.js" defer></script>
+<script src="assets/js/vayra-gl.js" defer></script>
+<script src="assets/js/vayra-console.js" defer></script>
+
+</body>
+</html>

@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contact — Vayra</title>
+<meta name="description" content="Questions about licensing, volume or the API.">
+<meta name="color-scheme" content="dark">
+<!-- Favicon: swap assets/img/favicon.svg for your own mark. SVG stays sharp at every size. -->
+<link rel="icon" type="image/svg+xml" href="assets/img/favicon.svg">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;800&display=swap" rel="stylesheet">
+
+<!-- Load order is fixed: bridge, parts, sections, subpage, then the page file. Each step narrows the scope. -->
+<link rel="stylesheet" href="assets/css/_tokens-bridge.css">
+<link rel="stylesheet" href="assets/css/scope-context.css">
+<link rel="stylesheet" href="assets/css/parts.css">
+<link rel="stylesheet" href="assets/css/sections.css">
+<link rel="stylesheet" href="assets/css/subpage.css">
+<link rel="stylesheet" href="assets/css/page-contact.css">
+
+<script>
+/* Arrival cover for the page transition. The wiring lives in assets/js/vayra-shell.js. */
+(function () {
+  var KEY = 'vy:page-transition';
+  try {
+    if (sessionStorage.getItem(KEY) !== '1') return;
+  } catch (e) { return; }                       /* Private mode has no storage, so show the page without a cover. */
+  var h = document.documentElement;
+  h.classList.add('vy-arriving');
+  setTimeout(function () { h.classList.remove('vy-arriving'); }, 2500);
+})();
+</script>
+</head>
+
+<!-- Add data-vy-motion="off" or data-vy-cursor="off" to <body> to disable motion or the custom cursor. See documentation/index.html -->
+<body class="vy-leafview">
+
+<!-- Global slots, same as index -->
+<div id="vy-probe-bead"></div>
+<div id="vy-probe-halo" data-vy-probe-cap="EXPLORE" data-vy-probe-side="right"></div>
+
+<div class="vy-view-swap-rig vy-js-view-swap-rig" aria-hidden="true">
+  <div class="vy-view-swap-drape vy-js-view-swap-drape"></div>
+</div>
+
+<div class="vy-rail left" aria-hidden="true">© 2026</div>
+<div class="vy-rail right" aria-hidden="true">v3 ENGINE</div>
+
+<div id="vy-topbar_glide_frame" class="vy-hdr-arrive" data-section-id="nav">
+  <div id="vy-topbar_glide">
+    <a class="vy-hdr-glyph" href="/contact" data-vy-probe="CONTACT" aria-label="Go to contact">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="2.5" y="5" width="19" height="14" rx="0"></rect>
+        <path d="M2.5 7.5 12 14l9.5-6.5"></path>
+      </svg>
+    </a>
+    <a class="vy-hdr-brand" href="/#top" data-vy-probe="HOME" aria-label="Vayra home">VAYRA</a>
+    <button class="vy-hdr-glyph vy-hdr-burger" id="vy-topbar-glide-panel-btn" type="button"
+            data-vy-probe="OPEN" aria-label="Open menu" aria-expanded="false"
+            aria-controls="vy-topbar-glide-flyout" data-vy-probe-side="right">
+      <svg class="vy-hdr-bun-svg" viewBox="0 0 24 24" aria-hidden="true">
+        <line class="vy-hdr-bun-l1" x1="5" y1="9" x2="19" y2="9"></line>
+        <line class="vy-hdr-bun-l2" x1="5" y1="15" x2="19" y2="15"></line>
+      </svg>
+    </button>
+  </div>
+
+  <div class="vy-hdr-flyout" id="vy-topbar-glide-flyout" aria-hidden="true">
+    <div class="vy-hdr-flyout__mid" id="vy-topbar-glide-flyout-content">
+      <div class="vy-hdr-panel-deck">
+        <div class="vy-hdr-panel-strips">
+
+          <a class="vy-hdr-reel-strip vy-hdr-flyout__cell" href="/#top" aria-label="Home">
+            <span class="vy-hdr-reel-strip__seq">( Start )</span>
+            <span class="vy-hdr-reel-strip__chip vy-is-start" aria-hidden="true">
+              <img class="vy-ph" src="assets/img/gen/nav-thumb-01.webp" data-status="approved" data-tool="gemini" data-mode="generate" data-role="mood" alt=""
+                   data-prompt="Wide monochrome studio still: a single softbox lighting an empty seamless backdrop, deep shadows, 35mm, no people, no text">
+            </span>
+            <span class="vy-hdr-reel-strip__head">
+              <span class="vy-hdr-reel-strip__head-groove">
+                <span class="vy-hdr-reel-strip__head-plane vy-is-prime">HOME</span>
+                <span class="vy-hdr-reel-strip__head-plane vy-is-hot" aria-hidden="true">HOME</span>
+              </span>
+            </span>
+            <span class="vy-hdr-reel-strip__chip vy-is-end" aria-hidden="true">
+              <img class="vy-ph" src="assets/img/gen/nav-thumb-02.webp" data-status="approved" data-tool="gemini" data-mode="generate" data-role="mood" alt=""
+                   data-prompt="Monochrome macro of a camera sensor edge on matte black, hard rim light, extreme detail, no text">
+            </span>
+          </a>
+
+          <a class="vy-hdr-reel-strip vy-hdr-flyout__cell" href="/gallery" aria-label="Gallery">
+            <span class="vy-hdr-reel-strip__seq">( Output )</span>
+            <span class="vy-hdr-reel-strip__chip vy-is-start" aria-hidden="true">
+              <img class="vy-ph" src="assets/img/gen/nav-thumb-03.webp" data-status="approved" data-tool="gemini" data-mode="generate" data-role="mood" alt=""
+                   data-prompt="Grid of nine generated portrait crops in muted grayscale, contact-sheet layout, film edge markings, no text">
+            </span>
+            <span class="vy-hdr-reel-strip__head">
+              <span class="vy-hdr-reel-strip__head-groove">
+                <span class="vy-hdr-reel-strip__head-plane vy-is-prime">GALLERY</span>
+                <span class="vy-hdr-reel-strip__head-plane vy-is-hot" aria-hidden="true">GALLERY</span>
+              </span>
+            </span>
+            <span class="vy-hdr-reel-strip__chip vy-is-end" aria-hidden="true">
+              <img class="vy-ph" src="assets/img/gen/nav-thumb-04.webp" data-status="approved" data-tool="gemini" data-mode="generate" data-role="mood" alt=""
+                   data-prompt="Ceramic vase on a concrete plinth, single hard light, charcoal background, product photography, no text">
+            </span>
+          </a>
+
+          <a class="vy-hdr-reel-strip vy-hdr-flyout__cell" href="/pricing" aria-label="Pricing">
+            <span class="vy-hdr-reel-strip__seq">( Plans )</span>
+            <span class="vy-hdr-reel-strip__chip vy-is-start" aria-hidden="true">
+              <img class="vy-ph" src="assets/img/gen/nav-thumb-05.webp" data-status="approved" data-tool="gemini" data-mode="generate" data-role="mood" alt=""
+                   data-prompt="Stack of blank matte cards fanned on dark stone, raking light, shallow depth of field, no text">
+            </span>
+            <span class="vy-hdr-reel-strip__head">
+              <span class="vy-hdr-reel-strip__head-groove">
+                <span class="vy-hdr-reel-strip__head-plane vy-is-prime">PRICING</span>
+                <span class="vy-hdr-reel-strip__head-plane vy-is-hot" aria-hidden="true">PRICING</span>
+              </span>
+            </span>
+            <span class="vy-hdr-reel-strip__chip vy-is-end" aria-hidden="true">
+              <img class="vy-ph" src="assets/img/gen/nav-thumb-06.webp" data-status="approved" data-tool="gemini" data-mode="generate" data-role="mood" alt=""
+                   data-prompt="Overhead of a dark desk with a graphite pencil and a folded paper sheet, low key, no text">
+            </span>
+          </a>
+
+          <a class="vy-hdr-reel-strip vy-hdr-flyout__cell" href="/about" aria-label="About">
+            <span class="vy-hdr-reel-strip__seq">( Studio )</span>
+            <span class="vy-hdr-reel-strip__chip vy-is-start" aria-hidden="true">
+              <img class="vy-ph" src="assets/img/gen/capability-console.webp" data-status="approved" data-tool="gemini" data-mode="generate" data-role="identity" alt=""
+                   data-prompt="Dark neutral UI screenshot of a render queue console: left sidebar with prompt history, centre grid of four generating thumbnails with progress bars, right panel showing seed, sampler and step count fields, monospace labels, near-black background, no logo, no filler copy">
+            </span>
+            <span class="vy-hdr-reel-strip__head">
+              <span class="vy-hdr-reel-strip__head-groove">
+                <span class="vy-hdr-reel-strip__head-plane vy-is-prime">ABOUT</span>
+                <span class="vy-hdr-reel-strip__head-plane vy-is-hot" aria-hidden="true">ABOUT</span>
+              </span>
+            </span>
+            <span class="vy-hdr-reel-strip__chip vy-is-end" aria-hidden="true">
+              <img class="vy-ph" src="assets/img/gen/nav-thumb-01.webp" data-status="approved" data-tool="gemini" data-mode="generate" data-role="mood" alt=""
+                   data-prompt="Wide monochrome studio still: a single softbox lighting an empty seamless backdrop, deep shadows, 35mm, no people, no text">
+            </span>
+          </a>
+
+          <a class="vy-hdr-reel-strip vy-hdr-flyout__cell" href="/contact" aria-label="Contact">
+            <span class="vy-hdr-reel-strip__seq">( Say hi )</span>
+            <span class="vy-hdr-reel-strip__chip vy-is-start" aria-hidden="true">
+              <img class="vy-ph" src="assets/img/gen/nav-thumb-09.webp" data-status="approved" data-tool="gemini" data-mode="generate" data-role="mood" alt=""
+                   data-prompt="Hand holding a blank white card against a dark wall, single light source, monochrome, no text">
+            </span>
+            <span class="vy-hdr-reel-strip__head">
+              <span class="vy-hdr-reel-strip__head-groove">
+                <span class="vy-hdr-reel-strip__head-plane vy-is-prime">CONTACT</span>
+                <span class="vy-hdr-reel-strip__head-plane vy-is-hot" aria-hidden="true">CONTACT</span>
+              </span>
+            </span>
+            <span class="vy-hdr-reel-strip__chip vy-is-end" aria-hidden="true">
+              <img class="vy-ph" src="assets/img/gen/nav-thumb-08.webp" data-status="approved" data-tool="gemini" data-mode="generate" data-role="mood" alt=""
+                   data-prompt="Empty archival box with a lifted lid on charcoal seamless, top light, no text">
+            </span>
+          </a>
+
+          <a class="vy-hdr-reel-strip vy-hdr-flyout__cell" href="/#faq" aria-label="FAQ">
+            <span class="vy-hdr-reel-strip__seq">( Answers )</span>
+            <span class="vy-hdr-reel-strip__chip vy-is-start" aria-hidden="true">
+              <img class="vy-ph" src="assets/img/gen/nav-thumb-07.webp" data-status="approved" data-tool="gemini" data-mode="generate" data-role="mood" alt=""
+                   data-prompt="Close-up of layered translucent film sheets on a lightbox, monochrome, soft glow, no text">
+            </span>
+            <span class="vy-hdr-reel-strip__head">
+              <span class="vy-hdr-reel-strip__head-groove">
+                <span class="vy-hdr-reel-strip__head-plane vy-is-prime">FAQ</span>
+                <span class="vy-hdr-reel-strip__head-plane vy-is-hot" aria-hidden="true">FAQ</span>
+              </span>
+            </span>
+            <span class="vy-hdr-reel-strip__chip vy-is-end" aria-hidden="true">
+              <img class="vy-ph" src="assets/img/gen/nav-thumb-08.webp" data-status="approved" data-tool="gemini" data-mode="generate" data-role="mood" alt=""
+                   data-prompt="Empty archival box with a lifted lid on charcoal seamless, top light, no text">
+            </span>
+          </a>
+
+          <a class="vy-hdr-reel-strip vy-hdr-flyout__cell" href="/#cta" aria-label="Get started">
+            <span class="vy-hdr-reel-strip__seq">( Get it )</span>
+            <span class="vy-hdr-reel-strip__chip vy-is-start" aria-hidden="true">
+              <img class="vy-ph" src="assets/img/gen/nav-thumb-09.webp" data-status="approved" data-tool="gemini" data-mode="generate" data-role="mood" alt=""
+                   data-prompt="Hand holding a blank white card against a dark wall, single light source, monochrome, no text">
+            </span>
+            <span class="vy-hdr-reel-strip__head">
+              <span class="vy-hdr-reel-strip__head-groove">
+                <span class="vy-hdr-reel-strip__head-plane vy-is-prime">START</span>
+                <span class="vy-hdr-reel-strip__head-plane vy-is-hot" aria-hidden="true">START</span>
+              </span>
+            </span>
+            <span class="vy-hdr-reel-strip__chip vy-is-end" aria-hidden="true">
+              <img class="vy-ph" src="assets/img/gen/nav-thumb-10.webp" data-status="approved" data-tool="gemini" data-mode="generate" data-role="mood" alt=""
+                   data-prompt="Long exposure of a doorway opening into dark space, grain, monochrome, no people, no text">
+            </span>
+          </a>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<main id="top" class="vy-leaf-stack">
+
+  <section class="vy-leaf-banner" data-section-id="sub-hero">
+    <p class="vy-leaf-kicker">Talk to us</p>
+    <h1 class="vy-leaf-head">
+      <span>Tell us what</span>
+      <span class="vy-is-soft">you need made</span>
+    </h1>
+    <p class="vy-leaf-brief">Licensing, volume, the API, or a render that did not come out the way you expected. Start here.</p>
+  </section>
+
+  <!-- Info bar: one line of meta under the hero. Same position and rhythm as gallery and about. -->
+  <div class="vy-leaf-statbar vy-contact-meta" data-section-id="contact-meta">
+    <span>One address for everything</span>
+    <span>Mon&ndash;Fri &middot; 09:00&ndash;18:00 CET</span>
+    <span>Answered by the people who build it</span>
+  </div>
+
+  <!-- Two column body: the form on the left, contact detail on the right. The fields and the button
+       inherit the footer form styles from parts.css, so this reads as the same control set as the short
+       form on index (page-contact.css section 2 explains what is added on top). -->
+  <section class="vy-reach-stack" data-section-id="contact-form">
+    <h2 class="vy-sr-only">Send a message</h2>
+
+    <!-- Set your form endpoint here (e.g. Formspree, Netlify Forms):
+         add action="https://formspree.io/f/your-id" method="post" to the <form> tag below.
+         Until then the form validates in the browser and sends nothing. -->
+    <form class="vy-reach-entry vy-tail-entry vy-rise" id="vy-contact-form" novalidate>
+
+      <p class="vy-reach-entry__lede">
+        Tell us what you are trying to make. A prompt, a seed, or a screenshot of what
+        came out wrong gets a faster answer than a description of it.
+      </p>
+
+      <div class="vy-slot-mesh">
+        <div class="vy-slot">
+          <label class="vy-slot__cap" for="vy-entry-name">Name</label>
+          <input type="text" id="vy-entry-name" name="name" autocomplete="name" placeholder="Your name" required>
+          <p class="vy-slot__warn" id="vy-entry-name-warn"></p>
+        </div>
+        <div class="vy-slot">
+          <label class="vy-slot__cap" for="vy-entry-email">Email</label>
+          <input type="email" id="vy-entry-email" name="email" autocomplete="email" placeholder="you@studio.com" required>
+          <p class="vy-slot__warn" id="vy-entry-email-warn"></p>
+        </div>
+      </div>
+
+      <div class="vy-slot vy-slot--pick">
+        <label class="vy-slot__cap" for="vy-entry-subject">Topic</label>
+        <select id="vy-entry-subject" name="topic">
+          <option value="general">General question</option>
+          <option value="licensing">Licensing and rights</option>
+          <option value="api">API access</option>
+          <option value="volume">Volume and teams</option>
+          <option value="render">A render came out wrong</option>
+        </select>
+      </div>
+
+      <div class="vy-slot">
+        <label class="vy-slot__cap" for="vy-entry-message">Message</label>
+        <textarea id="vy-entry-message" name="message" placeholder="One line is enough to start." required></textarea>
+        <p class="vy-slot__warn" id="vy-entry-message-warn"></p>
+      </div>
+
+      <div class="vy-reach-entry__acts">
+        <button type="submit" data-vy-probe="SEND">Send message</button>
+        <p class="vy-reach-state" id="vy-contact-status" role="status" aria-live="polite"></p>
+      </div>
+    </form>
+
+    <aside class="vy-reach-flank vy-rise" style="--i:1">
+      <p class="vy-reach-flank__cap">Direct</p>
+
+      <div class="vy-reach-fact">
+        <span class="vy-reach-fact__key">Email</span>
+        <a class="vy-reach-fact__val" href="mailto:hello@vayra.studio">hello@vayra.studio</a>
+      </div>
+      <div class="vy-reach-fact">
+        <span class="vy-reach-fact__key">Press</span>
+        <a class="vy-reach-fact__val" href="mailto:press@vayra.studio">press@vayra.studio</a>
+      </div>
+      <div class="vy-reach-fact">
+        <span class="vy-reach-fact__key">Reply time</span>
+        <span class="vy-reach-fact__val">Within two working days</span>
+      </div>
+      <div class="vy-reach-fact">
+        <span class="vy-reach-fact__key">Hours</span>
+        <span class="vy-reach-fact__val">Mon&ndash;Fri &middot; 09:00&ndash;18:00 CET</span>
+      </div>
+
+      <p class="vy-reach-flank__cap" style="margin-top:44px">Elsewhere</p>
+      <!-- Swap these four for your own profiles. example.com is the reserved demo domain
+           from RFC 2606, so these links can never resolve to a real account. -->
+      <div class="vy-reach-share">
+        <a href="https://example.com/vayra/x" target="_blank" rel="noopener noreferrer">X</a>
+        <a href="https://example.com/vayra/instagram" target="_blank" rel="noopener noreferrer">Instagram</a>
+        <a href="https://example.com/vayra/discord" target="_blank" rel="noopener noreferrer">Discord</a>
+        <a href="https://example.com/vayra/github" target="_blank" rel="noopener noreferrer">GitHub</a>
+      </div>
+    </aside>
+
+  </section>
+
+  <!-- Value grid: what happens after you send. The about page uses the same block for its design
+       principles; here it answers what to expect back. -->
+  <section class="vy-leaf-band vy-contact-next" data-section-id="contact-next">
+    <h2 class="vy-sr-only">After you send</h2>
+    <p class="vy-leaf-kickercap vy-rise" aria-hidden="true">After you send</p>
+    <div class="vy-amt-mesh">
+      <div class="vy-amt vy-rise" style="--i:1">
+        <span class="vy-amt__num">01</span>
+        <h3 class="vy-amt__head">One inbox</h3>
+        <p class="vy-amt__blurb">Every message from this form goes to the same address, whatever the topic you picked above.</p>
+      </div>
+      <div class="vy-amt vy-rise" style="--i:2">
+        <span class="vy-amt__num">02</span>
+        <h3 class="vy-amt__head">Two working days</h3>
+        <p class="vy-amt__blurb">That is the reply window we work to. Licensing and volume questions can take longer than a general one.</p>
+      </div>
+      <div class="vy-amt vy-rise" style="--i:3">
+        <span class="vy-amt__num">03</span>
+        <h3 class="vy-amt__head">Bring the seed</h3>
+        <p class="vy-amt__blurb">If a render came out wrong, paste its seed and model version from the sidecar file. That turns a guess into a lookup.</p>
+      </div>
+      <div class="vy-amt vy-rise" style="--i:4">
+        <span class="vy-amt__num">04</span>
+        <h3 class="vy-amt__head">What we cannot answer yet</h3>
+        <p class="vy-amt__blurb">Custom model training is not open and there is no video path. Both are being built, and neither has a release date yet.</p>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="vy-footer" data-section-id="footer" data-section-role="footer"
+        data-variant="oversize-nav-roll" data-page-dna="product-console">
+  <div class="vy-tail-case">
+    <div class="vy-tail-mid">
+      <div class="vy-tail-top">
+        <nav class="vy-tail-paths" aria-label="Footer">
+          <a href="/gallery" data-vy-roll>Gallery</a>
+          <a href="/pricing" data-vy-roll>Pricing</a>
+          <a href="/#faq" data-vy-roll>Answers</a>
+        </nav>
+        <div class="vy-tail-asset">
+          <img class="vy-ph" src="assets/img/gen/footer-wall.webp" data-status="approved" data-tool="gemini" data-mode="generate" data-role="mood" alt="Slow pan across a wall of generated frames"
+               data-prompt="Slow lateral pan across a dark studio wall pinned with twenty small monochrome printed frames, raking light, shallow depth of field, no people, no text, 4 second loop">
+        </div>
+      </div>
+
+      <p class="vy-tail-biz">
+        <b>Vayra</b> — text-to-image studio<br>
+        hello@vayra.studio · Docs · API reference · Changelog
+      </p>
+      <!-- Replace the line above with your own business info -->
+
+
+      <!-- Remove this line when you replace the demo content -->
+      <p class="vy-tail-memo">Vayra is a fictional product. Names, testimonials, metrics and pricing are illustrative.</p>
+
+      <div class="vy-tail-share">
+        <a href="#top">Back to top</a><a href="/pricing">Plans</a><a href="/contact">Contact</a>
+      </div>
+
+      <button class="vy-cursor-toggle" type="button" id="vy-cursor-toggle" aria-pressed="false">
+        Custom cursor <span class="vy-toggle-state" id="vy-cursor-state">On</span>
+      </button>
+
+      <p class="vy-tail-stamp">Prompt in, frame out, seed kept.</p>
+    </div>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/ScrollTrigger.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lenis@1.3.25/dist/lenis.min.js"></script>
+
+<script src="assets/js/vayra-shell.js" defer></script>
+
+<!-- Page specific script: validation and status only. The shared vayra-shell.js is left alone. -->
+<script src="assets/js/page-contact.js" defer></script>
+
+</body>
+</html>

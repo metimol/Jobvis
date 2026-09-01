@@ -1,0 +1,195 @@
+/* page-pricing.css — rules that belong to pricing.html and nothing else.
+   Shared styling lives in subpage.css, sections.css and parts.css; treat those as read only.
+
+   What is in this file:
+   1. rhythm for the section heads (eyebrow, rule line, note line)
+   2. info bar correction for narrow viewports, same as the about page
+   3. the two column calculator, scoped to the same ratio the index calculator uses
+   4. the segmented control, which reuses the gallery filter component
+   5. the comparison table, and the way it folds into row cards below 720px
+
+   No new components were introduced. The tier cards, calculator inputs and accordion are
+   the ones index already has. Two screens quoting the same prices have to look like one
+   product, so that is a requirement here rather than a preference.
+
+   Tokens only: no hardcoded colours, radius 0 or 4, one easing token. */
+
+/* ── 1. Section head rhythm ─────────────────────────────────────────────────
+   The stock layout puts the eyebrow in the left column of the split. Here the left column
+   is the calculator, so the eyebrow moves above the heading and only needs spacing. */
+.vy-price-plans > .vy-leaf-kickercap,
+.vy-price-sizer > .vy-leaf-kickercap,
+.vy-price-compare > .vy-leaf-kickercap,
+.vy-price-faq > .vy-leaf-kickercap {
+  display: block;
+  margin-bottom: clamp(20px, 2.4vw, 32px);
+}
+
+/* The credit rule, word for word the same sentence as the pricing lede on index */
+.vy-price-rule,
+.vy-price-note {
+  max-width: 62ch;                     /* Same line length contract as subpage.css */
+  margin: 0;
+  font-size: var(--vy-t-16);
+  line-height: var(--leading-body);
+  color: var(--vy-text-secondary);
+}
+.vy-price-note { margin-top: calc(-1 * clamp(12px, 1.6vw, 22px)); }
+
+/* This note sits under the heading, so it takes back part of the heading's bottom margin;
+   otherwise the two read as two separate paragraphs. */
+.vy-price-sizer > .vy-leaf-h2 { margin-bottom: clamp(20px, 2.4vw, 32px); }
+
+/* ── 2. Info bar, narrow viewport ───────────────────────────────────────────
+   The shared rule keeps three equal columns, which squeezes each to about one word at
+   375px. The about page applies the same correction in its own scope. */
+@media (max-width: 720px) {
+  .vy-price-facts { grid-template-columns: 1fr; gap: 10px; }
+  .vy-price-facts span:nth-child(2),
+  .vy-price-facts span:last-child { text-align: left; }
+}
+
+/* ── 3. Two column calculator ───────────────────────────────────────────────
+   The stock split is 0.8fr / 1.2fr, meant for a label beside body text. Here the left
+   column holds the sliders and is unusable when narrow, so it is scoped to the same
+   ratio the index calculator uses. The stock gap is a label to body gap, so it narrows too.
+   Below 900px the shared media query folds this to one column; leave that alone. */
+@media (min-width: 901px) {
+  .vy-sizer {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.82fr);
+    gap: clamp(24px, 2.6vw, 40px);
+  }
+}
+@media (max-width: 900px) {
+  .vy-sizer { gap: clamp(24px, 4vw, 36px); }
+}
+
+.vy-sizer__inputs {
+  border: 1px solid var(--vy-line);
+  padding: clamp(22px, 2.6vw, 40px);
+}
+.vy-sizer__result { border: 1px solid var(--vy-line); }
+.vy-sizer__result .vy-btn { margin-top: 24px; }   /* This value used to be an inline style on index */
+
+/* Six inputs make the left column more than twice the height of the card on the right.
+   Left as is, the recommendation floats at the top with empty space under it, and while you
+   are working the lower inputs the result scrolls out of view. So it follows.
+   Below 900px the layout is one column and a pinned card would cover the inputs, so it is
+   not applied there. */
+@media (min-width: 901px) {
+  .vy-sizer__result { position: sticky; top: clamp(88px, 12vh, 124px); }
+}
+
+.vy-sizer .vy-field--last { margin-bottom: 0; }
+
+/* The recommended tier is reflected on the card itself (JavaScript sets the flag).
+   Since the product uses no colour, the marker is a single hairline, inverted on the
+   emphasised card. */
+.vy-price-plans .vy-tier[data-recommended="1"] {
+  outline: 1px solid var(--vy-text-primary);
+  outline-offset: -1px;
+}
+.vy-price-plans .vy-tier--feature[data-recommended="1"] { outline-color: var(--vy-bg-primary); }
+
+/* ── 4. Segmented control ───────────────────────────────────────────────────
+   No new component: this is the gallery filter component reused. Only its top margin is
+   removed, and an underline is added so the pressed state does not depend on colour alone. */
+.vy-sizer__seg { margin-top: 0; gap: 10px 22px; }
+.vy-sizer__seg button { padding-bottom: 3px; }
+.vy-sizer__seg button[aria-pressed="true"] { box-shadow: 0 1px 0 currentColor; }
+
+/* ── 5. Comparison table ────────────────────────────────────────────────────
+   The accordion shell is the FAQ component from index. What is here is the table layout
+   and the narrow screen stack. */
+.vy-price-compare h3,
+.vy-price-faq h3 { margin: 0; }
+
+/* Fixed table layout with fixed column widths. There are three groups, and if columns
+   were sized by content each table would place them differently (measured: one column
+   started at 786px in one table and 857px in the next). Tables stacked vertically with
+   columns that do not line up read as unfinished, so the three are pinned to one grid. */
+.vy-price-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  margin: 0 0 clamp(22px, 2.6vw, 32px);
+  font-size: var(--vy-t-14);
+  line-height: 1.45;
+}
+.vy-price-table thead th {
+  text-align: left;
+  padding: 0 16px 12px 0;
+  border-bottom: 1px solid var(--vy-line);
+  font-family: var(--vy-font-mono);
+  font-size: var(--vy-t-12);
+  font-weight: 500;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--vy-text-secondary);
+}
+.vy-price-table thead th:first-child { width: 34%; }
+.vy-price-table thead th + th { width: 22%; }
+.vy-price-table tbody th {
+  text-align: left;
+  font-weight: 500;
+  color: var(--vy-text-primary);
+}
+.vy-price-table tbody th,
+.vy-price-table tbody td {
+  padding: 14px 16px 14px 0;
+  border-bottom: 1px solid var(--vy-line-soft);
+  vertical-align: top;
+}
+.vy-price-table tbody td {
+  color: var(--vy-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.vy-price-table tbody tr:last-child th,
+.vy-price-table tbody tr:last-child td { border-bottom: 0; }
+
+/* Below 720px the four column table folds into row cards. Each cell already names its
+   column through a data attribute, so the header row is taken off screen but left for
+   screen readers; the table structure itself is unchanged. */
+@media (max-width: 720px) {
+  .vy-price-table thead {
+    position: absolute;
+    width: 1px; height: 1px;
+    margin: -1px; padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .vy-price-table tbody tr {
+    display: block;
+    padding: 18px 0;
+    border-bottom: 1px solid var(--vy-line-soft);
+  }
+  .vy-price-table tbody tr:last-child { border-bottom: 0; }
+  .vy-price-table tbody th,
+  .vy-price-table tbody td {
+    display: block;
+    width: auto;
+    padding: 0;
+    border-bottom: 0;
+  }
+  .vy-price-table tbody th { margin-bottom: 10px; }
+  .vy-price-table tbody td {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 5px 0;
+    color: var(--vy-text-primary);
+  }
+  .vy-price-table tbody td::before {
+    content: attr(data-plan);
+    font-family: var(--vy-font-mono);
+    font-size: var(--vy-t-12);
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--vy-text-secondary);
+  }
+}
+
+/* ── 6. Bottom spacing for the last section ───────────────────────────────── */
+.vy-price-faq { padding-bottom: clamp(88px, 13vh, 168px); }

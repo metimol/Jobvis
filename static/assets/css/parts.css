@@ -1,0 +1,1393 @@
+/* ============================================================================
+ * Vayra — component stylesheet
+ *
+ * Every component in here reads its colours, fonts and easings from the variables
+ * declared in _tokens-bridge.css and scope-context.css. There are no hardcoded
+ * colours: retheme the template by editing those two files, not this one.
+ *
+ * Where a value is deliberately left alone, the comment above it says why. Those
+ * are values a transition or a measurement depends on, and changing them changes
+ * behaviour rather than appearance.
+ * ============================================================================ */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Shared utilities (grouped selectors the components below depend on)
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.vy-u-span,
+#vy-core-skills .vy-banner-dom > div,
+.vy-span-end,
+.vy-hdr-panel-deck {
+  display: flex;
+  flex-direction: column;
+}
+
+.vy-u-crop,
+.vy-night-hull-veil,
+.vy-shot-chip,
+#vy-core-skills,
+.vy-halo-reel-pinned,
+.vy-hdr-reel-strip,
+.vy-hdr-reel-strip__head-groove,
+.vy-shot-head-frame {
+  overflow: hidden;
+}
+
+.vy-u-rel,
+.vy-shot-chips,
+.vy-shot-chip,
+#vy-core-skills,
+#vy-core-skills .vy-banner-dom > div,
+#vy-core-skills .vy-axis-film-pod,
+.vy-hdr-flyout,
+.vy-hdr-reel-strip,
+.vy-hdr-reel-strip__head-groove,
+.vy-pull-cue,
+.vy-shot-head-frame {
+  position: relative;
+}
+
+.vy-u-strip,
+#vy-topbar_glide,
+.vy-banner-fast-paths,
+.vy-top-masthead,
+#vy-core-skills .vy-asset-reel,
+#vy-core-skills .vy-asset-groove {
+  display: flex;
+  align-items: center;
+}
+
+.vy-u-size-whole,
+.vy-rules-frame,
+.vy-hdr-reel-strip__chip img {
+  width: 100%;
+  height: 100%;
+}
+
+.vy-u-axis,
+#vy-topbar_glide .vy-hdr-glyph,
+.vy-hdr-reel-strip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vy-u-quad,
+#vy-topbar_glide .vy-hdr-glyph {
+  width: var(--sq);
+  height: var(--sq);
+}
+
+.vy-u-fill,
+.vy-hdr-reel-strip__chip img {
+  display: block;
+  object-fit: cover;
+}
+
+.vy-u-glide-sheet,
+.vy-hdr-flyout {
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * 1. Entry gate (loader)
+ * Anchor: #vy-door. No library dependency.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.vy-door {
+  position: fixed;
+  inset: 0;
+  z-index: var(--layer-loader);
+  background: var(--color-bg-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 44px;
+  font-family: var(--font-display);
+  font-size: var(--vy-t-20);
+  font-weight: 700;
+  letter-spacing: var(--tracking-caps);
+  /* The exit transition uses the signature easing. The counter steps are driven from
+     JavaScript, so this duration does not affect the count. */
+  transition: opacity var(--vy-dur-section) var(--vy-ease), visibility var(--vy-dur-section);
+}
+
+.vy-door.vy-set {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.vy-door .vy-door-num {
+  font-family: var(--vy-font-mono);
+  font-variant-numeric: tabular-nums;
+  min-width: 72px;
+  text-align: center;
+  color: var(--color-text-secondary);
+}
+
+@media (max-width: 820px) {
+  /* Three columns (wordmark, counter, wordmark) overflow at 375px, so they stack */
+  .vy-door { gap: 16px; font-size: var(--vy-t-16); }
+  .vy-door .vy-door-num { min-width: 52px; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * 2. Nav with hover preview dropdown
+ * Anchor: #vy-topbar_glide_frame. Requires GSAP.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+#vy-topbar_glide_frame {
+  --ns-menu-bg: var(--color-text-primary);
+  --ns-menu-text: var(--color-bg-primary);
+  --ns-menu-accent: var(--color-text-secondary); /* Achromatic palette: what would be an accent colour is the secondary text value */
+  --ns-menu-line: color-mix(in oklch, var(--color-bg-primary) 14%, transparent);
+  position: fixed;
+  top: 30px;
+  left: 50%;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  width: min(500px, calc(100vw - 80px));
+  height: 64px;
+  background-color: var(--color-bg-secondary);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-line-soft);
+  box-shadow: none; /* A drop shadow goes muddy on a dark ground, so this is a hairline instead */
+  overflow: hidden;
+  opacity: 0;
+  transform: translateX(-50%);
+  will-change: opacity, transform;
+  pointer-events: none;
+}
+
+#vy-topbar_glide {
+  --ns-bar-h: 64px;
+  --ns-bar-pad: 20px;
+  position: relative;
+  z-index: var(--layer-scene);
+  justify-content: space-between;
+  flex: 0 0 var(--ns-bar-h);
+  width: 100%;
+  min-height: var(--ns-bar-h);
+  padding: 0 var(--ns-bar-pad);
+  background: transparent;
+  overflow: hidden;
+  border-radius: inherit;
+}
+
+#vy-topbar_glide_frame.vy-is-panel-open {
+  pointer-events: auto;
+  border-color: transparent;
+}
+
+#vy-topbar_glide_frame.vy-hdr-arrive {
+  animation: nsBarIn 0.65s var(--vy-ease) forwards;
+  pointer-events: auto;
+}
+
+#vy-topbar_glide_frame.vy-hdr-depart {
+  /* The exit needs a symmetric curve. With the signature easing it disappears
+     immediately and the exit does not read at all. */
+  animation: nsBarOut 0.5s cubic-bezier(0.4, 0, 0.6, 1) forwards;
+  pointer-events: none;
+}
+
+@keyframes nsBarIn {
+  from { opacity: 0; transform: translate(-50%, -14px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
+@keyframes nsBarOut {
+  from { opacity: 1; transform: translate(-50%, 0); }
+  to   { opacity: 0; transform: translate(-50%, -14px); }
+}
+
+#vy-topbar_glide .vy-hdr-glyph,
+#vy-topbar_glide .vy-hdr-brand {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity var(--vy-dur-micro) var(--vy-ease), transform var(--vy-dur-micro) var(--vy-ease);
+}
+
+#vy-topbar_glide_frame.vy-hdr-arrive #vy-topbar_glide .vy-hdr-glyph,
+#vy-topbar_glide_frame.vy-hdr-arrive #vy-topbar_glide .vy-hdr-brand {
+  opacity: 1;
+  transition-delay: 0.42s; /* Locked: this delay is tied to the bar expansion timeline */
+}
+
+#vy-topbar_glide_frame.vy-hdr-depart #vy-topbar_glide .vy-hdr-glyph,
+#vy-topbar_glide_frame.vy-hdr-depart #vy-topbar_glide .vy-hdr-brand {
+  opacity: 0;
+  transition-delay: 0s;
+}
+
+#vy-topbar_glide_frame.vy-is-panel-open #vy-topbar_glide {
+  border-bottom: 1px solid var(--ns-menu-line);
+}
+
+#vy-topbar_glide_frame.vy-is-panel-open #vy-topbar_glide .vy-hdr-glyph svg { stroke: var(--ns-menu-text); }
+#vy-topbar_glide_frame.vy-is-panel-open #vy-topbar_glide .vy-hdr-brand { color: var(--ns-menu-text); }
+
+#vy-topbar_glide .vy-hdr-glyph {
+  --sq: 40px; /* Raised to meet the 44px minimum touch target (32px is below it on mobile) */
+  min-width: 44px;
+  min-height: 44px;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+}
+
+#vy-topbar_glide .vy-hdr-glyph:hover { opacity: 0.7; }
+#vy-topbar_glide .vy-hdr-glyph:focus-visible { outline: 2px solid var(--color-text-primary); outline-offset: 2px; }
+
+#vy-topbar_glide .vy-hdr-glyph svg {
+  width: 22px;
+  height: 22px;
+  stroke: var(--color-text-primary);
+  fill: none;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Logo: this slot holds a wordmark in text rather than an image, so the template
+   ships with no logo file of its own for you to replace. */
+#vy-topbar_glide .vy-hdr-brand {
+  cursor: pointer;
+  text-decoration: none;
+  color: var(--color-text-primary);
+  font-family: var(--vy-font-display);
+  font-size: var(--vy-t-14);
+  font-weight: 800;
+  letter-spacing: var(--tracking-caps);
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+
+/* hamburger → + morph (2 lines) */
+.vy-hdr-bun-svg { overflow: visible; }
+
+.vy-hdr-bun-svg line {
+  transition: transform var(--vy-dur-micro) var(--vy-ease);
+  transform-origin: 9px 12px;
+  transform-box: view-box;
+}
+
+#vy-topbar_glide_frame.vy-is-panel-open .vy-hdr-bun-svg line {
+  /* Synchronised with the signature easing and the section duration */
+  transition: transform var(--vy-dur-section) var(--vy-ease);
+}
+
+.vy-hdr-bun-l1, .vy-hdr-bun-l2 { transform: translateY(0); }
+#vy-topbar_glide_frame.vy-is-panel-open .vy-hdr-bun-l1 { transform: rotate(45deg); }
+#vy-topbar_glide_frame.vy-is-panel-open .vy-hdr-bun-l2 { transform: rotate(-45deg); }
+
+.vy-hdr-flyout {
+  --ns-drop-offset: 24px;
+  flex: 1 1 auto;
+  width: 100%;
+  margin-top: 0;
+  padding: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  opacity: 0;
+  transform: translateY(var(--ns-drop-offset));
+  pointer-events: none;
+}
+
+.vy-hdr-flyout::-webkit-scrollbar { display: none; }
+.vy-hdr-flyout__mid { position: relative; height: 100%; padding: 0; }
+
+.vy-hdr-panel-deck {
+  position: relative;
+  min-height: 100%;
+  background: var(--ns-menu-bg);
+  color: var(--ns-menu-text);
+}
+
+.vy-hdr-panel-strips {
+  flex: 1 1 auto;
+  display: grid;
+  /* The 92px minimum is locked: the container expansion maths reads it.
+     The row count is deliberately not fixed here. Pinning the number of rows in CSS
+     means adding an item silently drops it to an implicit auto height and the rhythm
+     breaks; auto rows apply the same rule whatever the count. */
+  grid-auto-rows: minmax(92px, 1fr);
+}
+
+.vy-hdr-reel-strip {
+  --ns-row-h: 92px;
+  min-height: var(--ns-row-h);
+  border-bottom: 1px solid var(--ns-menu-line);
+  color: var(--ns-menu-text);
+  text-decoration: none;
+  transition: background-color var(--vy-dur-section) var(--vy-ease), color var(--vy-dur-section) var(--vy-ease);
+}
+
+.vy-hdr-reel-strip:last-child { border-bottom: 0; }
+
+.vy-hdr-reel-strip:hover,
+.vy-hdr-reel-strip:focus-visible {
+  background: color-mix(in oklch, var(--color-bg-primary) 4%, transparent);
+  outline: none;
+}
+
+.vy-hdr-reel-strip__seq {
+  position: absolute;
+  bottom: 15%;
+  left: calc(50% - min(23vw, 390px));
+  font-family: var(--vy-font-mono);
+  font-size: var(--vy-t-12);
+  font-weight: 500;
+  letter-spacing: var(--tracking-label);
+}
+
+.vy-hdr-reel-strip__head {
+  position: relative;
+  z-index: 2;
+  display: block;
+  font-family: var(--vy-font-display);
+  font-weight: 800;
+  font-size: clamp(40px, 6.4vw, 96px); /* Stays within the 96px top of the type scale */
+  line-height: var(--leading-display);
+  letter-spacing: var(--tracking-tight);
+  text-transform: uppercase;
+  overflow: hidden;
+  transition: color var(--vy-dur-section) var(--vy-ease);
+}
+
+.vy-hdr-reel-strip__head-groove { display: block; padding: 0 0.06em 0.1em; will-change: transform; }
+.vy-hdr-reel-strip__head-plane { display: block; will-change: transform; }
+.vy-hdr-reel-strip__head-plane.vy-is-prime { position: relative; color: inherit; }
+.vy-hdr-reel-strip__head-plane.vy-is-hot { position: absolute; inset: 0; color: var(--ns-menu-accent); }
+
+.vy-hdr-reel-strip.vy-is-peeked { color: var(--ns-menu-accent); }
+.vy-hdr-reel-strip.vy-is-peeked .vy-hdr-reel-strip__seq {
+  color: color-mix(in oklch, var(--color-bg-primary) 55%, transparent);
+}
+
+.vy-hdr-reel-strip__chip {
+  position: absolute;
+  top: 50%;
+  z-index: 1;
+  width: clamp(138px, 18vh, 208px); /* Locked: the reveal maths assumes this width */
+  aspect-ratio: 3 / 2;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  will-change: opacity, transform;
+  transform: translateY(-50%);
+  background: var(--vy-bg-secondary);
+}
+
+.vy-hdr-reel-strip__chip.vy-is-start  { left: calc(50% - min(23vw, 390px)); clip-path: inset(0% 0% 0% 100%); }
+.vy-hdr-reel-strip__chip.vy-is-end { left: calc(50% + min(10vw, 188px)); clip-path: inset(0% 100% 0% 0%); }
+
+.vy-hdr-reel-strip__chip img {
+  --thumb-zoom: 1.3; /* Locked: the hover timeline returns from 1.3 to 1 */
+  transform: scale(var(--thumb-zoom));
+  filter: var(--media-grade);
+  will-change: transform;
+}
+
+@media (max-width: 1280px) {
+  .vy-hdr-reel-strip,
+  .vy-hdr-reel-strip:hover,
+  .vy-hdr-reel-strip:focus-visible,
+  .vy-hdr-reel-strip.vy-is-peeked {
+    background: var(--ns-row-rest);
+    color: var(--ns-menu-text);
+    transition: none;
+    outline: none;
+  }
+  .vy-hdr-reel-strip { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+  .vy-hdr-reel-strip__head,
+  .vy-hdr-reel-strip__head-groove,
+  .vy-hdr-reel-strip__head-plane,
+  .vy-hdr-reel-strip__seq { transition: none; will-change: auto; }
+  .vy-hdr-reel-strip__head-groove,
+  .vy-hdr-reel-strip__head-plane,
+  .vy-hdr-reel-strip__seq { transform: none !important; }
+  .vy-hdr-reel-strip__head-plane.vy-is-hot,
+  .vy-hdr-reel-strip__chip { display: none !important; }
+  .vy-hdr-reel-strip.vy-is-peeked .vy-hdr-reel-strip__seq { color: inherit; }
+}
+
+@media (max-width: 767px) {
+  #vy-topbar_glide_frame {
+    --ns-dock-top: 16px;
+    --ns-dock-inset: 12px;
+    top: var(--ns-dock-top);
+    width: calc(100vw - var(--ns-dock-inset) * 2);
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    animation: none !important;
+    transform: translateX(-50%) !important;
+  }
+  #vy-topbar_glide_frame.vy-hdr-arrive,
+  #vy-topbar_glide_frame.vy-hdr-depart {
+    opacity: 1 !important;
+    animation: none !important;
+    transform: translateX(-50%) !important;
+  }
+  #vy-topbar_glide { width: 100%; padding: 0 12px; }
+  #vy-topbar_glide .vy-hdr-glyph,
+  #vy-topbar_glide .vy-hdr-brand { opacity: 1 !important; transform: none !important; }
+  .vy-hdr-flyout { width: 100%; }
+  .vy-hdr-panel-strips { grid-auto-rows: minmax(76px, 1fr); }   /* Independent of the row count, as above */
+  .vy-hdr-reel-strip { min-height: 76px; }
+  .vy-hdr-reel-strip__head { font-size: clamp(32px, 10vw, 56px); }
+  .vy-hdr-reel-strip__seq { bottom: 20%; left: 18px; }
+  .vy-hdr-reel-strip__chip { display: none; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * 3. Hero with a WebGL plane (the signature section)
+ * Anchor: .vy-banner-band. Requires three and GSAP; the canvas belongs to this component.
+ * The overlay chrome (counter, thumbnails, drag lines) is written for this template.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.vy-banner-band {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  min-height: 640px;
+  overflow: hidden;
+  background-color: var(--color-bg-primary);
+  z-index: 1;
+  isolation: isolate;
+}
+
+#vy-webgl-frame { position: absolute; inset: 0; z-index: 0; }
+#vy-webgl-frame canvas { display: block; width: 100%; height: 100%; }
+
+.vy-banner-band a,
+.vy-banner-band button,
+.vy-banner-band .vy-shot-chip,
+.vy-banner-band [data-vy-probe] { cursor: pointer; }
+
+.vy-hud-ui {
+  position: absolute;
+  inset: 0;
+  z-index: var(--layer-content);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 104px clamp(20px, 3.2vw, 48px) clamp(20px, 2.4vw, 36px);
+  pointer-events: none;
+  will-change: transform;
+}
+
+.vy-hud-ui a { pointer-events: auto; }
+
+.vy-top-masthead {
+  display: flex;
+  align-items: baseline;
+  gap: clamp(12px, 1.6vw, 28px);
+  flex-wrap: wrap;
+}
+
+.vy-mega-copy {
+  overflow: hidden;
+  font-family: var(--vy-font-display);
+  font-size: var(--vy-fluid-title);
+  font-weight: 800;
+  line-height: var(--leading-display);
+  letter-spacing: var(--tracking-tight);
+  text-transform: uppercase;
+  color: var(--color-text-primary);
+}
+
+.vy-mini-tag {
+  overflow: hidden;
+  font-family: var(--vy-font-mono);
+  font-size: var(--vy-t-12);
+  letter-spacing: var(--tracking-label);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+}
+
+.vy-mesh-4 {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--vy-col-gap);
+}
+
+.vy-banner-stacks { margin-top: clamp(20px, 2.6vw, 40px); }
+.vy-banner-stacks .vy-span-end { grid-column: 4 / -1; }
+
+.vy-crafts-stack {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: var(--vy-t-14);
+  color: var(--color-text-primary);
+}
+
+.vy-crafts-stack li { overflow: hidden; }
+
+.vy-crafts-stack.vy-edged {
+  font-family: var(--vy-font-mono);
+  font-size: var(--vy-t-12);
+  color: var(--color-text-secondary);
+  letter-spacing: var(--tracking-ui);
+  border-left: 1px solid var(--color-line);
+  padding-left: 14px;
+}
+
+.vy-hud-low { display: flex; flex-direction: column; gap: clamp(12px, 1.4vw, 22px); }
+
+.vy-banner-fast-paths {
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
+  gap: clamp(24px, 3.4vw, 68px);
+}
+
+/* The gap has to sit on the layer that holds the links themselves. If the links are
+   wrapped one level deeper, the flex gap applies to the single wrapper and the link
+   labels render with no space between them. */
+.vy-banner-fast-paths > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: clamp(20px, 3vw, 56px);
+}
+
+.vy-banner-fast-paths a {
+  color: var(--color-text-primary);
+  font-family: var(--vy-font-mono);
+  font-size: var(--vy-t-12);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  text-decoration: none;
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  transition: opacity var(--vy-dur-micro) var(--vy-ease);
+}
+
+.vy-banner-fast-paths a:hover,
+.vy-banner-fast-paths a:focus-visible { opacity: 0.6; outline: none; }
+
+.vy-edge-top-rule {
+  border-top: 1px solid var(--color-line);
+  padding-top: 12px;
+  font-family: var(--vy-font-mono);
+  font-size: var(--vy-t-12);
+  color: var(--color-text-secondary);
+  letter-spacing: var(--tracking-ui);
+}
+
+.vy-edge-top-rule > div { overflow: hidden; }
+
+.vy-low-outro {
+  font-size: var(--vy-t-12);
+  color: var(--color-text-secondary);
+  line-height: var(--leading-body);
+}
+
+.vy-outro-span { overflow: hidden; }
+.vy-outro-span.vy-span-end { grid-column: 4 / -1; }
+.vy-outro-paths { display: flex; flex-direction: column; }
+/* A 28px minimum leaves the touch target under 44px on a tablet */
+.vy-outro-paths a { color: inherit; text-decoration: none; display: inline-flex; align-items: center; min-height: 44px; }
+.vy-outro-paths a:hover { color: var(--color-text-primary); }
+
+/* ── Console under the hero (counter, progress, title, drag lines, thumbnails) ──
+   This console stays in the normal flow. Positioned absolutely it lands on top of the
+   three rows stacked below it (quick links, meta row, footer) at some viewport heights.
+   Centre alignment and the 720px width keep its look; only the positioning changed. */
+.vy-low-ui-frame {
+  position: relative;
+  z-index: var(--layer-ui);
+  width: min(720px, 100%);
+  margin: 0 auto clamp(14px, 1.8vw, 26px);
+  display: grid;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.vy-shot-band,
+.vy-shot-tally,
+.vy-shot-head { font-family: var(--vy-font-mono); font-size: var(--vy-t-12); letter-spacing: var(--tracking-label); }
+
+.vy-shot-band { color: var(--color-text-secondary); text-transform: uppercase; }
+
+.vy-shot-tally { display: flex; align-items: center; gap: 12px; color: var(--color-text-primary); }
+
+.vy-tally-topbar {
+  pointer-events: auto;
+  cursor: pointer;
+  user-select: none;
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-line);
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  transition: border-color var(--vy-dur-micro) var(--vy-ease);
+}
+
+.vy-tally-topbar:hover { border-color: var(--color-text-primary); }
+.vy-tally-topbar:focus-visible { outline: 2px solid var(--color-text-primary); outline-offset: 2px; }
+
+.vy-tally-readout { display: inline-flex; gap: 6px; font-variant-numeric: tabular-nums; }
+.vy-tally-sep { color: var(--color-text-secondary); }
+
+.vy-meter-groove { position: relative; height: 1px; background: var(--color-line); overflow: hidden; }
+.vy-meter-bar { position: absolute; inset: 0 auto 0 0; height: 100%; background: var(--color-text-primary); width: 0; }
+.vy-meter-rest { opacity: 0.28; }
+
+.vy-shot-head-frame { min-height: 1.4em; }
+.vy-shot-head { color: var(--color-text-primary); }
+
+.vy-pull-cue { height: var(--line-max-height); }
+.vy-rules-frame { display: flex; align-items: flex-end; justify-content: space-between; }
+
+.vy-pull-rule {
+  width: 1px;
+  height: var(--line-base-height);
+  background-color: var(--color-line);
+  /* Sixty staggered line heights, so the duration stays at the micro token */
+  transition: height var(--vy-dur-micro) var(--vy-ease), background-color var(--vy-dur-micro) var(--vy-ease);
+}
+
+.vy-chips-frame { pointer-events: auto; }
+.vy-shot-chips { display: flex; gap: 4px; }
+
+.vy-shot-chip {
+  flex: 1 1 0;
+  aspect-ratio: 16 / 9;
+  background-color: var(--vy-bg-secondary);
+  background-size: cover;
+  background-position: center;
+  cursor: pointer;
+  opacity: 0.42;
+  filter: var(--media-grade);
+  border: 1px solid transparent;
+  transition: opacity var(--vy-dur-micro) var(--vy-ease), border-color var(--vy-dur-micro) var(--vy-ease);
+}
+
+.vy-shot-chip.active { opacity: 1; border-color: var(--color-text-primary); }
+.vy-shot-chip:hover { opacity: 0.8; }
+
+.vy-shots { display: none; } /* Data source only. The WebGL plane does the drawing. */
+
+@media (max-width: 900px) {
+  .vy-hud-ui { padding: 84px 20px 20px; }
+  .vy-mesh-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .vy-banner-stacks .vy-span-end,
+  .vy-outro-span.vy-span-end { grid-column: auto; }
+  .vy-edge-top-rule { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 767px) {
+  .vy-banner-band { height: 92vh; min-height: 560px; }
+  .vy-hud-ui .vy-banner-stacks,
+  .vy-hud-ui .vy-low-outro { display: none; } /* Mobile drops some of the hero density and gets it back in the body */
+  .vy-pull-cue { display: none; }
+  /* A 16:9 thumbnail is 36px tall at 375px, eight short of the 44px target. The minimum
+     height raises it without breaking the ratio (the background is cover, so it only crops). */
+  .vy-shot-chip { min-height: 44px; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * 4. Scroll driven colour shift (one boundary only)
+ * Anchor: #vy-night-hull-veil. Requires GSAP.
+ * The mask is a flow element and only its clip path is scrubbed, so the document
+ * layout never jumps.
+ * The default state is open. JavaScript arms the closed state, not the other way round:
+ * hidden by default plus script to reveal means a script failure hides the content. */
+
+.vy-night-hull-veil {
+  position: relative;
+  width: 100%;
+  z-index: var(--layer-mask);
+  clip-path: var(--curtain-open);
+  will-change: clip-path;
+}
+
+.vy-night-hull {
+  position: relative;
+  width: 100%;
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  z-index: 1;
+}
+
+#vy-dw-black-hud {
+  position: absolute;
+  inset: 0;
+  background: var(--color-scrim);
+  z-index: 9;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.05s; /* Locked: this overlay is synchronised with the scrub */
+}
+
+@media (max-width: 768px) {
+  /* Off on mobile, as in the source component. The curtain is a desktop effect. */
+  .vy-night-hull-veil { clip-path: var(--curtain-open) !important; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * 5. Masked reveal section (features)
+ * Anchor: #vy-core-skills. Requires GSAP and ScrollTrigger.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.vy-scale-band {
+  position: relative;
+  overflow: hidden;
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+  padding: var(--vy-section-lg) 0;
+}
+
+.vy-halo-reel-pinned { position: relative; }
+
+.vy-banner-dom {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 clamp(20px, 3.2vw, 48px);
+}
+
+#vy-core-skills .vy-banner-dom > div {
+  width: 100%;
+  max-width: var(--vy-container);
+  gap: clamp(28px, 3.4vw, 56px);
+}
+
+.vy-jumbo-head {
+  font-family: var(--vy-font-display);
+  font-size: var(--vy-fluid-giant);
+  font-weight: 800;
+  line-height: var(--leading-display);
+  letter-spacing: var(--tracking-tight);
+  text-transform: uppercase;
+}
+
+.vy-leaf-head {
+  font-size: var(--vy-fluid-lede);
+  line-height: 1.22;
+  letter-spacing: var(--tracking-display);
+  color: var(--color-text-secondary);
+  max-width: 22ch;
+}
+
+.vy-top-topbar {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--vy-col-gap);
+  border-top: 1px solid var(--color-line);
+  border-bottom: 1px solid var(--color-line);
+  padding: 14px 0;
+  font-family: var(--vy-font-mono);
+  font-size: var(--vy-t-12);
+  letter-spacing: var(--tracking-label);
+  color: var(--color-text-secondary);
+}
+
+.vy-topbar-end { text-align: right; }
+.vy-topbar-axis { text-align: center; }
+
+.vy-asset-reel { justify-content: center; }
+.vy-asset-groove { width: 100%; justify-content: center; }
+
+.vy-axis-sep {
+  display: grid;
+  gap: 18px;
+  justify-items: center;
+  width: min(720px, 100%);
+}
+
+.vy-axis-film-pod {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  background: var(--vy-bg-secondary);
+  /* Reveal target: open by default, closed by JavaScript */
+  clip-path: inset(0% 0% 0% 0%);
+}
+
+.vy-axis-film-pod img,
+.vy-axis-film-pod video { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.vy-craft-cap { text-align: center; }
+.vy-craft-cap h2 {
+  margin: 0;
+  font-family: var(--vy-font-display);
+  font-size: var(--vy-fluid-lede);
+  font-weight: 500;
+  line-height: 1.24;
+  letter-spacing: var(--tracking-display);
+}
+
+.vy-craft-labels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px clamp(20px, 3vw, 48px);
+  font-family: var(--vy-font-mono);
+  font-size: var(--vy-t-12);
+  letter-spacing: var(--tracking-label);
+  color: var(--color-text-secondary);
+}
+
+.vy-craft-labels h3 { margin: 0; font-weight: 400; font-size: inherit; }
+
+/* The reveal is a parent with overflow hidden and a child that slides.
+   Do not hide these with clip-path. A clipped element reports zero intersection, so the
+   style that hides it also removes the signal that would reveal it. */
+.vy-rise-case { display: block; overflow: hidden; }
+span.vy-rise-case { display: inline-block; vertical-align: bottom; }
+.vy-rise-mid { display: block; will-change: transform; }
+
+@media (max-width: 900px) {
+  .vy-scale-band { padding: var(--vy-section-sm) 0; }
+  .vy-top-topbar { grid-template-columns: 1fr; gap: 6px; }
+  .vy-topbar-end, .vy-topbar-axis { text-align: left; }
+  .vy-leaf-head { max-width: none; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * 6. Archive grid with proximity magnet (the output viewer, second signature)
+ * Anchor: .vy-vault and #vy-gl-vault. Requires three and GSAP.
+ * The metadata list is what turns a card grid into an output viewer; keep it.
+ * The per card aspect ratios (419/291, 370, 272, 235) are locked: that varying rhythm
+ * is the pacing of this component.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+/* The section uses the same horizontal padding as the page shell. Without it, at exactly
+   1440px the cards touch both edges while the console bar inside the same section keeps its
+   padding, and the section ends up with three different left edges. */
+.vy-vault { padding-top: var(--vy-section-lg); }
+
+.vy-vault .vy-kicker {
+  font-family: var(--vy-font-mono);
+  font-size: var(--vy-t-12);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  max-width: var(--container);
+  margin: 0 auto 24px;
+  padding: 0 clamp(20px, 3.2vw, 48px);
+}
+
+.vy-vault-mesh {
+  display: flex;
+  flex-direction: column;
+  gap: 56px;
+  max-width: var(--container);
+  margin: 0 auto var(--vy-section-sm);
+  padding: 0 clamp(20px, 3.2vw, 48px);
+}
+
+.vy-work {
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 520px); /* Locked: total scroll ratio */
+  column-gap: 6%;
+  align-items: start;
+}
+
+.vy-work[hidden] { display: none; }
+
+.vy-work .vy-work-pic { grid-column: 2; grid-row: 1; width: 100%; overflow: hidden; background: var(--vy-bg-secondary); }
+.vy-work .vy-meta { grid-column: 1; grid-row: 1; display: block; margin-top: 0; }
+
+.vy-work .vy-work-pic .vy-gl-pic { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* An SVG grain texture is available on this component but is not used: with the marquee,
+   the cursor and the magnet already running it tips into decoration. When the WebGL layer
+   is active it renders these images anyway. */
+
+.vy-work:nth-child(1) .vy-work-pic { aspect-ratio: 419/291; }
+.vy-work:nth-child(2) .vy-work-pic { aspect-ratio: 419/291; }
+.vy-work:nth-child(3) .vy-work-pic { aspect-ratio: 419/370; }
+.vy-work:nth-child(4) .vy-work-pic { aspect-ratio: 419/272; }
+.vy-work:nth-child(5) .vy-work-pic { aspect-ratio: 419/235; }
+.vy-work:nth-child(6) .vy-work-pic { aspect-ratio: 419/291; }
+.vy-work:nth-child(7) .vy-work-pic { aspect-ratio: 419/370; }
+.vy-work:nth-child(8) .vy-work-pic { aspect-ratio: 419/272; }
+
+.vy-work .vy-meta h3 {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: clamp(20px, 1.8vw, 28px);
+  line-height: 1.4;
+  letter-spacing: var(--tracking-display);
+  position: relative;
+  display: inline-block;
+  margin: 0;
+}
+
+/* Hover: the underline grows from left to right */
+.vy-work .vy-meta h3::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  width: 100%;
+  height: 1.5px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  transition: transform var(--vy-dur-section) var(--vy-ease);
+}
+
+.vy-work:hover .vy-meta h3::after { transform: scaleX(1); }
+
+.vy-work .vy-meta h4 {
+  font-size: var(--vy-t-12);
+  font-family: var(--vy-font-mono);
+  color: var(--color-text-muted);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  line-height: 1.6;
+  margin: 6px 0 0;
+  font-weight: 400;
+}
+
+/* The definition list is the generation metadata console */
+.vy-work .vy-idx {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  column-gap: 20px;
+  row-gap: 4px;
+  margin: 18px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--color-line-deep);
+  font-family: var(--vy-font-mono);
+  font-size: var(--vy-t-12);
+  line-height: 1.7;
+}
+
+.vy-work .vy-idx dt { color: var(--color-text-muted); letter-spacing: var(--tracking-label); text-transform: uppercase; }
+.vy-work .vy-idx dd { margin: 0; color: var(--color-text-primary); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+
+#vy-gl-vault {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 3;
+  pointer-events: none;
+  display: none;
+}
+
+body.vy-vault-gl-live #vy-gl-vault { display: block; }
+/* When the WebGL layer is active it draws these images; the DOM copies stay for hit testing */
+body.vy-vault-gl-live .vy-work .vy-work-pic .vy-gl-pic { opacity: 0; }
+
+@media (max-width: 820px) {
+  .vy-vault-mesh { display: flex; flex-direction: column; gap: 8vh; padding: 0 20px; }
+  .vy-work { display: block; }
+  .vy-work .vy-meta { margin-top: 16px; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * 7. Marquee ticker (trust section)
+ * Anchor: #vy-crawl-mid. Requires GSAP. Speed follows the scroll; direction comes
+ * from a data attribute.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.vy-crawl-rim { overflow: hidden; width: 100%; }
+.vy-crawl-mid { display: flex; align-items: center; transform: translateZ(0); }
+.vy-crawl-kit { display: flex; align-items: center; flex-shrink: 0; }
+.vy-crawl-unit { display: inline-flex; align-items: baseline; flex-shrink: 0; padding: 0; }
+
+.vy-mega-head.vy-crawl-cell {
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-family: var(--vy-font-display);
+  font-size: clamp(28px, 4.4vw, 64px);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: var(--tracking-tight);
+  text-transform: uppercase;
+  color: var(--color-text-primary);
+  margin: 0 0.28em 0 0;
+  opacity: 0.68; /* The logo marquee is a background signal and must not outrank the body copy */
+}
+
+.vy-crawl-cap {
+  font-family: var(--vy-font-mono);
+  font-size: var(--vy-t-12);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  letter-spacing: var(--tracking-label);
+  line-height: 1;
+  flex-shrink: 0;
+  margin-right: 1.6em;
+  align-self: center;
+  text-transform: uppercase;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * 8. Footer form (inline underlined email field)
+ * Anchor: .vy-tail-entry. No library dependency.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.vy-tail-entry { display: flex; flex-direction: column; gap: 12px; min-width: 300px; }
+
+.vy-tail-entry-cap { font-size: var(--vy-t-14); color: var(--color-text-muted); line-height: var(--leading-body); }
+
+.vy-tail-entry-strip { display: flex; gap: 10px; }
+
+.vy-tail-entry input {
+  flex: 1;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--color-line);
+  color: var(--color-text-primary);
+  font-size: var(--vy-t-16);
+  padding: 10px 2px;
+  font-family: var(--vy-font-body);
+  min-height: 44px;
+  outline: none;
+  /* Border width stays 1px in every state, so no state change shifts the layout */
+  transition: border-color var(--vy-dur-micro) var(--vy-ease);
+}
+
+.vy-tail-entry input::placeholder { color: var(--color-text-secondary); }
+.vy-tail-entry input:hover { border-bottom-color: var(--color-text-secondary); }
+.vy-tail-entry input:focus-visible { outline: 2px solid var(--color-text-primary); outline-offset: 3px; }
+.vy-tail-entry input:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.vy-tail-entry button {
+  background: transparent;
+  border: 1px solid var(--color-line);
+  color: var(--color-text-primary);
+  font-size: var(--vy-t-14);
+  padding: 10px 22px;
+  min-height: 44px;
+  cursor: pointer;
+  font-family: var(--vy-font-mono);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  transition: background-color var(--vy-dur-micro) var(--vy-ease), color var(--vy-dur-micro) var(--vy-ease);
+}
+
+.vy-tail-entry button:hover { background: var(--color-text-primary); color: var(--color-bg-primary); }
+.vy-tail-entry button:focus-visible { outline: 2px solid var(--color-text-primary); outline-offset: 2px; }
+
+.vy-tail-entry-memo { min-height: 1lh; font-size: var(--vy-t-12); font-family: var(--vy-font-mono); color: var(--color-text-secondary); }
+
+@media (max-width: 820px) {
+  .vy-tail-entry { min-width: 0; width: 100%; }
+  .vy-tail-entry-strip { flex-wrap: wrap; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * 9. Footer with an oversized nav roll
+ * Anchor: <footer>. CSS only.
+ * The type is the body sans rather than a serif, to match the rest of the template.
+ * The per letter roll (two stacked copies with an index based delay) is unchanged.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.vy-tail-case {
+  max-width: var(--container);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: var(--col-gap);
+}
+
+.vy-tail-mid { grid-column: 2 / 8; display: flex; flex-direction: column; }
+.vy-tail-top { display: grid; grid-template-columns: 1fr 1fr; gap: var(--col-gap); align-items: center; }
+.vy-tail-paths { display: flex; flex-direction: column; gap: 2px; }
+
+.vy-tail-paths a {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(34px, 5vw, 96px);
+  line-height: 1.16;
+  letter-spacing: var(--tracking-tight);
+  text-transform: uppercase;
+  color: inherit;
+  text-decoration: none;
+  position: relative;
+  display: inline-block;
+  width: max-content;
+}
+
+/* Hover: the line appears through the middle of the words, left to right */
+.vy-tail-paths a::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 100%;
+  height: 2px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  transition: transform var(--vy-dur-section) var(--vy-ease);
+  z-index: 2;
+}
+
+.vy-tail-paths a:hover::after,
+.vy-tail-paths a:focus-visible::after { transform: scaleX(1); }
+
+/* On hover each letter rolls up and is replaced by a copy of itself (two layers per letter) */
+.vy-tail-paths a .vy-flow { display: inline-block; overflow: hidden; position: relative; vertical-align: top; }
+
+.vy-tail-paths a .vy-flow span {
+  display: block;
+  transition: transform var(--vy-dur-section) var(--vy-ease);
+  transition-delay: calc(var(--i, 0) * 26ms); /* Locked: per letter stagger */
+}
+
+.vy-tail-paths a .vy-flow span.vy-echo { position: absolute; left: 0; top: 100%; }
+.vy-tail-paths a:hover .vy-flow span,
+.vy-tail-paths a:focus-visible .vy-flow span { transform: translateY(-100%); }
+
+.vy-tail-asset { aspect-ratio: 471/338; overflow: hidden; background: var(--vy-bg-secondary); }
+.vy-tail-asset img { width: 100%; height: 100%; object-fit: cover; display: block; filter: var(--media-grade); }
+
+.vy-tail-biz {
+  margin-top: 48px;
+  padding-top: 24px;
+  border-top: 1px solid var(--color-line);
+  font-size: var(--vy-t-12);
+  font-family: var(--vy-font-mono);
+  line-height: 2;
+  color: var(--color-text-muted);
+  max-width: 640px;
+}
+
+.vy-tail-biz b { font-weight: 500; color: var(--color-text-primary); }
+
+/* One global notice. Delete this line if you do not need it; it replaces the per section
+   sample notices that would otherwise be scattered through the page. */
+.vy-tail-memo {
+  margin-top: 14px;
+  max-width: 640px;
+  font-family: var(--vy-font-mono);
+  font-size: var(--vy-t-12);
+  line-height: 1.7;
+  color: var(--color-text-muted);
+  opacity: 0.66;
+}
+
+.vy-tail-share { display: flex; gap: 28px; margin-top: 16px; font-size: var(--vy-t-14); flex-wrap: wrap; }
+
+.vy-tail-share a {
+  color: inherit;
+  text-decoration: none;
+  opacity: 0.72;
+  transition: opacity var(--vy-dur-micro) var(--vy-ease);
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+
+.vy-tail-share a:hover, .vy-tail-share a:focus-visible { opacity: 1; }
+
+.vy-tail-stamp {
+  font-family: var(--vy-font-mono);
+  font-size: var(--vy-t-12);
+  line-height: 1.7;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  margin-top: 48px;
+}
+
+@media (max-width: 820px) {
+  .vy-tail-case { display: block; padding: 0 20px; }
+  .vy-tail-top { display: block; }
+  .vy-tail-asset { margin-top: 24px; }
+  /* The large links are 34px on a 1.16 line, short of the 44px touch target, so the target is
+     widened with vertical padding only (the roll depends on the overflow structure). */
+  .vy-tail-paths a { padding: 4px 0; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * 10. Custom cursor (global)
+ * Anchors: #vy-probe-bead and #vy-probe-halo. Plain requestAnimationFrame.
+ * Note: the ring size, idle scale and label variables are declared on the ring element in
+ * some builds of this component. An element declaration beats :root, so leaving them there
+ * makes the values in the bridge do nothing. They are declared in the bridge instead, which
+ * is what makes the cursor tunable from one file.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+#vy-probe-bead,
+#vy-probe-halo {
+  position: fixed;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: var(--layer-cursor);
+}
+
+#vy-probe-bead {
+  width: 6px;
+  height: 6px;
+  background: var(--color-text-primary);
+  margin: -3px 0 0 -3px;
+  mix-blend-mode: difference;
+  transition: opacity var(--vy-dur-micro) var(--vy-ease);
+  will-change: transform;
+  opacity: 1;
+}
+
+#vy-probe-halo {
+  width: var(--cursor-ring-size);
+  height: var(--cursor-ring-size);
+  border: 0;
+  border-radius: var(--radius-lg); /* 0, to match the straight edged shapes used everywhere else (this was a circle) */
+  margin: calc(var(--cursor-ring-size) / -2) 0 0 calc(var(--cursor-ring-size) / -2);
+  mix-blend-mode: difference;
+  will-change: transform;
+  contain: layout paint style;
+  transition: opacity var(--duration-fast) var(--ease-primary);
+}
+
+#vy-probe-halo::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-text-primary);
+  background: transparent;
+  transform: scale(var(--cursor-ring-rest-scale));
+  transition:
+    transform var(--cursor-label-enter-duration) var(--cursor-label-ease),
+    background-color var(--cursor-label-enter-duration) var(--cursor-label-ease);
+  will-change: opacity, transform;
+}
+
+#vy-probe-bead.vy-is-path { opacity: 0; }
+
+#vy-probe-halo.vy-is-path:not(.vy-is-away)::before {
+  transform: scale(1);
+  background: var(--color-text-primary);
+  border-color: var(--color-text-primary);
+}
+
+#vy-probe-halo.vy-is-away::before {
+  transform: scale(var(--cursor-ring-rest-scale));
+  background: transparent;
+}
+
+#vy-probe-halo.vy-is-path::after,
+#vy-probe-halo.vy-is-away::after {
+  content: attr(data-vy-probe-cap);
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: calc(var(--cursor-ring-size) - 4px);
+  height: calc(var(--cursor-ring-size) - 4px);
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-bg-primary);
+  font-family: var(--vy-font-mono);
+  font-size: 8px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  text-align: center;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, -50%);
+  will-change: opacity;
+}
+
+#vy-probe-halo.vy-is-path::after  { opacity: 1; transition: opacity var(--cursor-label-enter-duration) var(--cursor-label-ease); }
+#vy-probe-halo.vy-is-away::after { opacity: 0; transition: opacity var(--cursor-label-exit-duration) var(--cursor-label-ease); }
+
+@media (max-width: 1024px), (hover: none), (pointer: coarse) {
+  #vy-probe-bead, #vy-probe-halo { display: none; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * 11. Pixel curtain (page transition, global)
+ * The grid (9 rows, 17 columns), the step and the peak are locked: they define the wipe.
+ * Only its depth is tuned, through the curtain token in the bridge.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.vy-view-swap-rig {
+  position: fixed;
+  inset: 0;
+  z-index: 300000;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+}
+
+.vy-view-swap-rig.vy-is-live { opacity: 1; visibility: visible; }
+
+/* Arrival cover. It covers the one or two frames between a transition landing on a document
+   and that document building its own curtain grid. The class is added by the inline script in
+   each subpage head and removed by whichever comes first: the script once the curtain is
+   primed, its fallback timer, or the inline script's own timer (that last one matters, because
+   a script that never loads would otherwise leave a black screen).
+   index does not use it: its entry gate already covers the screen. */
+html.vy-arriving .vy-view-swap-rig {
+  opacity: 1;
+  visibility: visible;
+  background: var(--pt-bg);
+}
+
+.vy-view-swap-drape { position: absolute; inset: 0; opacity: 0; }
+
+.vy-view-swap-drape::before,
+.vy-view-swap-drape::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: var(--pt-depth);
+  background: var(--pt-bg);
+  will-change: transform;
+}
+
+.vy-view-swap-drape::before { top: 0; transform: translateY(var(--pt-top)); }
+.vy-view-swap-drape::after  { bottom: 0; transform: translateY(var(--pt-bottom)); }
+
+@media (max-width: 767px) {
+  .vy-view-swap-drape::before,
+  .vy-view-swap-drape::after { height: 58vh; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * 12. Side rail (global chrome, low contrast)
+ * Anchor: .vy-rail. CSS only, using sideways writing mode and a difference blend.
+ * Both rails are text labels. The right one is not an icon because an inline data URL
+ * mask would break the rule that this template stays static files only.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.vy-rail {
+  position: fixed;
+  top: 50%;
+  z-index: var(--layer-chrome);
+  font-family: var(--vy-font-mono);
+  font-size: 10px;
+  letter-spacing: var(--tracking-caps);
+  color: var(--color-text-secondary);
+  text-transform: none;
+  mix-blend-mode: difference;
+  pointer-events: none;
+}
+
+.vy-rail.left  { left: 14px; writing-mode: sideways-lr; transform: translateY(-50%); }
+.vy-rail.right { right: 14px; writing-mode: sideways-lr; transform: translateY(-50%); }
+
+@media (max-width: 900px) { .vy-rail { display: none; } }
