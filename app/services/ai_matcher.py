@@ -87,7 +87,8 @@ class AICVAnalyzer:
         # Robust Heuristic Fallback Analysis
         return self._heuristic_analyze(cv_text)
 
-    def _heuristic_analyze(self, cv_text: str) -> dict[str, Any]:
+    def _heuristic_analyze(self, cv_text: str) -> dict[str, Any]:  #
+        # TODO: Why? Better analyze CV with AI directly
         """Deterministic heuristic extractor supporting DE, EN, UK, RU CVs."""
         text_lower = cv_text.lower()
         skills: list[str] = []
