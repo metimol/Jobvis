@@ -52,8 +52,8 @@ class CVAnalysisResponse(BaseModel):
     raw_text: str | None = None
     skills: list[str] = Field(default_factory=list)
     experience_years: float = 0.0
-    education: list[dict[str, Any]] = Field(default_factory=list)
-    detected_languages: list[dict[str, Any]] = Field(default_factory=list)
+    education: list[Any] = Field(default_factory=list)
+    detected_languages: dict[str, Any] = Field(default_factory=dict)
     keywords: list[str] = Field(default_factory=list)
     created_at: datetime
 

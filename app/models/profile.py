@@ -81,10 +81,8 @@ class CVAnalysis(Base):
     raw_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     skills: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
     experience_years: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
-    education: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list, nullable=False)
-    detected_languages: Mapped[list[dict[str, Any]]] = mapped_column(
-        JSON, default=list, nullable=False
-    )
+    education: Mapped[list[Any]] = mapped_column(JSON, default=list, nullable=False)
+    detected_languages: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict, nullable=False)
     keywords: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
 
     created_at: Mapped[datetime] = mapped_column(
