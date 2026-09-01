@@ -63,18 +63,14 @@ class AICVAnalyzer:
             try:
                 from langchain_core.output_parsers import PydanticOutputParser
                 from langchain_core.prompts import PromptTemplate
-                from langchain_google_genai import ChatGoogleGenerativeAI
+
+                from ai.config import model as llm
 
                 parser = PydanticOutputParser(pydantic_object=ExtractedCVProfile)
                 prompt = PromptTemplate(
                     template="Extract candidate CV details into JSON format.\n{format_instructions}\n\nCV Text:\n{cv_text}\n",
                     input_variables=["cv_text"],
                     partial_variables={"format_instructions": parser.get_format_instructions()},
-                )
-                llm = ChatGoogleGenerativeAI(
-                    model="gemini-2.0-flash",
-                    google_api_key=self.api_key,
-                    temperature=0.1,
                 )
                 chain = prompt | llm | parser
                 res: ExtractedCVProfile = await chain.ainvoke({"cv_text": cv_text[:8000]})
