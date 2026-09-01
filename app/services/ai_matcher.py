@@ -74,6 +74,7 @@ class AICVAnalyzer:
                 )
                 chain = prompt | llm | parser
                 res: ExtractedCVProfile = await chain.ainvoke({"cv_text": cv_text[:8000]})
+                # TODO: Add AI output logging for debugging
                 return res.model_dump()
             except Exception as e:
                 logger.warning(
@@ -84,7 +85,7 @@ class AICVAnalyzer:
         return self._heuristic_analyze(cv_text)
 
     def _heuristic_analyze(self, cv_text: str) -> dict[str, Any]:  #
-        # TODO: Why? Better analyze CV with AI directly
+        # TODO: Why only for devs?
         """Deterministic heuristic extractor supporting DE, EN, UK, RU CVs."""
         text_lower = cv_text.lower()
         skills: list[str] = []
