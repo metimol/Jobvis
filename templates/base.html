@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="{{ lang|default('de') }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Jobvis — AI Job Search for Jobcenter Clients{% endblock %}</title>
+  <meta name="description" content="AI-powered job matching platform connected directly to Bundesagentur für Arbeit.">
+  <meta name="color-scheme" content="dark">
+  <link rel="icon" type="image/svg+xml" href="/assets/img/favicon.svg">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="/assets/css/_tokens-bridge.css">
+  <link rel="stylesheet" href="/assets/css/scope-context.css">
+  <link rel="stylesheet" href="/assets/css/parts.css">
+  <link rel="stylesheet" href="/assets/css/sections.css">
+
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --bg-dark: #090a0f;
+      --bg-card: rgba(18, 20, 29, 0.85);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --success: #10b981;
+      --danger: #ef4444;
+    }
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .navbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.25rem 2rem;
+      border-bottom: 1px solid var(--border-color);
+      backdrop-filter: blur(12px);
+      background: rgba(9, 10, 15, 0.8);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .nav-brand {
+      font-size: 1.35rem;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      color: var(--text-main);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .nav-brand span {
+      color: var(--accent);
+    }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+    .nav-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.95rem;
+      font-weight: 500;
+      transition: color 0.2s ease;
+    }
+    .nav-links a:hover, .nav-links a.active {
+      color: var(--text-main);
+    }
+    .lang-switcher select {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 0.4rem 0.8rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      outline: none;
+    }
+    .main-container {
+      flex: 1;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2.5rem 1.5rem;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .footer {
+      border-top: 1px solid var(--border-color);
+      padding: 1.5rem 2rem;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.65rem 1.25rem;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      text-decoration: none;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s ease;
+    }
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+    }
+    .btn-primary:hover {
+      background: var(--primary-hover);
+    }
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+    }
+    .btn-outline:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.6rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .badge-cefr {
+      background: rgba(56, 189, 248, 0.15);
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+    .badge-score {
+      background: rgba(16, 185, 129, 0.15);
+      color: #10b981;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+  </style>
+  {% block head_extra %}{% endblock %}
+</head>
+<body>
+
+  <!-- Navigation -->
+  <nav class="navbar">
+    <a href="/" class="nav-brand">JOB<span>VIS</span></a>
+
+    <div class="nav-links">
+      <a href="/">{{ t.get('nav_home', 'Home') }}</a>
+      {% if current_user %}
+        <a href="/feed">{{ t.get('nav_feed', 'Feed') }}</a>
+        <a href="/profile">{{ t.get('nav_profile', 'Profile') }}</a>
+        <a href="/settings">{{ t.get('nav_settings', 'Settings') }}</a>
+        <a href="/auth/logout" class="btn btn-outline" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">{{ t.get('nav_logout', 'Logout') }}</a>
+      {% else %}
+        <a href="/login" class="btn btn-primary" style="padding: 0.4rem 1rem; font-size: 0.85rem;">{{ t.get('nav_login', 'Sign In') }}</a>
+      {% endif %}
+
+      <!-- Language Selector -->
+      <div class="lang-switcher">
+        <select id="globalLangSelect" onchange="switchLanguage(this.value)">
+          <option value="de" {% if lang == 'de' %}selected{% endif %}>Deutsch (DE)</option>
+          <option value="en" {% if lang == 'en' %}selected{% endif %}>English (EN)</option>
+          <option value="uk" {% if lang == 'uk' %}selected{% endif %}>Українська (UK)</option>
+          <option value="ru" {% if lang == 'ru' %}selected{% endif %}>Русский (RU)</option>
+        </select>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Page Content -->
+  {% block content %}{% endblock %}
+
+  <!-- Footer -->
+  <footer class="footer">
+    <p>© 2026 Jobvis. {{ t.get('hero_subtitle', 'AI-powered job matching for Jobcenter clients in Germany.') }}</p>
+  </footer>
+
+  <script>
+    async function switchLanguage(newLang) {
+      try {
+        await fetch('/api/settings/language', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ui_language: newLang })
+        });
+      } catch (err) {
+        console.warn('Language switch persisted locally');
+      }
+      window.location.reload();
+    }
+  </script>
+  {% block scripts_extra %}{% endblock %}
+</body>
+</html>

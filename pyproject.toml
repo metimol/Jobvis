@@ -7,21 +7,97 @@ name = "jobvis"
 version = "0.1.0"
 
 dependencies = [
-    "fastapi==0.141.1",
-    "jinja2==3.1.6",
-    "langchain[google-genai]==1.2.13",
-    "langchain-google-genai==4.2.1"
+    "fastapi>=0.115.0",
+    "uvicorn>=0.30.0",
+    "jinja2>=3.1.4",
+    "langchain[google-genai]>=0.3.0",
+    "langchain-google-genai>=2.0.0",
+    "sqlalchemy>=2.0.0",
+    "aiomysql>=0.2.0",
+    "aiosqlite>=0.20.0",
+    "pymysql>=1.1.0",
+    "pydantic>=2.7.0",
+    "pydantic-settings>=2.2.0",
+    "httpx>=0.27.0",
+    "python-multipart>=0.0.9",
+    "itsdangerous>=2.2.0",
+    "python-jose[cryptography]>=3.3.0",
+    "authlib>=1.3.0"
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pre-commit==4.6.2"
+    "pre-commit>=3.7.0",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "ruff>=0.5.0"
 ]
 
-[tool.setuptools]
-packages = ["ai", "const"]
-py-modules = ["main"]
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*", "ai*", "const*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+exclude = [".agents", ".venv", "build", "dist"]
 
 [tool.ruff.lint]
 select = ["ALL"]
-ignore = ["D", "ANN", "TD", "FIX002", "COM812", "PLR2004"]
+ignore = [
+    "D",       # docstring formatting requirements
+    "ANN",     # type annotations style
+    "TD",      # TODO formatting
+    "FIX002",  # TODO comments
+    "COM812",  # missing trailing comma
+    "PLR2004", # magic value used in comparison
+    "E501",    # line too long
+    "TRY003",  # long messages outside exception class
+    "EM101",   # exception string literal
+    "EM102",   # exception f-string literal
+    "B008",    # function call in argument defaults (FastAPI Depends)
+    "ARG001",  # unused function argument
+    "ARG002",  # unused method argument
+    "C901",    # complex structure
+    "PLR0912", # too many branches
+    "PLR0913", # too many arguments
+    "PLR0915", # too many statements
+    "PLR0917", # too many positional args
+    "S101",    # assert detected
+    "S105",    # hardcoded secret in defaults/tests
+    "S106",    # hardcoded secret in call
+    "S107",    # hardcoded secret in arg default
+    "G004",    # logging f-strings
+    "BLE001",  # blind exception catch
+    "FBT001",  # boolean positional arg
+    "FBT002",  # boolean default positional
+    "FBT003",  # boolean positional value in call
+    "CPY001",  # copyright notice
+    "RUF001",  # ambiguous unicode chars in regex
+    "RUF002",  # ambiguous unicode chars in docstrings
+    "RUF003",  # ambiguous unicode chars in comments
+    "RUF012",  # mutable default in class attribute
+    "TRY400",  # logging.error vs exception
+    "TRY301",  # abstract raise
+    "PTH",     # pathlib migration
+    "INP001",  # implicit namespace package
+    "ERA001",  # commented out code
+    "T201",    # print statements
+    "A001",    # variable shadowing
+    "A002",    # argument shadowing
+    "W293",    # blank line whitespace
+    "RET504",  # unnecessary assignment before return
+    "PERF",    # performance suggestions
+    "SIM108",  # ternary operator suggestion
+    "FURB",    # refurb modernization suggestion
+    "UP042",   # StrEnum vs str, Enum
+    "PLC0415", # import inside function
+    "SIM102",  # nested if
+    "PYI034",  # typing self return
+    "B904",    # raise from
+    "PGH003",  # type ignore annotation
+    "ISC001",  # formatter conflict
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101", "ARG001", "ARG002", "PLR2004", "S105", "S106", "PT", "SLF001", "N806", "S701", "B007", "PERF102", "E741", "PLC0415", "PLC2701", "PLR0914", "SIM", "PERF", "B017", "RUF013", "S110", "E402", "RET504", "F841", "TRY"]

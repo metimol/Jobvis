@@ -9,7 +9,7 @@ async def ask_agent(text: str) -> str:
     try:
         msg = {"role": "user", "content": text}
         response = await agent.ainvoke({"messages": [msg]})
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         logger.warning("Error calling AI in ask_agent: %s", e)
         return "ai_error"
     ai_message = response["messages"][-1]

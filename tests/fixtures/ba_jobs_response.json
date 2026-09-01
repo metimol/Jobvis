@@ -1,0 +1,133 @@
+{
+  "maxErgebnisse": 100,
+  "page": 1,
+  "size": 25,
+  "stellenangebote": [
+    {
+      "refnr": "10000-11928374-S",
+      "titel": "Python Backend Entwickler (m/w/d)",
+      "beruf": "Softwareentwickler/in",
+      "arbeitgeber": "TechVision Solutions GmbH",
+      "arbeitsort": {
+        "plz": "10115",
+        "ort": "Berlin",
+        "strasse": "Friedrichstraße 12",
+        "region": "Berlin",
+        "land": "Deutschland",
+        "koordinaten": {
+          "lat": 52.52,
+          "lon": 13.405
+        }
+      },
+      "arbeitszeit": "vz",
+      "eintrittsdatum": "2026-10-01",
+      "aktuelleVakanz": true,
+      "modifikationsTimestamp": "2026-08-25T10:00:00Z"
+    },
+    {
+      "refnr": "10000-11928375-S",
+      "titel": "Python Backend Entwickler (w/m/d)",
+      "beruf": "Softwareentwickler/in",
+      "arbeitgeber": "TechVision Solutions GmbH",
+      "arbeitsort": {
+        "plz": "10115",
+        "ort": "Berlin",
+        "strasse": "Friedrichstraße 12",
+        "region": "Berlin",
+        "land": "Deutschland",
+        "koordinaten": {
+          "lat": 52.52,
+          "lon": 13.405
+        }
+      },
+      "arbeitszeit": "vz",
+      "eintrittsdatum": "2026-10-01",
+      "aktuelleVakanz": true,
+      "modifikationsTimestamp": "2026-08-26T12:00:00Z"
+    },
+    {
+      "refnr": "10000-22839401-S",
+      "titel": "Elektroniker für Betriebstechnik (m/w/d)",
+      "beruf": "Elektroniker/in - Betriebstechnik",
+      "arbeitgeber": "Bayern Power & Automation KG",
+      "arbeitsort": {
+        "plz": "80331",
+        "ort": "München",
+        "strasse": "Industriestr. 4",
+        "region": "Bayern",
+        "land": "Deutschland",
+        "koordinaten": {
+          "lat": 48.1351,
+          "lon": 11.582
+        }
+      },
+      "arbeitszeit": "vz",
+      "eintrittsdatum": "2026-09-15",
+      "aktuelleVakanz": true,
+      "modifikationsTimestamp": "2026-08-28T08:30:00Z"
+    },
+    {
+      "refnr": "10000-33445566-S",
+      "titel": "Pflegefachkraft / Altenpfleger (m/w/d) in Teilzeit",
+      "beruf": "Pflegefachmann/-frau (Altenpflege)",
+      "arbeitgeber": "Seniorenresidenz Elbblick gGmbH",
+      "arbeitsort": {
+        "plz": "20095",
+        "ort": "Hamburg",
+        "strasse": "Hafenpromenade 88",
+        "region": "Hamburg",
+        "land": "Deutschland",
+        "koordinaten": {
+          "lat": 53.5511,
+          "lon": 9.9937
+        }
+      },
+      "arbeitszeit": "tz",
+      "eintrittsdatum": "2026-09-01",
+      "aktuelleVakanz": true,
+      "modifikationsTimestamp": "2026-08-20T14:15:00Z"
+    },
+    {
+      "refnr": "10000-44556677-S",
+      "titel": "Aushilfe / Minijob im Lager (m/w/d)",
+      "beruf": "Fachkraft - Lagerlogistik",
+      "arbeitgeber": "Logistik Express 24 GmbH",
+      "arbeitsort": {
+        "plz": "50667",
+        "ort": "Köln",
+        "strasse": "Kölner Ring 5",
+        "region": "Nordrhein-Westfalen",
+        "land": "Deutschland",
+        "koordinaten": {
+          "lat": 50.9375,
+          "lon": 6.9603
+        }
+      },
+      "arbeitszeit": "mj",
+      "eintrittsdatum": "2026-09-10",
+      "aktuelleVakanz": true,
+      "modifikationsTimestamp": "2026-08-22T09:00:00Z"
+    },
+    {
+      "refnr": "10000-55667788-S",
+      "titel": "Kundenservice Mitarbeiter / Call Center Agent (m/w/d)",
+      "beruf": "Callcenteragent/in",
+      "arbeitgeber": "Global Dialogue Communications",
+      "arbeitsort": {
+        "plz": "60311",
+        "ort": "Frankfurt am Main",
+        "strasse": "Zeil 45",
+        "region": "Hessen",
+        "land": "Deutschland",
+        "koordinaten": {
+          "lat": 50.1109,
+          "lon": 8.6821
+        }
+      },
+      "arbeitszeit": "vz",
+      "eintrittsdatum": "2026-10-15",
+      "aktuelleVakanz": true,
+      "modifikationsTimestamp": "2026-08-29T11:45:00Z"
+    }
+  ]
+}

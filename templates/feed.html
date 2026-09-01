@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+
+{% block title %}{{ t.get('feed_title', 'Matched Opportunities') }} — Jobvis{% endblock %}
+
+{% block head_extra %}
+<style>
+  .feed-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+  .feed-controls {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+  }
+  .filter-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+    color: var(--text-muted);
+    padding: 0.4rem 0.9rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .filter-btn.active, .filter-btn:hover {
+    background: rgba(56, 189, 248, 0.15);
+    color: var(--accent);
+    border-color: rgba(56, 189, 248, 0.3);
+  }
+  .feed-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+  .job-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 1.75rem;
+    transition: transform 0.2s ease, border-color 0.2s ease;
+    position: relative;
+  }
+  .job-card:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+  .job-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+  .job-title {
+    font-size: 1.35rem;
+    font-weight: 700;
+    margin: 0 0 0.4rem 0;
+    color: var(--text-main);
+  }
+  .job-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    align-items: center;
+  }
+  .ai-reasoning-box {
+    background: rgba(56, 189, 248, 0.06);
+    border-left: 3px solid var(--accent);
+    padding: 0.85rem 1.25rem;
+    border-radius: 0 8px 8px 0;
+    margin: 1.25rem 0;
+    font-size: 0.9rem;
+    color: #e2e8f0;
+    line-height: 1.5;
+  }
+  .job-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1.25rem;
+    border-top: 1px solid var(--border-color);
+    padding-top: 1rem;
+  }
+  .empty-state {
+    text-align: center;
+    padding: 5rem 1.5rem;
+    background: var(--bg-card);
+    border-radius: 16px;
+    border: 1px solid var(--border-color);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="main-container">
+  <div class="feed-header">
+    <div>
+      <h1 style="font-size: 2rem; font-weight: 800; margin: 0 0 0.35rem 0;">{{ t.get('feed_title', 'Matched Opportunities') }}</h1>
+      <p style="color: var(--text-muted); margin: 0;">AI-analyzed positions from Bundesagentur für Arbeit tailored to your CV.</p>
+    </div>
+
+    <div class="feed-controls">
+      <button class="filter-btn active" onclick="loadFeed(null, this)">All</button>
+      <button class="filter-btn" onclick="loadFeed('new', this)">New</button>
+      <button class="filter-btn" onclick="loadFeed('saved', this)">Saved</button>
+    </div>
+  </div>
+
+  <div id="feedContainer" class="feed-list">
+    <div style="text-align: center; padding: 3rem; color: var(--text-muted);">Loading matched opportunities...</div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+  let currentStatusFilter = null;
+
+  async function loadFeed(statusFilter, btnElem) {
+    if (btnElem) {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btnElem.classList.add('active');
+    }
+    currentStatusFilter = statusFilter;
+
+    const container = document.getElementById('feedContainer');
+    let url = '/api/feed?size=50';
+    if (statusFilter) url += `&status=${encodeURIComponent(statusFilter)}`;
+
+    try {
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error('Failed to load feed');
+      const data = await resp.json();
+
+      if (!data.items || data.items.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="color: var(--text-muted); margin-bottom: 1rem;">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 14.15v4.25c0 1.094-.787 2.036-1.872 2.18-2.087.277-4.216.42-6.378.42s-4.291-.143-6.378-.42c-1.085-.144-1.872-1.086-1.872-2.18v-4.25m16.5 0a2.18 2.18 0 0 0 .75-1.661V8.706c0-1.081-.768-2.015-1.837-2.175a48.114 48.114 0 0 0-3.413-.387m4.5 8.006c-.194.165-.42.295-.673.38A23.978 23.978 0 0 1 12 15.75c-2.648 0-5.195-.429-7.577-1.22a2.016 2.016 0 0 1-.673-.38m0 0A2.18 2.18 0 0 1 3 12.489V8.706c0-1.081.768-2.015 1.837-2.175a48.111 48.111 0 0 1 3.413-.387m7.5 0V5.25A2.25 2.25 0 0 0 13.5 3h-3a2.25 2.25 0 0 0-2.25 2.25v.894m7.5 0a48.667 48.667 0 0 0-7.5 0"/>
+            </svg>
+            <h3 style="font-size: 1.25rem; margin-bottom: 0.5rem;">{{ t.get('feed_title', 'No matches found yet') }}</h3>
+            <p style="color: var(--text-muted); max-width: 500px; margin: 0 auto 1.5rem;">{{ t.get('feed_empty', 'No job recommendations yet. Upload your CV and set preferences to start receiving twice-daily matches.') }}</p>
+            <a href="/profile" class="btn btn-primary">{{ t.get('upload_cv', 'Upload CV & Preferences') }}</a>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = data.items.map(item => `
+        <div class="job-card" id="match-${item.id}">
+          <div class="job-card-top">
+            <div>
+              <h2 class="job-title">${escapeHtml(item.title)}</h2>
+              <div class="job-meta">
+                <span>🏢 ${escapeHtml(item.employer || 'Bundesagentur Listing')}</span>
+                <span>📍 ${escapeHtml(item.location || 'Deutschland')}</span>
+                ${item.working_time ? `<span class="badge" style="background: rgba(255,255,255,0.08);">${escapeHtml(item.working_time)}</span>` : ''}
+              </div>
+            </div>
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+              <span class="badge badge-cefr">CEFR</span>
+              <span class="badge badge-score">${Math.round(item.score)}%</span>
+            </div>
+          </div>
+
+          <div class="ai-reasoning-box">
+            <strong>🤖 AI Match Rationale:</strong> ${escapeHtml(item.match_reason || 'Good alignment with your professional qualifications.')}
+          </div>
+
+          <div class="job-actions">
+            <div>
+              <button class="btn btn-outline" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;" onclick="updateStatus('${item.id}', '${item.status === 'saved' ? 'new' : 'saved'}')">
+                ${item.status === 'saved' ? '★ Saved' : '☆ {{ t.get("mark_saved", "Save") }}'}
+              </button>
+              <button class="btn btn-outline" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; color: var(--text-muted);" onclick="updateStatus('${item.id}', 'dismissed')">
+                ✕ {{ t.get("mark_dismissed", "Dismiss") }}
+              </button>
+            </div>
+            ${item.external_url ? `
+              <a href="${escapeHtml(item.external_url)}" target="_blank" rel="noopener noreferrer" class="btn btn-primary" style="padding: 0.4rem 1rem; font-size: 0.85rem;">
+                {{ t.get("view_on_jobboerse", "View on Arbeitsagentur") }} ↗
+              </a>
+            ` : ''}
+          </div>
+        </div>
+      `).join('');
+
+    } catch (err) {
+      container.innerHTML = `<div style="color: var(--danger); text-align: center; padding: 2rem;">Error loading feed: ${err.message}</div>`;
+    }
+  }
+
+  async function updateStatus(matchId, newStatus) {
+    try {
+      const resp = await fetch(`/api/feed/${matchId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      });
+      if (resp.ok) {
+        if (newStatus === 'dismissed') {
+          const card = document.getElementById(`match-${matchId}`);
+          if (card) card.remove();
+        } else {
+          loadFeed(currentStatusFilter);
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  document.addEventListener('DOMContentLoaded', () => loadFeed(null));
+</script>
+{% endblock %}

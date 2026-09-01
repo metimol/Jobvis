@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block title %}{{ t.get('settings_title', 'Settings') }} — Jobvis{% endblock %}
+
+{% block head_extra %}
+<style>
+  .settings-layout {
+    max-width: 700px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+  }
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 2rem;
+  }
+  .card h2 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin: 0 0 1.25rem 0;
+  }
+  .danger-card {
+    border-color: rgba(239, 68, 68, 0.3);
+    background: rgba(239, 68, 68, 0.03);
+  }
+  .danger-card h2 {
+    color: var(--danger);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="main-container">
+  <div class="settings-layout">
+    <div>
+      <h1 style="font-size: 2rem; font-weight: 800; margin: 0 0 0.35rem 0;">{{ t.get('settings_title', 'Account & Language Settings') }}</h1>
+      <p style="color: var(--text-muted); margin: 0;">Manage your application language, reset job filters, or delete your account.</p>
+    </div>
+
+    <!-- UI Language Setting -->
+    <div class="card">
+      <h2>{{ t.get('ui_language', 'Interface Language') }}</h2>
+      <div style="display: flex; gap: 1rem; align-items: center;">
+        <select id="settingsLangSelect" class="form-control" style="max-width: 250px;" onchange="updateSettingsLanguage(this.value)">
+          <option value="de" {% if lang == 'de' %}selected{% endif %}>Deutsch (DE)</option>
+          <option value="en" {% if lang == 'en' %}selected{% endif %}>English (EN)</option>
+          <option value="uk" {% if lang == 'uk' %}selected{% endif %}>Українська (UK)</option>
+          <option value="ru" {% if lang == 'ru' %}selected{% endif %}>Русский (RU)</option>
+        </select>
+        <span id="langSaveStatus" style="font-size: 0.85rem; color: var(--success);"></span>
+      </div>
+    </div>
+
+    <!-- Reset Preferences -->
+    <div class="card">
+      <h2>{{ t.get('reset_choices', 'Reset Profile & Preferences') }}</h2>
+      <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.25rem;">
+        Resets your job type, location, and language filters back to default values, and clears previous CV analysis history.
+      </p>
+      <button class="btn btn-outline" onclick="resetUserPreferences()">{{ t.get('reset_choices', 'Reset to Defaults') }}</button>
+      <span id="resetStatus" style="margin-left: 1rem; font-size: 0.85rem;"></span>
+    </div>
+
+    <!-- Danger Zone: Account Deletion -->
+    <div class="card danger-card">
+      <h2>{{ t.get('danger_zone', 'Danger Zone') }} — {{ t.get('delete_account', 'Delete Account') }}</h2>
+      <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.25rem;">
+        Permanently delete your account, saved preferences, uploaded CVs, and all matching history. This action cannot be undone (GDPR compliant).
+      </p>
+      <button class="btn" style="background: var(--danger); color: #fff;" onclick="deleteUserAccount()">
+        {{ t.get('delete_account', 'Permanently Delete Account') }}
+      </button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+  async function updateSettingsLanguage(newLang) {
+    const statusSpan = document.getElementById('langSaveStatus');
+    try {
+      const resp = await fetch('/api/settings/language', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ui_language: newLang })
+      });
+      if (resp.ok) {
+        statusSpan.textContent = 'Saved! Reloading...';
+        setTimeout(() => window.location.reload(), 600);
+      }
+    } catch (e) {
+      statusSpan.textContent = 'Failed to save';
+    }
+  }
+
+  async function resetUserPreferences() {
+    if (!confirm('Are you sure you want to reset all preferences to default values?')) return;
+    const statusSpan = document.getElementById('resetStatus');
+    statusSpan.textContent = 'Resetting...';
+
+    try {
+      const resp = await fetch('/api/settings/reset', { method: 'POST' });
+      if (resp.ok) {
+        statusSpan.style.color = 'var(--success)';
+        statusSpan.textContent = 'Preferences successfully reset!';
+        setTimeout(() => window.location.href = '/profile', 1000);
+      }
+    } catch (e) {
+      statusSpan.style.color = 'var(--danger)';
+      statusSpan.textContent = 'Failed to reset preferences';
+    }
+  }
+
+  async function deleteUserAccount() {
+    const confirmation = prompt('Type "DELETE" to confirm permanent account deletion:');
+    if (confirmation !== 'DELETE') {
+      alert('Deletion cancelled.');
+      return;
+    }
+
+    try {
+      const resp = await fetch('/api/settings/delete-account', { method: 'POST' });
+      if (resp.ok) {
+        alert('Your account and all associated data have been permanently deleted.');
+        window.location.href = '/';
+      } else {
+        alert('Failed to delete account.');
+      }
+    } catch (e) {
+      alert('Error connecting to server.');
+    }
+  }
+</script>
+{% endblock %}

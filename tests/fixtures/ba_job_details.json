@@ -1,0 +1,37 @@
+{
+  "refnr": "10000-11928374-S",
+  "titel": "Python Backend Entwickler (m/w/d)",
+  "beruf": "Softwareentwickler/in",
+  "arbeitgeber": "TechVision Solutions GmbH",
+  "arbeitsort": {
+    "plz": "10115",
+    "ort": "Berlin",
+    "strasse": "Friedrichstraße 12",
+    "region": "Berlin",
+    "land": "Deutschland",
+    "koordinaten": {
+      "lat": 52.52,
+      "lon": 13.405
+    }
+  },
+  "arbeitszeit": "vz",
+  "beschreibung": "Wir suchen einen erfahrenen Python Backend Entwickler zur Unterstützung unseres Plattform-Teams in Berlin. Aufgaben umfassen den Entwurf von REST APIs mit FastAPI, die Anbindung von SQL-Datenbanken und die Integration von KI-Diensten. Anforderungen: Fundierte Kenntnisse in Python 3, Docker, FastAPI. Gute Deutschkenntnisse (mindestens B2) und fließendes Englisch.",
+  "anforderungen": {
+    "sprachkenntnisse": [
+      {
+        "sprache": "Deutsch",
+        "auspraegung": "B2 - Verhandlungssicher / Selbstständige Sprachverwendung"
+      },
+      {
+        "sprache": "Englisch",
+        "auspraegung": "B2 - Gut"
+      }
+    ],
+    "berufserfahrung": "Mindestens 2 Jahre in Backend-Entwicklung",
+    "bildungsabschluss": "Bachelor Informatik oder vergleichbare Qualifikation"
+  },
+  "verguetung": "60.000 - 75.000 EUR / Jahr",
+  "eintrittsdatum": "2026-10-01",
+  "befristung": "Unbefristet",
+  "externeUrl": "https://techvision-solutions.example.com/careers/backend-dev-11928"
+}

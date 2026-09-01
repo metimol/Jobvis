@@ -1,0 +1,230 @@
+{% extends "base.html" %}
+
+{% block title %}{{ t.get('nav_profile', 'Profile & CV') }} — Jobvis{% endblock %}
+
+{% block head_extra %}
+<style>
+  .profile-layout {
+    display: grid;
+    grid-template-columns: 1fr 1.2fr;
+    gap: 2rem;
+  }
+  @media (max-width: 860px) {
+    .profile-layout {
+      grid-template-columns: 1fr;
+    }
+  }
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 2rem;
+  }
+  .card h2 {
+    font-size: 1.35rem;
+    font-weight: 700;
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+  }
+  .form-group {
+    margin-bottom: 1.25rem;
+  }
+  .form-label {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--text-main);
+  }
+  .form-control {
+    width: 100%;
+    padding: 0.65rem 0.9rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-main);
+    font-size: 0.95rem;
+    box-sizing: border-box;
+  }
+  .form-control:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+  .upload-dropzone {
+    border: 2px dashed rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+    padding: 2rem 1.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: rgba(255, 255, 255, 0.02);
+  }
+  .upload-dropzone:hover {
+    border-color: var(--accent);
+    background: rgba(56, 189, 248, 0.04);
+  }
+  .skills-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+  }
+  .skill-tag {
+    background: rgba(56, 189, 248, 0.12);
+    color: var(--accent);
+    padding: 0.3rem 0.65rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 500;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="main-container">
+  <div style="margin-bottom: 2rem;">
+    <h1 style="font-size: 2rem; font-weight: 800; margin: 0 0 0.5rem 0;">{{ t.get('nav_profile', 'Candidate Profile & CV') }}</h1>
+    <p style="color: var(--text-muted); margin: 0;">Configure your job search preferences and upload your resume for twice-daily AI matching.</p>
+  </div>
+
+  <div class="profile-layout">
+    <!-- CV Upload & Analysis Card -->
+    <div class="card">
+      <h2>{{ t.get('upload_cv', 'Upload CV Document') }}</h2>
+
+      <div class="upload-dropzone" onclick="document.getElementById('cvFileInput').click()">
+        <svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="color: var(--accent); margin-bottom: 0.75rem;">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0 3 3m-3-3-3 3M6.75 19.5a4.5 4.5 0 0 1-1.41-8.775 5.25 5.25 0 0 1 10.233-2.33 3 3 0 0 1 3.758 3.848A3.752 3.752 0 0 1 18 19.5H6.75Z"/>
+        </svg>
+        <p style="margin: 0 0 0.25rem 0; font-weight: 600;">Click to select CV document</p>
+        <p style="margin: 0; color: var(--text-muted); font-size: 0.85rem;">Supported formats: PDF, DOCX, TXT (Max 10MB)</p>
+        <input type="file" id="cvFileInput" style="display: none;" accept=".pdf,.docx,.txt" onchange="uploadCvFile(this.files[0])">
+      </div>
+      <div id="uploadStatus" style="margin-top: 1rem; font-size: 0.9rem;"></div>
+
+      <!-- CV Analysis Extracted Summary -->
+      {% if cv_analysis %}
+        <div style="margin-top: 2rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
+          <h3 style="font-size: 1.1rem; margin-bottom: 1rem;">Extracted Profile Analysis</h3>
+          <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+            <strong>Experience:</strong> {{ cv_analysis.experience_years }} years
+          </p>
+          <div style="margin-top: 0.75rem;">
+            <strong style="font-size: 0.9rem;">Detected Competencies:</strong>
+            <div class="skills-tags">
+              {% for s in cv_analysis.skills %}
+                <span class="skill-tag">{{ s }}</span>
+              {% else %}
+                <span style="color: var(--text-muted); font-size: 0.85rem;">No specific skills detected yet.</span>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Job Preferences Form Card -->
+    <div class="card">
+      <h2>{{ t.get('save_profile', 'Job Search Preferences') }}</h2>
+
+      <form id="profileForm" onsubmit="saveProfile(event)">
+        <div class="form-group">
+          <label class="form-label">{{ t.get('desired_job_type', 'Desired Job Type') }}</label>
+          <select id="desiredJobType" class="form-control">
+            <option value="all" {% if profile and profile.desired_job_type == 'all' %}selected{% endif %}>{{ t.get('all_job_types', 'All Employment Types') }}</option>
+            <option value="vz" {% if profile and profile.desired_job_type == 'vz' %}selected{% endif %}>{{ t.get('full_time', 'Full Time (Vollzeit)') }}</option>
+            <option value="tz" {% if profile and profile.desired_job_type == 'tz' %}selected{% endif %}>{{ t.get('part_time', 'Part Time (Teilzeit)') }}</option>
+            <option value="mj" {% if profile and profile.desired_job_type == 'mj' %}selected{% endif %}>{{ t.get('minijob', 'Minijob (Geringfügig)') }}</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">{{ t.get('german_level', 'German Proficiency (CEFR)') }}</label>
+          <select id="germanLevel" class="form-control">
+            <option value="A2" {% if profile and profile.german_level == 'A2' %}selected{% endif %}>A2 — Basic German</option>
+            <option value="B1" {% if profile and profile.german_level == 'B1' %}selected{% endif %}>B1 — Intermediate German</option>
+            <option value="B2" {% if profile and profile.german_level == 'B2' %}selected{% endif %}>B2 — Professional Working German</option>
+            <option value="C1" {% if profile and profile.german_level == 'C1' %}selected{% endif %}>C1 — Advanced / Fluent German</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">{{ t.get('location', 'Location / City') }}</label>
+          <input type="text" id="locationInput" class="form-control" placeholder="e.g. Berlin, München, Köln" value="{{ profile.location or '' if profile else '' }}">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">{{ t.get('radius', 'Search Radius') }}: <span id="radiusValue">{{ profile.radius_km if profile else 25 }}</span> km</label>
+          <input type="range" id="radiusInput" min="5" max="200" step="5" class="form-control" style="padding: 0;" value="{{ profile.radius_km if profile else 25 }}" oninput="document.getElementById('radiusValue').textContent = this.value">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">{{ t.get('career_goals', 'Career Goals & Preferred Roles') }}</label>
+          <textarea id="goalsInput" class="form-control" rows="3" placeholder="Describe the roles or industries you are targeting...">{{ profile.goals or '' if profile else '' }}</textarea>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%;">{{ t.get('save_profile', 'Save Profile Preferences') }}</button>
+        <div id="saveStatus" style="margin-top: 1rem; font-size: 0.9rem; text-align: center;"></div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+  async function uploadCvFile(file) {
+    if (!file) return;
+    const statusDiv = document.getElementById('uploadStatus');
+    statusDiv.innerHTML = '<span style="color: var(--accent);">Uploading & analyzing CV...</span>';
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const resp = await fetch('/api/profile/cv', {
+        method: 'POST',
+        body: formData
+      });
+      if (resp.ok) {
+        statusDiv.innerHTML = '<span style="color: var(--success);">CV successfully analyzed! Reloading...</span>';
+        setTimeout(() => window.location.reload(), 1000);
+      } else {
+        const err = await resp.json();
+        statusDiv.innerHTML = `<span style="color: var(--danger);">Upload error: ${err.detail || 'Failed to process CV'}</span>`;
+      }
+    } catch (e) {
+      statusDiv.innerHTML = `<span style="color: var(--danger);">Network error: ${e.message}</span>`;
+    }
+  }
+
+  async function saveProfile(e) {
+    e.preventDefault();
+    const statusDiv = document.getElementById('saveStatus');
+    statusDiv.innerHTML = '<span style="color: var(--accent);">Saving preferences...</span>';
+
+    const payload = {
+      desired_job_type: document.getElementById('desiredJobType').value,
+      german_level: document.getElementById('germanLevel').value,
+      location: document.getElementById('locationInput').value || null,
+      radius_km: parseInt(document.getElementById('radiusInput').value, 10),
+      goals: document.getElementById('goalsInput').value || null
+    };
+
+    try {
+      const resp = await fetch('/api/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (resp.ok) {
+        statusDiv.innerHTML = '<span style="color: var(--success);">Preferences saved successfully!</span>';
+      } else {
+        statusDiv.innerHTML = '<span style="color: var(--danger);">Failed to save preferences.</span>';
+      }
+    } catch (err) {
+      statusDiv.innerHTML = `<span style="color: var(--danger);">Network error: ${err.message}</span>`;
+    }
+  }
+</script>
+{% endblock %}

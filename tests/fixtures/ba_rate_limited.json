@@ -1,0 +1,5 @@
+{
+  "error": "Too Many Requests",
+  "message": "Rate limit exceeded. Please retry after 60 seconds.",
+  "status": 429
+}

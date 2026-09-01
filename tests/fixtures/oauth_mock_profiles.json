@@ -1,0 +1,70 @@
+{
+  "google": {
+    "valid_token_response": {
+      "access_token": "mock_google_access_token_123456789",
+      "token_type": "Bearer",
+      "expires_in": 3599,
+      "id_token": "mock_google_jwt_id_token",
+      "scope": "openid email profile"
+    },
+    "user_profile": {
+      "sub": "google-user-id-998877",
+      "name": "Oleksandr Petrenko",
+      "given_name": "Oleksandr",
+      "family_name": "Petrenko",
+      "picture": "https://lh3.googleusercontent.com/a/mock-avatar-oleksandr",
+      "email": "oleksandr.petrenko@example.com",
+      "email_verified": true,
+      "locale": "uk"
+    },
+    "unverified_email_profile": {
+      "sub": "google-unverified-112233",
+      "name": "Unverified User",
+      "picture": "https://lh3.googleusercontent.com/a/unverified",
+      "email": "unverified@example.com",
+      "email_verified": false
+    }
+  },
+  "github": {
+    "valid_token_response": {
+      "access_token": "gho_mock_github_access_token_abcdef123456",
+      "token_type": "bearer",
+      "scope": "user:email,read:user"
+    },
+    "user_profile": {
+      "id": 88776655,
+      "login": "markus-meier-dev",
+      "name": "Markus Meier",
+      "avatar_url": "https://avatars.githubusercontent.com/u/88776655?v=4",
+      "email": "markus.meier@example.de",
+      "bio": "Industrial automation and python enthusiast"
+    },
+    "user_profile_private_email": {
+      "id": 55443322,
+      "login": "private-dev-user",
+      "name": "Private Dev",
+      "avatar_url": "https://avatars.githubusercontent.com/u/55443322?v=4",
+      "email": null
+    },
+    "user_emails_response": [
+      {
+        "email": "private.backup@example.com",
+        "primary": false,
+        "verified": true,
+        "visibility": null
+      },
+      {
+        "email": "private.primary@example.com",
+        "primary": true,
+        "verified": true,
+        "visibility": "public"
+      },
+      {
+        "email": "unverified@example.com",
+        "primary": false,
+        "verified": false,
+        "visibility": null
+      }
+    ]
+  }
+}
