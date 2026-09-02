@@ -251,7 +251,9 @@ class OAuthService:
                 await db.flush()
 
         # 3. If user still doesn't exist, create fresh User along with Profile and Settings
+        is_new_user = False
         if not user:
+            is_new_user = True
             user = User(
                 email=str(oauth_info.email),
                 name=oauth_info.name,
@@ -288,6 +290,18 @@ class OAuthService:
 
         await db.commit()
         await db.refresh(user)
+
+        # Trigger immediate job search & matching sync for new user
+        if is_new_user:
+            try:
+                from app.services.scheduler import scheduler_service
+
+                await scheduler_service.run_sync_for_user(user.id, db)
+            except Exception as sync_err:
+                logger.warning(
+                    "Initial matching sync for new user %s failed: %s", user.id, sync_err
+                )
+
         return user
 
 

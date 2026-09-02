@@ -1,127 +1,122 @@
 /* ============================================================================
- * Vayra — token bridge
+ * Velar Design System — Token Bridge (Strawberry Candy Theme)
  *
- * What it does: the components in this template read a set of generic CSS
- * variables (--color-bg-primary, --color-text-primary, --color-accent and so on).
- * This file is the one place where those names are pointed at the Vayra tokens.
- *
- * How to retheme: change the values in this file. Do not write colours, fonts or
- * easings directly inside a component stylesheet — if you do, this file stops being
- * the single switch and the next change has to be made in two places.
+ * Implements Google Fonts (Fraunces & Inter) and the 11-step Strawberry
+ * candy color palette for Jobvis.
  * ============================================================================ */
 
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Inter:wght@300;400;500;600;700;800&display=swap');
+
 :root {
-  /* ── Palette. These five colours are the whole set ─────────────────────────── */
-  --vy-bg-primary: #0A0A0B;
-  --vy-bg-secondary: #141416;
-  --vy-text-primary: #F4F4F5;
-  --vy-text-secondary: #8A8A90;
-  --vy-accent: #F4F4F5;          /* No chromatic accent. That is deliberate: the generated images are the only colour on screen. */
+  /* ── Velar 11-Step Strawberry Candy Color Palette ──────────────────────────── */
+  --strawberry-50:  #FFF5F7;  /* Lightest cream/pink tint */
+  --strawberry-100: #FFE4EB;  /* Light pink background / high contrast text */
+  --strawberry-200: #FFCDD8;  /* Soft berry border / subtext */
+  --strawberry-300: #FFA8BC;  /* Muted pink accent / secondary text */
+  --strawberry-400: #FF7A9C;  /* Candy highlight / hover glow / active border */
+  --strawberry-500: #F9577F;  /* Primary Strawberry brand color */
+  --strawberry-600: #E63D6A;  /* Primary hover / gradient middle */
+  --strawberry-700: #C42855;  /* Deep crimson / button active */
+  --strawberry-800: #9C1F44;  /* Dark berry surface accent */
+  --strawberry-900: #6E1531;  /* Deep wine card tint */
+  --strawberry-950: #420A1D;  /* Darkest midnight berry background */
 
-  /* Alpha derivatives of the five above. No new hue is introduced. */
-  --vy-line: rgba(244, 244, 245, 0.12);
-  --vy-line-soft: rgba(244, 244, 245, 0.06);
-  --vy-ink-55: rgba(244, 244, 245, 0.55);
-  --vy-scrim: rgba(10, 10, 11, 0.72);
+  /* ── Typography Tokens ─────────────────────────────────────────────────────── */
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
-  /* ── Type ────────────────────────────────────────────────────────────────── */
-  --vy-font-display: "Plus Jakarta Sans", system-ui, sans-serif;
-  --vy-font-body: "Plus Jakarta Sans", system-ui, sans-serif;
-  --vy-font-mono: "JetBrains Mono", ui-monospace, monospace;   /* Labels and numbers */
+  /* Legacy & Vayra component font mappings */
+  --vy-font-display: var(--font-display);
+  --vy-font-body: var(--font-sans);
+  --vy-font-mono: var(--font-mono);
+  --font-family-display: var(--font-display);
+  --font-family-body: var(--font-sans);
+  --font-family-accent: var(--font-mono);
 
-  /* ── Motion (one signature curve, mirrored in CSS) ────────────────────────── */
-  --vy-ease: cubic-bezier(0.16, 1, 0.3, 1);   /* ≒ gsap expo.out */
-  --vy-dur-hero: 1.2s;
-  --vy-dur-section: 0.8s;
-  --vy-dur-micro: 0.3s;
+  /* ── Semantic Background & Surface Colors ──────────────────────────────────── */
+  --bg-dark: #0d0407;
+  --bg-surface: #17070e;
+  --bg-card: rgba(28, 10, 18, 0.85);
+  --bg-card-hover: rgba(42, 14, 27, 0.92);
+  --bg-input: rgba(255, 245, 247, 0.05);
 
-  /* ── Layout ──────────────────────────────────────────────────────────────── */
-  --vy-radius: 4px;              /* Radius is 0 or 4. Pill shapes (999) are not used anywhere. */
-  --vy-container: 1440px;
-  --vy-col-gap: 24px;
-  --vy-section-sm: 96px;
-  --vy-section-lg: 180px;
+  /* ── Semantic Borders & Outlines ───────────────────────────────────────────── */
+  --border-color: rgba(255, 122, 156, 0.16);
+  --border-card: rgba(255, 122, 156, 0.22);
+  --border-focus: var(--strawberry-400);
 
-  /* ══════════════════════════════════════════════════════════════════════════
-   * Component variables mapped onto the palette above.
-   * The component stylesheets read only these names.
-   * ══════════════════════════════════════════════════════════════════════════ */
+  /* ── Semantic Text & Contrast Colors ───────────────────────────────────────── */
+  --text-main: var(--strawberry-50);
+  --text-body: var(--strawberry-100);
+  --text-muted: var(--strawberry-300);
+  --text-dim: rgba(255, 168, 188, 0.65);
 
-  /* Shared by every component */
+  /* ── Brand & Interactive State Tokens ──────────────────────────────────────── */
+  --primary: var(--strawberry-500);
+  --primary-hover: var(--strawberry-600);
+  --primary-active: var(--strawberry-700);
+  --primary-gradient: linear-gradient(135deg, #F9577F 0%, #E63D6A 50%, #C42855 100%);
+  --candy-gradient: linear-gradient(135deg, #FFF5F7 0%, #FFA8BC 45%, #F9577F 100%);
+  --glow-strawberry: 0 0 20px rgba(249, 87, 127, 0.35);
+
+  --accent: var(--strawberry-400);
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #f43f5e;
+
+  /* ── Vayra Legacy Token Compatibility Mappings ─────────────────────────────── */
+  --vy-bg-primary: var(--bg-dark);
+  --vy-bg-secondary: var(--bg-surface);
+  --vy-text-primary: var(--text-main);
+  --vy-text-secondary: var(--text-muted);
+  --vy-accent: var(--strawberry-400);
+  --vy-line: var(--border-color);
+  --vy-line-soft: rgba(255, 122, 156, 0.08);
+  --vy-ink-55: rgba(255, 245, 247, 0.55);
+  --vy-scrim: rgba(13, 4, 7, 0.75);
+
   --color-bg-primary: var(--vy-bg-primary);
   --color-bg-secondary: var(--vy-bg-secondary);
   --color-text-primary: var(--vy-text-primary);
   --color-text-secondary: var(--vy-text-secondary);
   --color-accent: var(--vy-accent);
   --color-line: var(--vy-line);
-
-  /* Used by the hero, nav and cursor components */
   --color-bg: var(--vy-bg-primary);
   --color-text: var(--vy-text-primary);
   --color-text-dim: var(--vy-text-secondary);
   --color-ink-55: var(--vy-ink-55);
   --color-line-soft: var(--vy-line-soft);
   --color-scrim: var(--vy-scrim);
-  --ink-invert: brightness(0) invert(1);
-  --font-family-display: var(--vy-font-display);
-  --font-family-body: var(--vy-font-body);
-  --font-family-accent: var(--vy-font-mono);
+  --color-bg-deep: var(--vy-bg-primary);
+  --color-line-deep: var(--vy-line-soft);
+  --color-text-muted: var(--vy-text-secondary);
+  --color-invert: var(--vy-bg-primary);
+
+  /* ── Motion Tokens ─────────────────────────────────────────────────────────── */
+  --vy-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --vy-dur-hero: 1.2s;
+  --vy-dur-section: 0.8s;
+  --vy-dur-micro: 0.3s;
   --ease-primary: var(--vy-ease);
   --duration-fast: var(--vy-dur-micro);
   --duration-normal: var(--vy-dur-section);
   --duration-snap: 0.18s;
 
-  /* Used by the archive, gate and footer components */
-  --color-bg-deep: var(--vy-bg-primary);
-  --color-line-deep: var(--vy-line-soft);
-  --color-text-muted: var(--vy-text-secondary);
-  --color-invert: var(--vy-bg-primary);
-  --font-display: var(--vy-font-display);
-  --font-body: var(--vy-font-body);
+  /* ── Layout & Radii ────────────────────────────────────────────────────────── */
+  --vy-radius: 12px;
+  --vy-container: 1440px;
+  --vy-col-gap: 24px;
+  --vy-section-sm: 96px;
+  --vy-section-lg: 180px;
   --container: var(--vy-container);
   --col-gap: var(--vy-col-gap);
-
-  /* ── Intensity. The effects stay, turned down ─────────────────────────────── */
-  --cursor-ring-size: 28px;            /* Smaller than the stock value */
-  --cursor-ring-rest-scale: 0.55;      /* Idle scale of the cursor ring. Raise it and the ring gets more assertive. */
-  --cursor-label-enter-duration: 0.22s;
-  --cursor-label-exit-duration: 0.16s;
-  --cursor-label-ease: var(--vy-ease);
-
-  /* Pixel curtain: short, and it plays once */
-  --pt-bg: var(--vy-bg-primary);
-  --pt-depth: 48vh;                    /* Reduced from 60vh */
-  --pt-top: -102%;
-  --pt-bottom: 102%;
 }
 
-/* Cursor off switch. Put data-vy-cursor="off" on <html> or <body> and the custom
-   cursor disappears and the system cursor comes back. */
-html[data-vy-cursor="off"] #vy-probe-bead,
-html[data-vy-cursor="off"] #vy-probe-halo,
-body[data-vy-cursor="off"] #vy-probe-bead,
-body[data-vy-cursor="off"] #vy-probe-halo {
-  display: none !important;
-}
-html[data-vy-cursor="off"] body,
-body[data-vy-cursor="off"] {
-  cursor: auto;
-}
-
-/* Reduced motion preference */
 @media (prefers-reduced-motion: reduce) {
   :root {
     --vy-dur-hero: 0.01s;
     --vy-dur-section: 0.01s;
     --vy-dur-micro: 0.01s;
   }
-}
-
-/* Manual motion switch: same result as the OS setting, chosen in the markup.
-   It has to sit outside the media query, or it would only work while the OS setting is on. */
-html[data-vy-motion="off"],
-body[data-vy-motion="off"] {
-  --vy-dur-hero: 0.01s;
-  --vy-dur-section: 0.01s;
-  --vy-dur-micro: 0.01s;
 }

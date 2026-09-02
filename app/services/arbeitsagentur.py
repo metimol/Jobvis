@@ -221,7 +221,6 @@ class ArbeitsagenturClient:
             raise ArbeitsagenturAPIError(f"Request failed: {last_error}") from last_error
         raise ArbeitsagenturAPIError(f"Request to {url} failed.")
 
-    # TODO: First job search should be done immediately after account creation or updating
     async def search_jobs(
         self,
         query: str = "",

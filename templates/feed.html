@@ -8,91 +8,120 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 2rem;
+    margin-bottom: 2.25rem;
     flex-wrap: wrap;
-    gap: 1rem;
+    gap: 1.25rem;
   }
   .feed-controls {
     display: flex;
-    gap: 1rem;
+    gap: 0.75rem;
     align-items: center;
   }
   .filter-btn {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--border-color);
-    color: var(--text-muted);
-    padding: 0.4rem 0.9rem;
-    border-radius: 6px;
-    font-size: 0.85rem;
+    background: rgba(255, 245, 247, 0.04);
+    border: 1px solid var(--border-card);
+    color: var(--strawberry-300);
+    padding: 0.5rem 1.15rem;
+    border-radius: 10px;
+    font-size: 0.875rem;
+    font-family: var(--font-sans);
+    font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.25s ease;
   }
-  .filter-btn.active, .filter-btn:hover {
-    background: rgba(56, 189, 248, 0.15);
-    color: var(--accent);
-    border-color: rgba(56, 189, 248, 0.3);
+  .filter-btn.active {
+    background: var(--primary-gradient);
+    color: #ffffff;
+    border-color: transparent;
+    box-shadow: 0 3px 12px rgba(249, 87, 127, 0.35);
+  }
+  .filter-btn:not(.active):hover {
+    background: rgba(255, 122, 156, 0.1);
+    color: var(--strawberry-50);
+    border-color: var(--strawberry-400);
   }
   .feed-list {
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
+    gap: 1.75rem;
   }
   .job-card {
     background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    border-radius: 14px;
-    padding: 1.75rem;
-    transition: transform 0.2s ease, border-color 0.2s ease;
+    border: 1px solid var(--border-card);
+    border-radius: 18px;
+    padding: 2rem 2.25rem;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    box-shadow: 0 10px 32px -8px rgba(0, 0, 0, 0.5);
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     position: relative;
+    overflow: hidden;
   }
   .job-card:hover {
-    border-color: rgba(255, 255, 255, 0.2);
+    border-color: var(--strawberry-400);
+    box-shadow: 0 14px 40px -8px rgba(249, 87, 127, 0.22);
+    transform: translateY(-2px);
   }
   .job-card-top {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    gap: 1rem;
-    margin-bottom: 1rem;
+    gap: 1.25rem;
+    margin-bottom: 1.15rem;
   }
   .job-title {
-    font-size: 1.35rem;
+    font-family: var(--font-display);
+    font-size: 1.4rem;
     font-weight: 700;
-    margin: 0 0 0.4rem 0;
-    color: var(--text-main);
+    margin: 0 0 0.5rem 0;
+    color: var(--strawberry-50);
+    line-height: 1.3;
   }
   .job-meta {
     display: flex;
     flex-wrap: wrap;
-    gap: 1rem;
-    color: var(--text-muted);
-    font-size: 0.9rem;
+    gap: 1.25rem;
+    color: var(--strawberry-300);
+    font-size: 0.925rem;
     align-items: center;
   }
+  .job-meta span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
   .ai-reasoning-box {
-    background: rgba(56, 189, 248, 0.06);
-    border-left: 3px solid var(--accent);
-    padding: 0.85rem 1.25rem;
-    border-radius: 0 8px 8px 0;
-    margin: 1.25rem 0;
-    font-size: 0.9rem;
-    color: #e2e8f0;
-    line-height: 1.5;
+    background: rgba(66, 10, 29, 0.45);
+    border-left: 3px solid var(--strawberry-500);
+    padding: 0.95rem 1.35rem;
+    border-radius: 0 12px 12px 0;
+    margin: 1.35rem 0;
+    font-size: 0.925rem;
+    color: var(--strawberry-100);
+    line-height: 1.55;
+    box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.2);
+  }
+  .ai-reasoning-box strong {
+    color: var(--strawberry-400);
   }
   .job-actions {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-top: 1.25rem;
+    margin-top: 1.35rem;
     border-top: 1px solid var(--border-color);
-    padding-top: 1rem;
+    padding-top: 1.15rem;
+    flex-wrap: wrap;
+    gap: 0.75rem;
   }
   .empty-state {
     text-align: center;
-    padding: 5rem 1.5rem;
+    padding: 5rem 2rem;
     background: var(--bg-card);
-    border-radius: 16px;
-    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    border: 1px solid var(--border-card);
+    backdrop-filter: blur(14px);
+    box-shadow: 0 12px 36px -10px rgba(0, 0, 0, 0.5);
   }
 </style>
 {% endblock %}
@@ -101,8 +130,8 @@
 <div class="main-container">
   <div class="feed-header">
     <div>
-      <h1 style="font-size: 2rem; font-weight: 800; margin: 0 0 0.35rem 0;">{{ t.get('feed_title', 'Matched Opportunities') }}</h1>
-      <p style="color: var(--text-muted); margin: 0;">AI-analyzed positions from Bundesagentur für Arbeit tailored to your CV.</p>
+      <h1 style="font-size: 2.25rem; font-weight: 800; margin: 0 0 0.35rem 0; color: var(--strawberry-50);">{{ t.get('feed_title', 'Matched Opportunities') }}</h1>
+      <p style="color: var(--strawberry-200); margin: 0; font-size: 1.05rem;">AI-analyzed positions from Bundesagentur für Arbeit tailored to your CV.</p>
     </div>
 
     <div class="feed-controls">
@@ -113,7 +142,7 @@
   </div>
 
   <div id="feedContainer" class="feed-list">
-    <div style="text-align: center; padding: 3rem; color: var(--text-muted);">Loading matched opportunities...</div>
+    <div style="text-align: center; padding: 4rem; color: var(--strawberry-300); font-size: 1.05rem;">Loading matched opportunities...</div>
   </div>
 </div>
 {% endblock %}
@@ -141,12 +170,12 @@
       if (!data.items || data.items.length === 0) {
         container.innerHTML = `
           <div class="empty-state">
-            <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="color: var(--text-muted); margin-bottom: 1rem;">
+            <svg width="56" height="56" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="color: var(--strawberry-400); margin-bottom: 1.25rem; filter: drop-shadow(0 0 10px rgba(249,87,127,0.3));">
               <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 14.15v4.25c0 1.094-.787 2.036-1.872 2.18-2.087.277-4.216.42-6.378.42s-4.291-.143-6.378-.42c-1.085-.144-1.872-1.086-1.872-2.18v-4.25m16.5 0a2.18 2.18 0 0 0 .75-1.661V8.706c0-1.081-.768-2.015-1.837-2.175a48.114 48.114 0 0 0-3.413-.387m4.5 8.006c-.194.165-.42.295-.673.38A23.978 23.978 0 0 1 12 15.75c-2.648 0-5.195-.429-7.577-1.22a2.016 2.016 0 0 1-.673-.38m0 0A2.18 2.18 0 0 1 3 12.489V8.706c0-1.081.768-2.015 1.837-2.175a48.111 48.111 0 0 1 3.413-.387m7.5 0V5.25A2.25 2.25 0 0 0 13.5 3h-3a2.25 2.25 0 0 0-2.25 2.25v.894m7.5 0a48.667 48.667 0 0 0-7.5 0"/>
             </svg>
-            <h3 style="font-size: 1.25rem; margin-bottom: 0.5rem;">{{ t.get('feed_title', 'No matches found yet') }}</h3>
-            <p style="color: var(--text-muted); max-width: 500px; margin: 0 auto 1.5rem;">{{ t.get('feed_empty', 'No job recommendations yet. Upload your CV and set preferences to start receiving twice-daily matches.') }}</p>
-            <a href="/profile" class="btn btn-primary">{{ t.get('upload_cv', 'Upload CV & Preferences') }}</a>
+            <h3 style="font-family: var(--font-display); font-size: 1.4rem; margin-bottom: 0.65rem; color: var(--strawberry-50);">{{ t.get('feed_title', 'No matches found yet') }}</h3>
+            <p style="color: var(--strawberry-200); max-width: 520px; margin: 0 auto 1.75rem; line-height: 1.6;">{{ t.get('feed_empty', 'No job recommendations yet. Upload your CV and set preferences to start receiving twice-daily matches.') }}</p>
+            <a href="/profile" class="btn btn-primary" style="padding: 0.75rem 1.75rem;">{{ t.get('upload_cv', 'Upload CV & Preferences') }}</a>
           </div>
         `;
         return;
@@ -160,7 +189,7 @@
               <div class="job-meta">
                 <span>🏢 ${escapeHtml(item.employer || 'Bundesagentur Listing')}</span>
                 <span>📍 ${escapeHtml(item.location || 'Deutschland')}</span>
-                ${item.working_time ? `<span class="badge" style="background: rgba(255,255,255,0.08);">${escapeHtml(item.working_time)}</span>` : ''}
+                ${item.working_time ? `<span class="badge" style="background: rgba(255,245,247,0.06); color: var(--strawberry-200); border: 1px solid var(--border-card);">${escapeHtml(item.working_time)}</span>` : ''}
               </div>
             </div>
             <div style="display: flex; gap: 0.5rem; align-items: center;">
@@ -174,16 +203,16 @@
           </div>
 
           <div class="job-actions">
-            <div>
-              <button class="btn btn-outline" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;" onclick="updateStatus('${item.id}', '${item.status === 'saved' ? 'new' : 'saved'}')">
+            <div style="display: flex; gap: 0.65rem;">
+              <button class="btn btn-outline" style="padding: 0.45rem 0.95rem; font-size: 0.875rem;" onclick="updateStatus('${item.id}', '${item.status === 'saved' ? 'new' : 'saved'}')">
                 ${item.status === 'saved' ? '★ Saved' : '☆ {{ t.get("mark_saved", "Save") }}'}
               </button>
-              <button class="btn btn-outline" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; color: var(--text-muted);" onclick="updateStatus('${item.id}', 'dismissed')">
+              <button class="btn btn-outline" style="padding: 0.45rem 0.95rem; font-size: 0.875rem; color: var(--strawberry-300);" onclick="updateStatus('${item.id}', 'dismissed')">
                 ✕ {{ t.get("mark_dismissed", "Dismiss") }}
               </button>
             </div>
             ${item.external_url ? `
-              <a href="${escapeHtml(item.external_url)}" target="_blank" rel="noopener noreferrer" class="btn btn-primary" style="padding: 0.4rem 1rem; font-size: 0.85rem;">
+              <a href="${escapeHtml(item.external_url)}" target="_blank" rel="noopener noreferrer" class="btn btn-primary" style="padding: 0.45rem 1.15rem; font-size: 0.875rem;">
                 {{ t.get("view_on_jobboerse", "View on Arbeitsagentur") }} ↗
               </a>
             ` : ''}
@@ -192,7 +221,7 @@
       `).join('');
 
     } catch (err) {
-      container.innerHTML = `<div style="color: var(--danger); text-align: center; padding: 2rem;">Error loading feed: ${err.message}</div>`;
+      container.innerHTML = `<div style="color: var(--danger); text-align: center; padding: 2.5rem;">Error loading feed: ${escapeHtml(err.message)}</div>`;
     }
   }
 

@@ -199,7 +199,7 @@ class MatchingSchedulerService:
             for job_rec, ba_job in persisted_job_records:
                 score = ai_matcher.calculate_score(cv_profile_dict, user_pref_dict, ba_job)
                 reasons = {
-                    "en": f"Strong alignment in technical skills and professional background ({score}% match).",
+                    "en": f"High alignment with your professional qualifications and work experience ({score}% match).",
                     "de": f"Hohe Übereinstimmung mit Ihren Fachkompetenzen und Ihrer Berufserfahrung ({score}% Übereinstimmung).",
                     "uk": f"Висока відповідність кваліфікації та професійного досвіду ({score}% збіг).",
                     "ru": f"Высокое соответствие квалификации и профессионального опыта ({score}% совпадение).",

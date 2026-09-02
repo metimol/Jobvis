@@ -36,28 +36,24 @@ async def get_i18n_dictionary(lang: str) -> dict[str, str]:
     return I18nService.get_dictionary(lang)
 
 
-@router.get("/", response_class=HTMLResponse, summary="Landing Page with Autonomous WebGL Hero")
+@router.get("/", response_class=HTMLResponse, summary="Landing Page")
 async def get_home_page(
     request: Request,
     current_user: User | None = Depends(get_current_user_optional),
     db: AsyncSession = Depends(get_db),
 ):
-    """Render home landing page with autonomous WebGL gallery and Jobvis overview."""
-    ui_lang = app_settings.DEFAULT_UI_LANGUAGE
+    """Render landing page for unauthenticated visitors or redirect logged-in users to /feed."""
     if current_user:
-        stmt = select(Settings).where(Settings.user_id == current_user.id)
-        res = await db.execute(stmt)
-        s = res.scalars().first()
-        if s:
-            ui_lang = s.ui_language
+        return RedirectResponse(url="/feed", status_code=status.HTTP_302_FOUND)
 
+    ui_lang = app_settings.DEFAULT_UI_LANGUAGE
     translations = I18nService.get_dictionary(ui_lang)
     return templates.TemplateResponse(
         request=request,
         name="index.html",
         context={
             "request": request,
-            "current_user": current_user,
+            "current_user": None,
             "lang": ui_lang,
             "t": translations,
             "supported_langs": I18nService.SUPPORTED_LANGS,

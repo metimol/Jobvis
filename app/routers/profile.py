@@ -71,6 +71,19 @@ async def update_profile(
 
     await db.commit()
     await db.refresh(profile)
+
+    # Trigger immediate job search & matching sync
+    try:
+        from app.services.scheduler import scheduler_service
+
+        await scheduler_service.run_sync_for_user(current_user.id, db)
+    except Exception as sync_err:
+        logger.warning(
+            "Matching sync after profile update for user %s failed: %s",
+            current_user.id,
+            sync_err,
+        )
+
     return ProfileResponse.model_validate(profile)
 
 
@@ -150,16 +163,51 @@ async def upload_cv(
     )
     db.add(cv_record)
 
-    # Update profile German level if detected and not already set higher
+    # Normalize extracted German level to valid Profile GermanLevelLiteral
+    raw_german = (
+        analysis.get("german_level") or analysis.get("detected_languages", {}).get("de") or "B1"
+    )
+    raw_german_str = str(raw_german).upper()
+    if raw_german_str in ["C2", "C1", "MUTTERSPRACHE", "NATIVE"]:
+        norm_german = "C1"
+    elif raw_german_str == "B2":
+        norm_german = "B2"
+    elif raw_german_str in ["A1", "A2"]:
+        norm_german = "A2"
+    else:
+        norm_german = "B1"
+
+    # Update profile German level if profile exists
     stmt = select(Profile).where(Profile.user_id == current_user.id)
     p_res = await db.execute(stmt)
     user_profile = p_res.scalars().first()
-    if user_profile and "de" in analysis.get("detected_languages", {}):
-        detected_de = analysis["detected_languages"]["de"]
-        if detected_de in ["A2", "B1", "B2", "C1"]:
-            user_profile.german_level = detected_de
+    if user_profile:
+        user_profile.german_level = norm_german
 
     await db.commit()
     await db.refresh(cv_record)
 
-    return CVAnalysisResponse.model_validate(cv_record)
+    # Trigger immediate job search & matching sync
+    try:
+        from app.services.scheduler import scheduler_service
+
+        await scheduler_service.run_sync_for_user(current_user.id, db)
+    except Exception as sync_err:
+        logger.warning(
+            "Matching sync after CV upload for user %s failed: %s",
+            current_user.id,
+            sync_err,
+        )
+
+    # Extracted preferences for candidate review and manual editing
+    extracted_preferences = {
+        "german_level": norm_german,
+        "city": analysis.get("city"),
+        "radius_km": analysis.get("radius_km", 25),
+        "desired_job_type": analysis.get("desired_job_type", "all"),
+        "goals": analysis.get("goals"),
+    }
+
+    response_data = CVAnalysisResponse.model_validate(cv_record)
+    response_data.extracted_preferences = extracted_preferences
+    return response_data

@@ -5,29 +5,67 @@
 {% block head_extra %}
 <style>
   .settings-layout {
-    max-width: 700px;
+    max-width: 720px;
     margin: 0 auto;
     display: flex;
     flex-direction: column;
-    gap: 2rem;
+    gap: 2.25rem;
   }
   .card {
     background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    border-radius: 14px;
-    padding: 2rem;
+    border: 1px solid var(--border-card);
+    border-radius: 18px;
+    padding: 2.25rem;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    box-shadow: 0 10px 32px -8px rgba(0, 0, 0, 0.5);
   }
   .card h2 {
-    font-size: 1.25rem;
+    font-family: var(--font-display);
+    font-size: 1.35rem;
     font-weight: 700;
     margin: 0 0 1.25rem 0;
+    color: var(--strawberry-50);
+  }
+  .form-control {
+    width: 100%;
+    padding: 0.7rem 0.95rem;
+    background: var(--bg-input);
+    border: 1px solid var(--border-card);
+    border-radius: 10px;
+    color: var(--strawberry-50);
+    font-size: 0.95rem;
+    font-family: var(--font-sans);
+    box-sizing: border-box;
+    transition: all 0.2s ease;
+  }
+  .form-control:focus {
+    outline: none;
+    border-color: var(--strawberry-400);
+    background: rgba(255, 245, 247, 0.08);
+    box-shadow: 0 0 0 3px rgba(249, 87, 127, 0.25);
+  }
+  select.form-control option {
+    background: var(--strawberry-950);
+    color: var(--strawberry-50);
   }
   .danger-card {
-    border-color: rgba(239, 68, 68, 0.3);
-    background: rgba(239, 68, 68, 0.03);
+    border-color: rgba(244, 63, 94, 0.35);
+    background: rgba(66, 10, 29, 0.35);
+    box-shadow: 0 10px 32px -8px rgba(244, 63, 94, 0.15);
   }
   .danger-card h2 {
-    color: var(--danger);
+    color: #fb7185;
+  }
+  .btn-danger {
+    background: linear-gradient(135deg, #e11d48 0%, #be123c 100%);
+    color: #ffffff;
+    box-shadow: 0 4px 15px rgba(225, 29, 72, 0.35);
+  }
+  .btn-danger:hover {
+    background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%);
+    box-shadow: 0 6px 20px rgba(225, 29, 72, 0.55);
+    transform: translateY(-2px);
   }
 </style>
 {% endblock %}
@@ -36,41 +74,41 @@
 <div class="main-container">
   <div class="settings-layout">
     <div>
-      <h1 style="font-size: 2rem; font-weight: 800; margin: 0 0 0.35rem 0;">{{ t.get('settings_title', 'Account & Language Settings') }}</h1>
-      <p style="color: var(--text-muted); margin: 0;">Manage your application language, reset job filters, or delete your account.</p>
+      <h1 style="font-size: 2.25rem; font-weight: 800; margin: 0 0 0.35rem 0; color: var(--strawberry-50);">{{ t.get('settings_title', 'Account & Language Settings') }}</h1>
+      <p style="color: var(--strawberry-200); margin: 0; font-size: 1.05rem;">Manage your application language, reset job filters, or delete your account.</p>
     </div>
 
     <!-- UI Language Setting -->
     <div class="card">
       <h2>{{ t.get('ui_language', 'Interface Language') }}</h2>
-      <div style="display: flex; gap: 1rem; align-items: center;">
-        <select id="settingsLangSelect" class="form-control" style="max-width: 250px;" onchange="updateSettingsLanguage(this.value)">
+      <div style="display: flex; gap: 1.25rem; align-items: center; flex-wrap: wrap;">
+        <select id="settingsLangSelect" class="form-control" style="max-width: 260px;" onchange="updateSettingsLanguage(this.value)">
           <option value="de" {% if lang == 'de' %}selected{% endif %}>Deutsch (DE)</option>
           <option value="en" {% if lang == 'en' %}selected{% endif %}>English (EN)</option>
           <option value="uk" {% if lang == 'uk' %}selected{% endif %}>Українська (UK)</option>
           <option value="ru" {% if lang == 'ru' %}selected{% endif %}>Русский (RU)</option>
         </select>
-        <span id="langSaveStatus" style="font-size: 0.85rem; color: var(--success);"></span>
+        <span id="langSaveStatus" style="font-size: 0.9rem; color: var(--success); font-weight: 600;"></span>
       </div>
     </div>
 
     <!-- Reset Preferences -->
     <div class="card">
       <h2>{{ t.get('reset_choices', 'Reset Profile & Preferences') }}</h2>
-      <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.25rem;">
+      <p style="color: var(--strawberry-200); font-size: 0.95rem; line-height: 1.6; margin-bottom: 1.35rem;">
         Resets your job type, location, and language filters back to default values, and clears previous CV analysis history.
       </p>
       <button class="btn btn-outline" onclick="resetUserPreferences()">{{ t.get('reset_choices', 'Reset to Defaults') }}</button>
-      <span id="resetStatus" style="margin-left: 1rem; font-size: 0.85rem;"></span>
+      <span id="resetStatus" style="margin-left: 1.25rem; font-size: 0.9rem;"></span>
     </div>
 
     <!-- Danger Zone: Account Deletion -->
     <div class="card danger-card">
       <h2>{{ t.get('danger_zone', 'Danger Zone') }} — {{ t.get('delete_account', 'Delete Account') }}</h2>
-      <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.25rem;">
+      <p style="color: var(--strawberry-200); font-size: 0.95rem; line-height: 1.6; margin-bottom: 1.35rem;">
         Permanently delete your account, saved preferences, uploaded CVs, and all matching history. This action cannot be undone (GDPR compliant).
       </p>
-      <button class="btn" style="background: var(--danger); color: #fff;" onclick="deleteUserAccount()">
+      <button class="btn btn-danger" onclick="deleteUserAccount()">
         {{ t.get('delete_account', 'Permanently Delete Account') }}
       </button>
     </div>
@@ -89,7 +127,7 @@
         body: JSON.stringify({ ui_language: newLang })
       });
       if (resp.ok) {
-        statusSpan.textContent = 'Saved! Reloading...';
+        statusSpan.textContent = '✓ Saved! Reloading...';
         setTimeout(() => window.location.reload(), 600);
       }
     } catch (e) {
@@ -100,13 +138,14 @@
   async function resetUserPreferences() {
     if (!confirm('Are you sure you want to reset all preferences to default values?')) return;
     const statusSpan = document.getElementById('resetStatus');
+    statusSpan.style.color = 'var(--strawberry-400)';
     statusSpan.textContent = 'Resetting...';
 
     try {
       const resp = await fetch('/api/settings/reset', { method: 'POST' });
       if (resp.ok) {
         statusSpan.style.color = 'var(--success)';
-        statusSpan.textContent = 'Preferences successfully reset!';
+        statusSpan.textContent = '✓ Preferences successfully reset!';
         setTimeout(() => window.location.href = '/profile', 1000);
       }
     } catch (e) {

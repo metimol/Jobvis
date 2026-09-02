@@ -8,9 +8,10 @@
   <meta name="color-scheme" content="dark">
   <link rel="icon" type="image/svg+xml" href="/assets/img/favicon.svg">
 
+  <!-- Google Fonts: Fraunces (Headings/Display) & Inter (UI/Body) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="/assets/css/_tokens-bridge.css">
   <link rel="stylesheet" href="/assets/css/scope-context.css">
@@ -19,51 +20,112 @@
 
   <style>
     :root {
-      --primary: #2563eb;
-      --primary-hover: #1d4ed8;
-      --bg-dark: #090a0f;
-      --bg-card: rgba(18, 20, 29, 0.85);
-      --border-color: rgba(255, 255, 255, 0.08);
-      --text-main: #f8fafc;
-      --text-muted: #94a3b8;
-      --accent: #38bdf8;
+      /* Velar 11-Step Strawberry Candy Palette */
+      --strawberry-50:  #FFF5F7;
+      --strawberry-100: #FFE4EB;
+      --strawberry-200: #FFCDD8;
+      --strawberry-300: #FFA8BC;
+      --strawberry-400: #FF7A9C;
+      --strawberry-500: #F9577F;
+      --strawberry-600: #E63D6A;
+      --strawberry-700: #C42855;
+      --strawberry-800: #9C1F44;
+      --strawberry-900: #6E1531;
+      --strawberry-950: #420A1D;
+
+      /* Typography */
+      --font-display: 'Fraunces', Georgia, serif;
+      --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+      /* Semantic Palette */
+      --bg-dark: #0d0407;
+      --bg-surface: #17070e;
+      --bg-card: rgba(28, 10, 18, 0.82);
+      --bg-card-hover: rgba(42, 14, 27, 0.90);
+      --bg-input: rgba(255, 245, 247, 0.05);
+
+      --border-color: rgba(255, 122, 156, 0.16);
+      --border-card: rgba(255, 122, 156, 0.22);
+      --border-focus: var(--strawberry-400);
+
+      --text-main: var(--strawberry-50);
+      --text-body: var(--strawberry-100);
+      --text-muted: var(--strawberry-300);
+      --text-dim: rgba(255, 168, 188, 0.65);
+
+      --primary: var(--strawberry-500);
+      --primary-hover: var(--strawberry-600);
+      --primary-active: var(--strawberry-700);
+      --primary-gradient: linear-gradient(135deg, #F9577F 0%, #E63D6A 50%, #C42855 100%);
+      --candy-gradient: linear-gradient(135deg, #FFF5F7 0%, #FFA8BC 45%, #F9577F 100%);
+      --glow-strawberry: 0 0 24px rgba(249, 87, 127, 0.35);
+
+      --accent: var(--strawberry-400);
       --success: #10b981;
-      --danger: #ef4444;
+      --warning: #f59e0b;
+      --danger: #f43f5e;
     }
+
+    * {
+      box-sizing: border-box;
+    }
+
     body {
       background-color: var(--bg-dark);
-      color: var(--text-main);
-      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-image:
+        radial-gradient(circle at 50% 0%, rgba(249, 87, 127, 0.12) 0%, transparent 55%),
+        radial-gradient(circle at 90% 30%, rgba(156, 31, 68, 0.08) 0%, transparent 45%),
+        radial-gradient(circle at 10% 70%, rgba(110, 21, 49, 0.07) 0%, transparent 50%);
+      background-attachment: fixed;
+      color: var(--text-body);
+      font-family: var(--font-sans);
       margin: 0;
       padding: 0;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
+      -webkit-font-smoothing: antialiased;
     }
+
+    h1, h2, h3, h4, h5, h6 {
+      font-family: var(--font-display);
+      color: var(--text-main);
+      letter-spacing: -0.015em;
+    }
+
     .navbar {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 1.25rem 2rem;
+      padding: 1.15rem 2.25rem;
       border-bottom: 1px solid var(--border-color);
-      backdrop-filter: blur(12px);
-      background: rgba(9, 10, 15, 0.8);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      background: rgba(13, 4, 7, 0.85);
       position: sticky;
       top: 0;
       z-index: 100;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
     }
     .nav-brand {
-      font-size: 1.35rem;
+      font-family: var(--font-display);
+      font-size: 1.45rem;
       font-weight: 800;
-      letter-spacing: 0.05em;
-      color: var(--text-main);
+      letter-spacing: 0.02em;
+      color: var(--strawberry-50);
       text-decoration: none;
       display: flex;
       align-items: center;
-      gap: 0.5rem;
+      gap: 0.35rem;
+      transition: transform 0.2s ease;
+    }
+    .nav-brand:hover {
+      transform: scale(1.02);
     }
     .nav-brand span {
-      color: var(--accent);
+      color: var(--strawberry-400);
+      text-shadow: 0 0 12px rgba(249, 87, 127, 0.45);
     }
     .nav-links {
       display: flex;
@@ -75,82 +137,103 @@
       text-decoration: none;
       font-size: 0.95rem;
       font-weight: 500;
-      transition: color 0.2s ease;
+      transition: all 0.2s ease;
     }
     .nav-links a:hover, .nav-links a.active {
-      color: var(--text-main);
+      color: var(--strawberry-50);
+      text-shadow: 0 0 10px rgba(249, 87, 127, 0.35);
     }
     .lang-switcher select {
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid var(--border-color);
-      color: var(--text-main);
-      padding: 0.4rem 0.8rem;
-      border-radius: 6px;
+      background: rgba(42, 14, 27, 0.7);
+      border: 1px solid var(--border-card);
+      color: var(--strawberry-100);
+      padding: 0.45rem 0.85rem;
+      border-radius: 8px;
       font-size: 0.85rem;
+      font-family: var(--font-sans);
+      font-weight: 500;
       cursor: pointer;
       outline: none;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .lang-switcher select:focus {
+      border-color: var(--strawberry-400);
+      box-shadow: 0 0 0 2px rgba(249, 87, 127, 0.25);
     }
     .main-container {
       flex: 1;
       max-width: 1200px;
       margin: 0 auto;
-      padding: 2.5rem 1.5rem;
+      padding: 2.75rem 1.75rem;
       width: 100%;
       box-sizing: border-box;
     }
     .footer {
       border-top: 1px solid var(--border-color);
-      padding: 1.5rem 2rem;
+      background: rgba(13, 4, 7, 0.7);
+      backdrop-filter: blur(10px);
+      padding: 2rem 2.25rem;
       text-align: center;
       color: var(--text-muted);
-      font-size: 0.85rem;
+      font-size: 0.875rem;
     }
     .btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 0.5rem;
-      padding: 0.65rem 1.25rem;
-      border-radius: 8px;
+      padding: 0.65rem 1.35rem;
+      border-radius: 10px;
       font-weight: 600;
       font-size: 0.95rem;
+      font-family: var(--font-sans);
       text-decoration: none;
       cursor: pointer;
       border: none;
-      transition: all 0.2s ease;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     }
     .btn-primary {
-      background: var(--primary);
-      color: #fff;
+      background: var(--primary-gradient);
+      color: #ffffff;
+      box-shadow: 0 4px 16px rgba(249, 87, 127, 0.35);
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
     }
     .btn-primary:hover {
-      background: var(--primary-hover);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 24px rgba(249, 87, 127, 0.55);
+      filter: brightness(1.06);
     }
     .btn-outline {
-      background: transparent;
-      border: 1px solid var(--border-color);
-      color: var(--text-main);
+      background: rgba(255, 245, 247, 0.02);
+      border: 1px solid var(--border-card);
+      color: var(--strawberry-100);
     }
     .btn-outline:hover {
-      background: rgba(255, 255, 255, 0.05);
+      background: rgba(255, 122, 156, 0.1);
+      border-color: var(--strawberry-400);
+      color: var(--strawberry-50);
+      box-shadow: 0 0 16px rgba(249, 87, 127, 0.15);
     }
     .badge {
-      display: inline-block;
-      padding: 0.25rem 0.6rem;
-      border-radius: 4px;
+      display: inline-flex;
+      align-items: center;
+      padding: 0.28rem 0.65rem;
+      border-radius: 6px;
       font-size: 0.75rem;
       font-weight: 700;
       text-transform: uppercase;
+      letter-spacing: 0.04em;
     }
     .badge-cefr {
-      background: rgba(56, 189, 248, 0.15);
-      color: #38bdf8;
-      border: 1px solid rgba(56, 189, 248, 0.3);
+      background: rgba(255, 168, 188, 0.12);
+      color: var(--strawberry-200);
+      border: 1px solid rgba(255, 168, 188, 0.25);
     }
     .badge-score {
-      background: rgba(16, 185, 129, 0.15);
-      color: #10b981;
-      border: 1px solid rgba(16, 185, 129, 0.3);
+      background: rgba(249, 87, 127, 0.15);
+      color: var(--strawberry-400);
+      border: 1px solid rgba(249, 87, 127, 0.35);
+      box-shadow: 0 0 8px rgba(249, 87, 127, 0.15);
     }
   </style>
   {% block head_extra %}{% endblock %}
@@ -167,9 +250,9 @@
         <a href="/feed">{{ t.get('nav_feed', 'Feed') }}</a>
         <a href="/profile">{{ t.get('nav_profile', 'Profile') }}</a>
         <a href="/settings">{{ t.get('nav_settings', 'Settings') }}</a>
-        <a href="/auth/logout" class="btn btn-outline" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">{{ t.get('nav_logout', 'Logout') }}</a>
+        <a href="/auth/logout" class="btn btn-outline" style="padding: 0.4rem 0.85rem; font-size: 0.85rem;">{{ t.get('nav_logout', 'Logout') }}</a>
       {% else %}
-        <a href="/login" class="btn btn-primary" style="padding: 0.4rem 1rem; font-size: 0.85rem;">{{ t.get('nav_login', 'Sign In') }}</a>
+        <a href="/login" class="btn btn-primary" style="padding: 0.45rem 1.15rem; font-size: 0.875rem;">{{ t.get('nav_login', 'Sign In') }}</a>
       {% endif %}
 
       <!-- Language Selector -->

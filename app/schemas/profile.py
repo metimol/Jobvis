@@ -56,5 +56,6 @@ class CVAnalysisResponse(BaseModel):
     detected_languages: dict[str, Any] = Field(default_factory=dict)
     keywords: list[str] = Field(default_factory=list)
     created_at: datetime
+    extracted_preferences: dict[str, Any] | None = None
 
     model_config = ConfigDict(from_attributes=True)
