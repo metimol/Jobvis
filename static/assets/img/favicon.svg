@@ -1,5 +1,25 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="Vayra">
-  <!-- Vayra mark. Replace the shapes with your own; keep the 32x32 viewBox so it stays crisp at 16px. -->
-  <rect width="32" height="32" rx="4" fill="#0A0A0B"/>
-  <path d="M8 7.5 L16 22.5 L24 7.5" fill="none" stroke="#F4F4F5" stroke-width="3.6" stroke-linecap="butt" stroke-linejoin="miter"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1374 1293" width="32" height="32" role="img" aria-label="Jobvis">
+  <defs>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="40" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+    <linearGradient id="jGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#e84a6e"/>
+      <stop offset="40%" stop-color="#ff6b8a"/>
+      <stop offset="70%" stop-color="#ffb3c1"/>
+      <stop offset="100%" stop-color="#ff6b8a"/>
+    </linearGradient>
+    <filter id="aura" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="60" result="blur"/>
+      <feFlood flood-color="#ff1a4d" flood-opacity="0.4" result="color"/>
+      <feComposite in="color" in2="blur" operator="in" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <rect width="1374" height="1293" rx="172" fill="#0A0A0B"/>
+  <path d="M 697.0 1020.5 L 640.0 1016.5 L 579.0 998.5 L 526.0 968.5 L 480.5 928.0 L 450.5 888.0 L 427.5 841.0 L 412.5 784.0 L 409.5 722.0 L 607.0 721.5 L 607.5 755.0 L 613.5 777.0 L 625.5 796.0 L 643.0 811.5 L 670.0 822.5 L 697.0 823.5 L 719.0 817.5 L 737.0 806.5 L 755.5 785.0 L 765.5 757.0 L 766.5 435.0 L 607.5 433.0 L 607.5 267.0 L 963.0 265.5 L 964.5 736.0 L 960.5 787.0 L 947.5 837.0 L 932.5 871.0 L 905.5 913.0 L 878.0 943.5 L 849.0 967.5 L 814.0 989.5 L 783.0 1003.5 L 740.0 1015.5 L 697.0 1020.5 Z" fill="url(#jGradient)" filter="url(#aura)"/>
 </svg>
