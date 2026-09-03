@@ -281,7 +281,7 @@ class ArbeitsagenturClient:
                 f"Invalid JSON response from BA API: {response.text}"
             ) from e
 
-        stellenangebote_raw = data.get("stellenangebote") or []
+        stellenangebote_raw = data.get("ergebnisliste") or data.get("stellenangebote") or []
         items: list[BAJobListing] = []
         for raw_item in stellenangebote_raw:
             if isinstance(raw_item, dict):

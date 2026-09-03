@@ -158,12 +158,18 @@ class BAJobListing(BaseModel):
         """Factory method to parse heterogeneous BA API response structures."""
         # 1. Reference number
         ref_nr = (
-            data.get("refnr") or data.get("hashId") or data.get("ref_nr") or data.get("id") or ""
+            data.get("referenznummer")
+            or data.get("refnr")
+            or data.get("hashId")
+            or data.get("ref_nr")
+            or data.get("id")
+            or ""
         )
 
         # 2. Title
         title = (
-            data.get("titel")
+            data.get("stellenangebotsTitel")
+            or data.get("titel")
             or data.get("beruf")
             or data.get("title")
             or "Unbenanntes Stellenangebot"
@@ -173,16 +179,28 @@ class BAJobListing(BaseModel):
         employer = data.get("arbeitgeber") or data.get("employer") or data.get("firma")
 
         # 4. Location parsing
-        location_raw = data.get("arbeitsort") or data.get("location") or data.get("ort")
-        location_str: str | None = None
-        if isinstance(location_raw, dict):
+        location_raw = (
+            data.get("stellenlokationen")
+            or data.get("arbeitsort")
+            or data.get("location")
+            or data.get("ort")
+        )
+        location_str: str | None = "Unbekannter Ort"
+        if isinstance(location_raw, list) and location_raw:
+            loc = location_raw[0]
+            plz = loc.get("postleitzahl", "") or loc.get("plz", "")
+            ort = loc.get("ort", "")
+            region = loc.get("region", "")
+            parts = [p for p in [plz, ort or region] if p]
+            location_str = " ".join(parts) if parts else "Unbekannter Ort"
+        elif isinstance(location_raw, dict):
             plz = location_raw.get("plz", "").strip()
             ort = location_raw.get("ort", "").strip()
             region = location_raw.get("region", "").strip()
             parts = [p for p in [plz, ort or region] if p]
-            location_str = " ".join(parts) if parts else None
+            location_str = " ".join(parts) if parts else "Unbekannter Ort"
         elif isinstance(location_raw, str):
-            location_str = location_raw.strip() or None
+            location_str = location_raw.strip() or "Unbekannter Ort"
 
         # 5. Working time
         working_time = (
