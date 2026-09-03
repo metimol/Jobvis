@@ -693,6 +693,8 @@ class AICVAnalyzer:
 class AIJobMatcher:
     """Multi-factor AI job matching scoring and multilingual rationale generator."""
 
+    # TODO: It should be real job analyzer, not just algorythm
+
     def calculate_score(
         self,
         cv_profile: dict[str, Any] | ExtractedCVProfile,
