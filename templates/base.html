@@ -244,13 +244,13 @@
     <a href="/" class="nav-brand">JOB<span>VIS</span></a>
 
     <div class="nav-links">
-      <a href="/">{{ t.get('nav_home', 'Home') }}</a>
       {% if current_user %}
         <a href="/feed">{{ t.get('nav_feed', 'Feed') }}</a>
         <a href="/profile">{{ t.get('nav_profile', 'Profile') }}</a>
         <a href="/settings">{{ t.get('nav_settings', 'Settings') }}</a>
         <a href="/auth/logout" class="btn btn-outline" style="padding: 0.4rem 0.85rem; font-size: 0.85rem;">{{ t.get('nav_logout', 'Logout') }}</a>
       {% else %}
+        <a href="/">{{ t.get('nav_home', 'Home') }}</a>
         <a href="/login" class="btn btn-primary" style="padding: 0.45rem 1.15rem; font-size: 0.875rem;">{{ t.get('nav_login', 'Sign In') }}</a>
       {% endif %}
 
