@@ -34,7 +34,8 @@ dev = [
     "pre-commit>=3.7.0",
     "pytest>=8.0.0",
     "pytest-asyncio>=0.23.0",
-    "ruff>=0.5.0"
+    "ruff>=0.5.0",
+    "pytest-xdist>=3.8.0"
 ]
 
 [tool.setuptools.packages.find]

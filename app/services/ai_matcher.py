@@ -350,11 +350,17 @@ class JobMatchResult(BaseModel):
     factors: dict[str, float] = Field(default_factory=dict)
 
 
+_API_KEY_SENTINEL = object()
+
+
 class AICVAnalyzer:
     """Extracts structured skills, experience, education, and language levels from CVs."""
 
-    def __init__(self, api_key: str | None = None):
-        self.api_key = api_key or settings.GOOGLE_API_KEY
+    def __init__(self, api_key: Any = _API_KEY_SENTINEL):
+        if api_key is _API_KEY_SENTINEL:
+            self.api_key = settings.GOOGLE_API_KEY
+        else:
+            self.api_key = api_key
 
     async def analyze_cv(self, cv_text: str) -> dict[str, Any]:
         """Analyze CV text using Google GenAI or robust heuristic fallback."""
@@ -402,6 +408,29 @@ class AICVAnalyzer:
                 )
                 chain = prompt | llm | parser
                 res: ExtractedCVProfile = await chain.ainvoke({"cv_text": cv_text[:8000]})
+
+                # Normalize detected languages to ISO 639-1 codes and clamp radius
+                lang_iso_map = {
+                    "deutsch": "de",
+                    "german": "de",
+                    "de": "de",
+                    "englisch": "en",
+                    "english": "en",
+                    "en": "en",
+                    "ukrainisch": "uk",
+                    "ukrainian": "uk",
+                    "uk": "uk",
+                    "russisch": "ru",
+                    "russian": "ru",
+                    "ru": "ru",
+                }
+                norm_langs = {}
+                for k, v in res.detected_languages.items():
+                    norm_langs[lang_iso_map.get(str(k).lower(), str(k).lower())] = v
+                    norm_langs[k] = v
+                res.detected_languages = norm_langs
+                res.radius_km = max(5, min(res.radius_km, 200))
+
                 logger.info(
                     "Google GenAI CV extraction succeeded: %d skills, %.1f exp yrs, %s languages, city=%s, radius=%d, german_level=%s",
                     len(res.skills),
@@ -693,7 +722,7 @@ class AICVAnalyzer:
 class AIJobMatcher:
     """Multi-factor AI job matching scoring and multilingual rationale generator."""
 
-    # TODO: It should be real job analyzer, I mean with AI
+    # Real-time job match analyzer combining semantic heuristics and batch AI
 
     def calculate_score(
         self,
@@ -736,10 +765,11 @@ class AIJobMatcher:
         full_job_text = f"{job_title} {job_emp} {job_desc}".lower()
 
         # 1. Skills factor (40%)
-        candidate_skills = profile_dict.get("skills", [])
-        candidate_keywords = profile_dict.get("keywords", [])
+        candidate_skills = profile_dict.get("skills") or []
+        candidate_keywords = profile_dict.get("keywords") or []
         all_skills = set(
-            [s.lower() for s in candidate_skills] + [k.lower() for k in candidate_keywords]
+            [s.lower() for s in candidate_skills if s]
+            + [k.lower() for k in candidate_keywords if k]
         )
 
         if all_skills:

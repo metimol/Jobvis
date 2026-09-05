@@ -88,23 +88,26 @@ class MatchingSchedulerService:
             user_settings = (await db.execute(s_stmt)).scalars().first()
             ui_lang = user_settings.ui_language if user_settings else "de"
 
-            # Search filters
-            location = profile.location if profile and profile.location else ""
-            radius = profile.radius_km if profile and profile.radius_km else 25
-            arbeitszeit = (
-                profile.desired_job_type
-                if profile and profile.desired_job_type in ["vz", "tz", "mj"]
-                else None
+            # Generate optimal BA search parameters from natural language goals and CV profile
+            from app.services.query_generator import generate_search_query
+
+            search_params = await generate_search_query(
+                goals=profile.goals if profile else None,
+                cv_profile=cv_analysis,
+                user_prefs=profile,
             )
 
-            # Determine query keyword from CV skills or goals
-            query = ""
-            if cv_analysis and cv_analysis.skills:
-                query = " ".join(cv_analysis.skills[:2])
-            elif cv_analysis and cv_analysis.keywords:
-                query = " ".join(cv_analysis.keywords[:2])
-            elif profile and profile.goals:
-                query = profile.goals[:40]
+            query = search_params.was or ""
+            location = search_params.wo or (
+                profile.location if profile and profile.location else ""
+            )
+            radius = profile.radius_km if profile and profile.radius_km else 25
+            arbeitszeit = search_params.arbeitszeit or (
+                profile.desired_job_type
+                if profile and profile.desired_job_type in ["vz", "tz", "mj", "ho"]
+                else None
+            )
+            angebotsart = search_params.angebotsart or 1
 
             # Query Arbeitsagentur
             own_client = False
@@ -119,6 +122,7 @@ class MatchingSchedulerService:
                     location=location,
                     radius_km=radius,
                     arbeitszeit=arbeitszeit,
+                    angebotsart=angebotsart,
                     size=25,
                 )
             finally:
@@ -183,11 +187,12 @@ class MatchingSchedulerService:
 
             # 4. AI Match Scoring
             cv_profile_dict = {
-                "skills": cv_analysis.skills if cv_analysis else [],
-                "experience_years": cv_analysis.experience_years if cv_analysis else 0.0,
-                "education": cv_analysis.education if cv_analysis else [],
-                "detected_languages": cv_analysis.detected_languages if cv_analysis else {},
-                "keywords": cv_analysis.keywords if cv_analysis else [],
+                "skills": (cv_analysis.skills if cv_analysis else None) or [],
+                "experience_years": (cv_analysis.experience_years if cv_analysis else None) or 0.0,
+                "education": (cv_analysis.education if cv_analysis else None) or [],
+                "detected_languages": (cv_analysis.detected_languages if cv_analysis else None)
+                or {},
+                "keywords": (cv_analysis.keywords if cv_analysis else None) or [],
             }
             user_pref_dict = {
                 "german_level": profile.german_level if profile else "B1",
@@ -243,7 +248,7 @@ class MatchingSchedulerService:
             }
 
         except Exception as e:
-            logger.error("Error executing matching sync for user %s: %s", user_id, e)
+            logger.exception("Error executing matching sync for user %s", user_id)
             await db.rollback()
             try:
                 fail_log = SyncLog(

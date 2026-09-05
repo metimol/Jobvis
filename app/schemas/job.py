@@ -188,6 +188,8 @@ class BAJobListing(BaseModel):
         location_str: str | None = "Unbekannter Ort"
         if isinstance(location_raw, list) and location_raw:
             loc = location_raw[0]
+            if "adresse" in loc:
+                loc = loc["adresse"]
             plz = loc.get("postleitzahl", "") or loc.get("plz", "")
             ort = loc.get("ort", "")
             region = loc.get("region", "")
