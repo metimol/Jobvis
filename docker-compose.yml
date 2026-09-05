@@ -19,7 +19,7 @@ services:
       - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET:-}
       - GITHUB_REDIRECT_URI=http://localhost:8000/auth/github/callback
       - ARBEITSAGENTUR_API_KEY=jobboerse-jobsuche
-      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
     depends_on:
       db:
         condition: service_healthy

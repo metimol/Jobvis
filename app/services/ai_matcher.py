@@ -354,7 +354,7 @@ class AICVAnalyzer:
     """Extracts structured skills, experience, education, and language levels from CVs."""
 
     def __init__(self, api_key: str | None = None):
-        self.api_key = api_key or settings.GEMINI_API_KEY or settings.GOOGLE_API_KEY
+        self.api_key = api_key or settings.GOOGLE_API_KEY
 
     async def analyze_cv(self, cv_text: str) -> dict[str, Any]:
         """Analyze CV text using Google GenAI or robust heuristic fallback."""
@@ -693,7 +693,7 @@ class AICVAnalyzer:
 class AIJobMatcher:
     """Multi-factor AI job matching scoring and multilingual rationale generator."""
 
-    # TODO: It should be real job analyzer, not just algorythm
+    # TODO: It should be real job analyzer, I mean with AI
 
     def calculate_score(
         self,
