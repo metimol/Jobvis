@@ -245,6 +245,8 @@ class ArbeitsagenturClient:
         Returns:
             List of BAJobListing models.
         """
+        # TODO: Radius dont work
+
         response_model = await self.search_jobs_response(
             JobSearchParams(
                 was=query or kwargs.get("was"),
