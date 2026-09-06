@@ -1,5 +1,11 @@
 """Global Pytest Configuration and Test Fixtures for Jobvis E2E Test Suite."""
 
+import os
+
+# Explicitly mark test environment and protect against external live LLM calls
+os.environ["ENVIRONMENT"] = "test"
+os.environ.pop("GOOGLE_API_KEY", None)
+
 import asyncio
 import json
 import uuid

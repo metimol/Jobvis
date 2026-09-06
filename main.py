@@ -1,8 +1,10 @@
 """Main FastAPI application factory and lifespan manager for Jobvis."""
 
 import logging
+import os
 from contextlib import asynccontextmanager
 
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
@@ -11,6 +13,10 @@ from app.database import close_db, init_db
 from app.routers import auth, feed, pages, profile
 from app.routers import settings as settings_router
 from app.services.scheduler import scheduler_service
+
+# Load environment variables
+if os.getenv("ENVIRONMENT") != "test":
+    load_dotenv()
 
 # Setup application logging
 logging.basicConfig(
