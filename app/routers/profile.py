@@ -118,6 +118,8 @@ async def upload_cv(
     from app.services.ai_matcher import cv_analyzer
     from app.services.cv_parser import CVParserService
 
+    # TODO: It should be gamification. First of all user upload his CV, then ask on some questions about his German knowledge, work type, etc. And then backend save all it and go to scrape first jobs bunch
+
     if not file.filename:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

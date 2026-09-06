@@ -356,6 +356,8 @@ _API_KEY_SENTINEL = object()
 class AICVAnalyzer:
     """Extracts structured skills, experience, education, and language levels from CVs."""
 
+    # TODO: Heuristic analyze should be as fallback, real LLM should analyze every job opportunity
+
     def __init__(self, api_key: Any = _API_KEY_SENTINEL):
         if api_key is _API_KEY_SENTINEL:
             self.api_key = settings.GOOGLE_API_KEY
