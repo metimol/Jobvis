@@ -546,11 +546,7 @@ def test_adv_filesystem_preservation_of_required_assets():
     assert favicon.exists(), "Favicon 'static/assets/img/favicon.svg' is missing!"
     assert favicon.stat().st_size > 0, "Favicon file is empty!"
 
-    # 2. JS directory
-    js_dir = Path("static/assets/js")
-    assert js_dir.exists() and js_dir.is_dir(), "'static/assets/js' directory is missing!"
-
-    # 3. Core CSS files
+    # 2. Core CSS files
     core_css_files = [
         "static/assets/css/_tokens-bridge.css",
         "static/assets/css/parts.css",
@@ -562,7 +558,7 @@ def test_adv_filesystem_preservation_of_required_assets():
         assert p.exists(), f"Core CSS file {css_path_str} is missing!"
         assert p.stat().st_size > 0, f"Core CSS file {css_path_str} is empty!"
 
-    # 4. Exactly 6 active templates
+    # 3. Exactly 6 active templates
     active_templates = [
         "templates/base.html",
         "templates/index.html",

@@ -286,6 +286,9 @@ async def test_scheduler_sync_api_timeout_logs_failure_cleanly(empirical_db: Asy
     result = await scheduler.run_sync_for_user(user_id, empirical_db, ba_client=mock_ba)
     assert result["status"] == "failed"
     assert "timed out" in result["error"].lower()
+    assert result["scraped"] == 0
+    assert result["deduped"] == 0
+    assert result["matched"] == 0
 
     # Check SyncLog record
     stmt = select(SyncLog).where(SyncLog.user_id == user_id)

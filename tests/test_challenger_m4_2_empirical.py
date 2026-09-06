@@ -365,7 +365,7 @@ async def test_route_get_root_unauthenticated_renders_index(challenger_client: A
     """Verify GET / returns 200 and renders index.html for guest user."""
     resp = await challenger_client.get("/")
     assert resp.status_code == 200
-    assert "Velar AI Match Engine" in resp.text
+    assert "Welcome" in resp.text
     assert "JOB" in resp.text and "VIS" in resp.text
 
 

@@ -198,7 +198,7 @@ async def test_unauthenticated_visitor_root_route_returns_200_ok(http_client: As
     assert "text/html" in response.headers.get("content-type", "")
     assert "Jobvis" in response.text
     assert "hero-title" in response.text
-    assert "Velar AI Match Engine" in response.text
+    assert "Welcome" in response.text
 
 
 @pytest.mark.asyncio
@@ -207,9 +207,9 @@ async def test_authenticated_user_root_route_redirects_to_feed_302(
 ):
     """Verify authenticated user receives HTTP 302 on / redirecting to /feed (via session cookie)."""
     token = create_session_token(test_user.id, test_user.email)
-    cookies = {settings.SESSION_COOKIE_NAME: token}
+    http_client.cookies.set(settings.SESSION_COOKIE_NAME, token)
 
-    response = await http_client.get("/", cookies=cookies)
+    response = await http_client.get("/")
     assert response.status_code == 302
     assert response.headers.get("location") == "/feed"
 
@@ -230,10 +230,10 @@ async def test_authenticated_user_bearer_header_root_route_redirects_to_feed_302
 @pytest.mark.asyncio
 async def test_tampered_cookie_root_route_gracefully_returns_200_ok(http_client: AsyncClient):
     """Adversarial: Tampered or invalid JWT cookie must not crash the app and should return 200 OK."""
-    tampered_cookies = {
-        settings.SESSION_COOKIE_NAME: "eyInvalidHeader.eyInvalidPayload.signatureFail"
-    }
-    response = await http_client.get("/", cookies=tampered_cookies)
+    http_client.cookies.set(
+        settings.SESSION_COOKIE_NAME, "eyInvalidHeader.eyInvalidPayload.signatureFail"
+    )
+    response = await http_client.get("/")
     assert response.status_code == 200
     assert "hero-title" in response.text
 
@@ -248,7 +248,8 @@ async def test_login_page_routing(http_client: AsyncClient, test_user: User):
 
     # 2. Authenticated -> 302 to /feed
     token = create_session_token(test_user.id, test_user.email)
-    auth_resp = await http_client.get("/login", cookies={settings.SESSION_COOKIE_NAME: token})
+    http_client.cookies.set(settings.SESSION_COOKIE_NAME, token)
+    auth_resp = await http_client.get("/login")
     assert auth_resp.status_code == 302
     assert auth_resp.headers.get("location") == "/feed"
 
@@ -258,7 +259,6 @@ async def test_protected_routes_auth_boundary(http_client: AsyncClient, test_use
     """Verify /profile, /feed, and /settings redirect unauthenticated users to /login and render 200 for authenticated users."""
     protected_paths = ["/profile", "/feed", "/settings"]
     token = create_session_token(test_user.id, test_user.email)
-    cookies = {settings.SESSION_COOKIE_NAME: token}
 
     for path in protected_paths:
         # Unauthenticated -> 302 to /login
@@ -267,7 +267,9 @@ async def test_protected_routes_auth_boundary(http_client: AsyncClient, test_use
         assert unauth_resp.headers.get("location") == "/login"
 
         # Authenticated -> 200 OK
-        auth_resp = await http_client.get(path, cookies=cookies)
+        http_client.cookies.set(settings.SESSION_COOKIE_NAME, token)
+        auth_resp = await http_client.get(path)
+        http_client.cookies.delete(settings.SESSION_COOKIE_NAME)
         assert auth_resp.status_code == 200, f"{path} did not return 200 for authenticated user"
         assert "text/html" in auth_resp.headers.get("content-type", "")
 

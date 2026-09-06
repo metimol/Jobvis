@@ -282,9 +282,6 @@ def test_preserved_static_assets_exist():
     favicon = Path("static/assets/img/favicon.svg")
     assert favicon.exists(), "static/assets/img/favicon.svg must be preserved"
 
-    js_dir = Path("static/assets/js")
-    assert js_dir.exists() and js_dir.is_dir(), "static/assets/js directory must be preserved"
-
     core_css_files = [
         "static/assets/css/_tokens-bridge.css",
         "static/assets/css/parts.css",

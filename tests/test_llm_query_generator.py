@@ -8,6 +8,7 @@ from langchain_core.language_models.fake import FakeListLLM
 from langchain_core.runnables import RunnableLambda
 
 from app.models.profile import CVAnalysis, Profile
+from app.models.user import User
 from app.schemas.job import BAJobListing
 from app.services.query_generator import (
     BAQueryParams,
@@ -248,6 +249,7 @@ async def test_scheduler_integration_with_llm_query():
     mock_db.rollback = AsyncMock()
 
     user_id = "test-user-llm-1"
+    user = User(id=user_id, email="test-user-llm-1@example.com")
     profile = Profile(
         user_id=user_id,
         goals="I want a minijob in retail and marketing",
@@ -268,6 +270,7 @@ async def test_scheduler_integration_with_llm_query():
     mock_scalars = MagicMock()
     mock_result.scalars.return_value = mock_scalars
     mock_scalars.first.side_effect = [
+        user,  # User lookup
         profile,  # Profile lookup
         cv,  # CVAnalysis lookup
         None,  # Settings lookup

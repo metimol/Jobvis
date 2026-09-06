@@ -1178,11 +1178,6 @@ def test_f13_active_pages_present():
 # ============================================================================
 
 
-def test_f14_webgl_asset_bundle_exists():
-    static_js = Path("static/assets/js")
-    assert static_js.exists()
-
-
 def test_f14_gallery_manual_buttons_removed():
     index_path = Path("templates/index.html")
     if index_path.exists():

@@ -119,6 +119,37 @@ class JobSearchParams(BaseModel):
         return params
 
 
+def _extract_text(val: Any) -> str | None:
+    """Safely extract plain text from strings, primitives, or nested dicts/lists."""
+    if val is None:
+        return None
+    if isinstance(val, int | float):
+        return str(val)
+    if isinstance(val, dict):
+        for k in (
+            "name",
+            "firma",
+            "bezeichnung",
+            "text",
+            "inhalt",
+            "titel",
+            "wert",
+            "beschreibung",
+        ):
+            if k in val and val[k] and not isinstance(val[k], dict | list):
+                s = str(val[k]).strip()
+                if s:
+                    return s
+        parts = [_extract_text(v) for v in val.values()]
+        parts = [p for p in parts if p]
+        return " ".join(parts) if parts else None
+    if isinstance(val, list):
+        parts = [_extract_text(v) for v in val]
+        parts = [p for p in parts if p]
+        return ", ".join(parts) if parts else None
+    return str(val).strip() or None
+
+
 class BAJobListing(BaseModel):
     """Canonical representation of a Bundesagentur für Arbeit job search result item."""
 
@@ -167,50 +198,62 @@ class BAJobListing(BaseModel):
         )
 
         # 2. Title
-        title = (
+        title_raw = (
             data.get("stellenangebotsTitel")
             or data.get("titel")
             or data.get("beruf")
             or data.get("title")
-            or "Unbenanntes Stellenangebot"
         )
+        title = _extract_text(title_raw) or "Unbenanntes Stellenangebot"
 
         # 3. Employer
-        employer = data.get("arbeitgeber") or data.get("employer") or data.get("firma")
+        employer = _extract_text(
+            data.get("arbeitgeber") or data.get("employer") or data.get("firma")
+        )
 
         # 4. Location parsing
         location_raw = (
             data.get("stellenlokationen")
             or data.get("arbeitsort")
+            or data.get("arbeitsorte")
             or data.get("location")
+            or data.get("locations")
             or data.get("ort")
         )
-        location_str: str | None = "Unbekannter Ort"
+        location_str: str | None = None
         if isinstance(location_raw, list) and location_raw:
-            loc = location_raw[0]
-            if "adresse" in loc:
-                loc = loc["adresse"]
-            plz = loc.get("postleitzahl", "") or loc.get("plz", "")
-            ort = loc.get("ort", "")
-            region = loc.get("region", "")
-            parts = [p for p in [plz, ort or region] if p]
-            location_str = " ".join(parts) if parts else "Unbekannter Ort"
+            for item in location_raw:
+                if isinstance(item, dict):
+                    loc = item.get("adresse") if isinstance(item.get("adresse"), dict) else item
+                    plz = str(loc.get("postleitzahl") or loc.get("plz") or "").strip()
+                    ort = str(loc.get("ort") or loc.get("region") or "").strip()
+                    parts = [p for p in [plz, ort] if p]
+                    if parts:
+                        location_str = " ".join(parts)
+                        break
+                elif isinstance(item, str) and item.strip():
+                    location_str = item.strip()
+                    break
         elif isinstance(location_raw, dict):
-            plz = location_raw.get("plz", "").strip()
-            ort = location_raw.get("ort", "").strip()
-            region = location_raw.get("region", "").strip()
-            parts = [p for p in [plz, ort or region] if p]
-            location_str = " ".join(parts) if parts else "Unbekannter Ort"
+            loc = (
+                location_raw.get("adresse")
+                if isinstance(location_raw.get("adresse"), dict)
+                else location_raw
+            )
+            plz = str(loc.get("plz") or loc.get("postleitzahl") or "").strip()
+            ort = str(loc.get("ort") or loc.get("region") or "").strip()
+            parts = [p for p in [plz, ort] if p]
+            location_str = " ".join(parts) if parts else None
         elif isinstance(location_raw, str):
-            location_str = location_raw.strip() or "Unbekannter Ort"
+            location_str = location_raw.strip() or None
 
         # 5. Working time
-        working_time = (
+        working_time = _extract_text(
             data.get("arbeitszeitmodell") or data.get("arbeitszeit") or data.get("working_time")
         )
 
         # 6. Description / Teaser
-        description = (
+        description = _extract_text(
             data.get("stellenbeschreibung")
             or data.get("beschreibung")
             or data.get("description")
@@ -218,7 +261,9 @@ class BAJobListing(BaseModel):
         )
 
         # 7. External URL
-        external_url = data.get("externeUrl") or data.get("external_url") or data.get("url")
+        external_url = _extract_text(
+            data.get("externeUrl") or data.get("external_url") or data.get("url")
+        )
         if not external_url and ref_nr:
             # Fallback to standard BA Jobsuche portal link format
             external_url = f"https://www.arbeitsagentur.de/jobsuche/jobdetail/{ref_nr}"
@@ -236,12 +281,12 @@ class BAJobListing(BaseModel):
 
         return cls(
             ref_nr=str(ref_nr),
-            title=str(title).strip(),
-            employer=str(employer).strip() if employer else None,
+            title=title,
+            employer=employer,
             location=location_str,
-            working_time=str(working_time).strip() if working_time else None,
-            description=str(description).strip() if description else None,
-            external_url=str(external_url).strip() if external_url else None,
+            working_time=working_time,
+            description=description,
+            external_url=external_url,
             published_date=published_date,
             canonical_hash=str(canonical_hash) if canonical_hash else None,
             raw_data=data,
@@ -280,71 +325,177 @@ class BADetailedJob(BaseModel):
     @classmethod
     def from_api_dict(cls, data: dict[str, Any]) -> "BADetailedJob":
         """Factory method to parse BA detailed job payload."""
-        ref_nr = str(data.get("refnr") or data.get("ref_nr") or data.get("hashId") or "")
-        title = str(data.get("titel") or data.get("beruf") or data.get("title") or "")
-        employer = data.get("arbeitgeber") or data.get("employer") or data.get("firma")
-        description = (
+        ref_nr = str(
+            data.get("refnr")
+            or data.get("referenznummer")
+            or data.get("ref_nr")
+            or data.get("hashId")
+            or data.get("id")
+            or ""
+        )
+        title_raw = (
+            data.get("titel")
+            or data.get("title")
+            or data.get("beruf")
+            or data.get("stellenangebotsTitel")
+        )
+        title = _extract_text(title_raw) or "Unbekannt"
+        employer = _extract_text(
+            data.get("arbeitgeber") or data.get("employer") or data.get("firma")
+        )
+        description = _extract_text(
             data.get("stellenbeschreibung") or data.get("beschreibung") or data.get("description")
         )
 
         # Tasks / Activities
-        tasks_raw = data.get("taetigkeiten") or data.get("tasks") or []
+        tasks_raw = data.get("taetigkeiten") or data.get("tasks") or data.get("aufgaben") or []
         if isinstance(tasks_raw, str):
             tasks = [t.strip() for t in tasks_raw.split("\n") if t.strip()]
         elif isinstance(tasks_raw, list):
-            tasks = [str(t).strip() for t in tasks_raw if t]
+            tasks = []
+            for t in tasks_raw:
+                if isinstance(t, str) and t.strip():
+                    tasks.append(t.strip())
+                elif isinstance(t, dict):
+                    parts = [str(val).strip() for val in t.values() if str(val).strip()]
+                    if parts:
+                        tasks.append(": ".join(parts))
+                elif t is not None and str(t).strip():
+                    tasks.append(str(t).strip())
+        elif isinstance(tasks_raw, dict):
+            tasks = []
+            for v in tasks_raw.values():
+                if isinstance(v, str) and v.strip():
+                    tasks.append(v.strip())
+                elif isinstance(v, list):
+                    for item in v:
+                        if isinstance(item, str) and item.strip():
+                            tasks.append(item.strip())
+                        elif isinstance(item, dict):
+                            parts = [str(val).strip() for val in item.values() if str(val).strip()]
+                            if parts:
+                                tasks.append(": ".join(parts))
+                elif isinstance(v, dict):
+                    parts = [str(val).strip() for val in v.values() if str(val).strip()]
+                    if parts:
+                        tasks.append(": ".join(parts))
         else:
             tasks = []
 
         # Requirements
-        reqs_raw = data.get("anforderungen") or data.get("requirements") or []
+        reqs_raw = (
+            data.get("anforderungen")
+            or data.get("requirements")
+            or data.get("qualifikationen")
+            or []
+        )
         if isinstance(reqs_raw, str):
             requirements = [r.strip() for r in reqs_raw.split("\n") if r.strip()]
         elif isinstance(reqs_raw, list):
-            requirements = [str(r).strip() for r in reqs_raw if r]
+            requirements = []
+            for r in reqs_raw:
+                if isinstance(r, str) and r.strip():
+                    requirements.append(r.strip())
+                elif isinstance(r, dict):
+                    parts = [str(val).strip() for val in r.values() if str(val).strip()]
+                    if parts:
+                        requirements.append(": ".join(parts))
+                elif r is not None and str(r).strip():
+                    requirements.append(str(r).strip())
+        elif isinstance(reqs_raw, dict):
+            requirements = []
+            for v in reqs_raw.values():
+                if isinstance(v, str) and v.strip():
+                    requirements.append(v.strip())
+                elif isinstance(v, list):
+                    for item in v:
+                        if isinstance(item, str) and item.strip():
+                            requirements.append(item.strip())
+                        elif isinstance(item, dict):
+                            parts = [str(val).strip() for val in item.values() if str(val).strip()]
+                            if parts:
+                                requirements.append(": ".join(parts))
+                elif isinstance(v, dict):
+                    parts = [str(val).strip() for val in v.values() if str(val).strip()]
+                    if parts:
+                        requirements.append(": ".join(parts))
         else:
             requirements = []
 
         # Locations
-        locations_raw = data.get("arbeitsorte") or data.get("locations") or []
+        locations_raw = (
+            data.get("arbeitsorte") or data.get("locations") or data.get("stellenlokationen") or []
+        )
         locations: list[dict[str, Any]] = []
         location_str: str | None = None
         if isinstance(locations_raw, list) and locations_raw:
             for loc in locations_raw:
                 if isinstance(loc, dict):
-                    locations.append(loc)
-            if locations:
-                first = locations[0]
-                plz = first.get("plz", "")
-                ort = first.get("ort", "")
-                strasse = first.get("strasse", "")
-                parts = [p for p in [strasse, plz, ort] if p]
-                location_str = ", ".join(parts) if parts else None
+                    loc_item = loc.get("adresse") if isinstance(loc.get("adresse"), dict) else loc
+                    locations.append(loc_item)
+                elif isinstance(loc, str) and loc.strip():
+                    locations.append({"ort": loc.strip()})
+            for loc in locations:
+                plz = str(loc.get("plz") or loc.get("postleitzahl") or "").strip()
+                ort = str(loc.get("ort") or loc.get("region") or "").strip()
+                strasse = str(loc.get("strasse") or "").strip()
+                if strasse:
+                    parts = [p for p in [strasse, plz, ort] if p]
+                    if parts:
+                        location_str = ", ".join(parts)
+                        break
+                else:
+                    parts = [p for p in [plz, ort] if p]
+                    if parts:
+                        location_str = " ".join(parts)
+                        break
         elif isinstance(data.get("arbeitsort"), dict):
             loc_dict = data["arbeitsort"]
+            if isinstance(loc_dict.get("adresse"), dict):
+                loc_dict = loc_dict["adresse"]
             locations.append(loc_dict)
-            plz = loc_dict.get("plz", "")
-            ort = loc_dict.get("ort", "")
-            location_str = f"{plz} {ort}".strip() or None
+            plz = str(loc_dict.get("plz") or loc_dict.get("postleitzahl") or "").strip()
+            ort = str(loc_dict.get("ort") or loc_dict.get("region") or "").strip()
+            strasse = str(loc_dict.get("strasse") or "").strip()
+            if strasse:
+                parts = [p for p in [strasse, plz, ort] if p]
+                location_str = ", ".join(parts) if parts else None
+            else:
+                parts = [p for p in [plz, ort] if p]
+                location_str = " ".join(parts) if parts else None
         elif isinstance(data.get("arbeitsort"), str):
-            location_str = data["arbeitsort"]
+            location_str = data["arbeitsort"].strip() or None
+
+        contact_raw = data.get("kontakt") or data.get("contact")
+        contact: dict[str, Any] | None = None
+        if isinstance(contact_raw, dict):
+            contact = contact_raw
+        elif isinstance(contact_raw, list) and contact_raw and isinstance(contact_raw[0], dict):
+            contact = contact_raw[0]
 
         return cls(
             ref_nr=ref_nr,
             title=title,
-            employer=str(employer).strip() if employer else None,
-            description=str(description).strip() if description else None,
+            employer=employer,
+            description=description,
             tasks=tasks,
             requirements=requirements,
             locations=locations,
             location_str=location_str,
-            working_time=str(data.get("arbeitszeit") or data.get("arbeitszeitmodell") or "")
-            or None,
-            remuneration=str(data.get("verguetung") or data.get("gehalt") or "") or None,
-            contract_duration=str(data.get("befristung") or "") or None,
-            entry_date=str(data.get("eintrittsdatum") or "") or None,
-            contact=data.get("kontakt") if isinstance(data.get("kontakt"), dict) else None,
-            external_url=str(data.get("externeUrl") or data.get("url") or "") or None,
+            working_time=_extract_text(
+                data.get("arbeitszeit") or data.get("arbeitszeitmodell") or data.get("working_time")
+            ),
+            remuneration=_extract_text(
+                data.get("verguetung") or data.get("gehalt") or data.get("remuneration")
+            ),
+            contract_duration=_extract_text(
+                data.get("befristung") or data.get("contract_duration")
+            ),
+            entry_date=_extract_text(data.get("eintrittsdatum") or data.get("entry_date")),
+            contact=contact,
+            external_url=_extract_text(
+                data.get("externeUrl") or data.get("external_url") or data.get("url")
+            ),
             raw_data=data,
         )
 

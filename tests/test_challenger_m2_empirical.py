@@ -457,13 +457,61 @@ async def test_bajoblisting_from_api_dict_edge_cases():
     )
     assert listing_loc_plz_ort.location == "70173 Stuttgart"
 
+    # 5. Location as list of strings
+    listing_loc_list_str = BAJobListing.from_api_dict({"location": ["Berlin"]})
+    assert listing_loc_list_str.location == "Berlin"
+
+    # 6. Location as dict with null fields
+    listing_loc_null_fields = BAJobListing.from_api_dict(
+        {"arbeitsort": {"plz": None, "ort": "Berlin", "region": None}}
+    )
+    assert listing_loc_null_fields.location == "Berlin"
+
+    # 7. Location with integer plz
+    listing_loc_int_plz = BAJobListing.from_api_dict(
+        {"arbeitsort": {"plz": 10115, "ort": "Berlin"}}
+    )
+    assert listing_loc_int_plz.location == "10115 Berlin"
+
+    # 8. Location with nested adresse dict
+    listing_loc_nested_addr = BAJobListing.from_api_dict(
+        {"arbeitsort": {"adresse": {"plz": "10115", "ort": "Berlin"}}}
+    )
+    assert listing_loc_nested_addr.location == "10115 Berlin"
+
+    # 9. Location list with leading empty / None elements
+    listing_loc_list_fallback = BAJobListing.from_api_dict({"location": [{}, None, "Hamburg"]})
+    assert listing_loc_list_fallback.location == "Hamburg"
+
+    # 10. Location list with nested adresse dict
+    listing_loc_list_nested = BAJobListing.from_api_dict(
+        {"location": [{"adresse": {"plz": 80331, "ort": "München"}}]}
+    )
+    assert listing_loc_list_nested.location == "80331 München"
+
+    # 11. Location with only region
+    listing_loc_region = BAJobListing.from_api_dict({"location": [{"region": "Bayern"}]})
+    assert listing_loc_region.location == "Bayern"
+
+    # 12. Plural key arbeitsorte
+    listing_loc_arbeitsorte = BAJobListing.from_api_dict({"arbeitsorte": [{"ort": "Berlin"}]})
+    assert listing_loc_arbeitsorte.location == "Berlin"
+
+    # 13. Plural key locations (string list)
+    listing_loc_locations = BAJobListing.from_api_dict({"locations": ["Hamburg"]})
+    assert listing_loc_locations.location == "Hamburg"
+
+    # 14. Employer as dictionary
+    listing_dict_employer = BAJobListing.from_api_dict({"arbeitgeber": {"name": "Tech Corp GmbH"}})
+    assert listing_dict_employer.employer == "Tech Corp GmbH"
+
 
 async def test_badetailedjob_from_api_dict_edge_cases():
     """Verify BADetailedJob parses complex and sparse structures without errors."""
     # 1. Empty dict
     detailed_empty = BADetailedJob.from_api_dict({})
     assert detailed_empty.ref_nr == ""
-    assert detailed_empty.title == ""
+    assert detailed_empty.title == "Unbekannt"
     assert detailed_empty.tasks == []
     assert detailed_empty.requirements == []
     assert detailed_empty.locations == []
@@ -496,6 +544,70 @@ async def test_badetailedjob_from_api_dict_edge_cases():
     )
     assert len(detailed_multi_loc.locations) == 2
     assert detailed_multi_loc.location_str == "Hauptstr. 10, 50667, Köln"
+
+    # 4. Arbeitsort with null plz and ort
+    detailed_null_loc = BADetailedJob.from_api_dict({"arbeitsort": {"plz": None, "ort": None}})
+    assert detailed_null_loc.location_str is None
+
+    # 5. Arbeitsorte as list of strings
+    detailed_str_loc = BADetailedJob.from_api_dict({"arbeitsorte": ["Berlin"]})
+    assert detailed_str_loc.location_str == "Berlin"
+
+    # 6. Arbeitsort with street and nested adresse
+    detailed_nested_addr = BADetailedJob.from_api_dict(
+        {
+            "arbeitsort": {
+                "adresse": {"strasse": "Friedrichstraße 12", "plz": "10115", "ort": "Berlin"}
+            }
+        }
+    )
+    assert detailed_nested_addr.location_str == "Friedrichstraße 12, 10115, Berlin"
+
+    # 7. Dict tasks and requirements
+    detailed_dict_reqs = BADetailedJob.from_api_dict(
+        {
+            "taetigkeiten": {"t1": "Architektur", "t2": "Entwicklung"},
+            "anforderungen": {
+                "sprache": [{"sprache": "Deutsch", "niveau": "C1"}],
+                "erfahrung": "5 Jahre",
+            },
+        }
+    )
+    assert detailed_dict_reqs.tasks == ["Architektur", "Entwicklung"]
+    assert "5 Jahre" in detailed_dict_reqs.requirements
+    assert "Deutsch: C1" in detailed_dict_reqs.requirements
+
+    # 8. Locations list with leading empty dict
+    detailed_loc_fallback = BADetailedJob.from_api_dict({"locations": [{}, {"ort": "Berlin"}]})
+    assert detailed_loc_fallback.location_str == "Berlin"
+
+    # 9. Location with region only (dict and list)
+    detailed_region_dict = BADetailedJob.from_api_dict({"arbeitsort": {"region": "Bayern"}})
+    assert detailed_region_dict.location_str == "Bayern"
+
+    detailed_region_list = BADetailedJob.from_api_dict({"locations": [{"region": "Hessen"}]})
+    assert detailed_region_list.location_str == "Hessen"
+
+    # 10. List of dicts in tasks and requirements
+    detailed_list_dicts = BADetailedJob.from_api_dict(
+        {
+            "taetigkeiten": [{"beschreibung": "API Entwicklung"}],
+            "anforderungen": [{"skill": "Python"}, {"skill": "Docker"}],
+        }
+    )
+    assert detailed_list_dicts.tasks == ["API Entwicklung"]
+    assert "Python" in detailed_list_dicts.requirements
+    assert "Docker" in detailed_list_dicts.requirements
+
+    # 11. Employer and Title as dictionary
+    detailed_dict_meta = BADetailedJob.from_api_dict(
+        {
+            "titel": {"bezeichnung": "Senior Cloud Architect"},
+            "arbeitgeber": {"name": "Cloud Solutions SE"},
+        }
+    )
+    assert detailed_dict_meta.title == "Senior Cloud Architect"
+    assert detailed_dict_meta.employer == "Cloud Solutions SE"
 
 
 @respx.mock

@@ -71,6 +71,19 @@ class MatchingSchedulerService:
         5. Persist jobs, matched_jobs, and sync_log to database.
         """
         try:
+            # 0. Fetch and verify user exists
+            u_stmt = select(User).where(User.id == user_id)
+            user = (await db.execute(u_stmt)).scalars().first()
+            if not user:
+                logger.warning("User %s does not exist, skipping matching sync.", user_id)
+                return {
+                    "user_id": user_id,
+                    "status": "success",
+                    "scraped": 0,
+                    "deduped": 0,
+                    "matched": 0,
+                }
+
             # 1. Fetch user profile
             p_stmt = select(Profile).where(Profile.user_id == user_id)
             profile = (await db.execute(p_stmt)).scalars().first()
@@ -141,7 +154,13 @@ class MatchingSchedulerService:
                 )
                 db.add(log)
                 await db.commit()
-                return {"user_id": user_id, "status": "success", "matched": 0}
+                return {
+                    "user_id": user_id,
+                    "status": "success",
+                    "scraped": 0,
+                    "deduped": 0,
+                    "matched": 0,
+                }
 
             # Fetch historically seen hashes & refs for this user
             existing_jobs = (await db.execute(select(Job))).scalars().all()
@@ -263,7 +282,14 @@ class MatchingSchedulerService:
                 await db.commit()
             except Exception as log_err:
                 logger.error("Failed to write failure SyncLog: %s", log_err)
-            return {"user_id": user_id, "status": "failed", "error": str(e)}
+            return {
+                "user_id": user_id,
+                "status": "failed",
+                "scraped": 0,
+                "deduped": 0,
+                "matched": 0,
+                "error": str(e),
+            }
 
     async def run_sync_all_users(self, users: list[str] | None = None) -> list[dict[str, Any]]:
         """Run matching sync across all users with error isolation."""
@@ -285,7 +311,16 @@ class MatchingSchedulerService:
                         results.append(r)
                 except Exception as exc:
                     logger.error("Sync failed for user %s: %s", uid, exc)
-                    results.append({"user_id": uid, "status": "failed", "error": str(exc)})
+                    results.append(
+                        {
+                            "user_id": uid,
+                            "status": "failed",
+                            "scraped": 0,
+                            "deduped": 0,
+                            "matched": 0,
+                            "error": str(exc),
+                        }
+                    )
 
             return results
 
