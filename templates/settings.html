@@ -146,7 +146,7 @@
       if (resp.ok) {
         statusSpan.style.color = 'var(--success)';
         statusSpan.textContent = '✓ Preferences successfully reset!';
-        setTimeout(() => window.location.href = '/profile', 1000);
+        setTimeout(() => window.location.href = '/onboarding', 1000);
       }
     } catch (e) {
       statusSpan.style.color = 'var(--danger)';

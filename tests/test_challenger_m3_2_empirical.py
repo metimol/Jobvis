@@ -442,12 +442,9 @@ async def test_cv_upload_empty_file_handled_gracefully(chal_db: AsyncSession, ch
                 files={"file": ("empty.txt", b"", "text/plain")},
             )
 
-        assert resp.status_code == 200
+        assert resp.status_code == 400
         data = resp.json()
-        assert data["skills"] == []
-        assert data["extracted_preferences"]["german_level"] == "B1"
-        assert data["extracted_preferences"]["radius_km"] == 25
-        assert data["extracted_preferences"]["desired_job_type"] == "all"
+        assert "detail" in data
 
     app.dependency_overrides.clear()
 
@@ -460,34 +457,80 @@ async def test_cv_upload_empty_file_handled_gracefully(chal_db: AsyncSession, ch
 @pytest.mark.parametrize(
     "raw_input,expected_norm",
     [
-        ("Deutsch C2 (Muttersprache)", "C1"),
+        ("Deutsch C2 (Muttersprache)", "C2"),
         ("German C1 fluent", "C1"),
-        ("Deutsch Muttersprache", "C1"),
-        ("German native speaker", "C1"),
+        ("Deutsch Muttersprache", "C2"),
+        ("German native speaker", "C2"),
         ("Deutschkenntnisse: B2", "B2"),
         ("Deutsch B1 Niveau", "B1"),
         ("Deutsch A2 Grundstufe", "A2"),
-        ("Deutsch A1 Anfänger", "A2"),  # Clamped to A2 for profile compatibility
+        ("Deutsch A1 Anfänger", "A1"),
         ("No language mentioned here", "B1"),  # Default B1
     ],
 )
 def test_german_level_normalization_logic(raw_input: str, expected_norm: str):
-    """Verify CEFR level normalization guarantees valid GermanLevelLiteral (A2, B1, B2, C1)."""
+    """Verify CEFR level normalization guarantees valid GermanLevelLiteral (A1, A2, B1, B2, C1, C2)."""
     analyzer = AICVAnalyzer()
     res = analyzer._heuristic_analyze(raw_input)
     raw_german = res.get("german_level") or "B1"
     raw_str = str(raw_german).upper()
 
-    if raw_str in ["C2", "C1", "MUTTERSPRACHE", "NATIVE"]:
+    if raw_str in ["C2", "MUTTERSPRACHE", "NATIVE"]:
+        norm = "C2"
+    elif raw_str == "C1":
         norm = "C1"
     elif raw_str == "B2":
         norm = "B2"
-    elif raw_str in ["A1", "A2"]:
+    elif raw_str == "B1":
+        norm = "B1"
+    elif raw_str == "A2":
         norm = "A2"
+    elif raw_str == "A1":
+        norm = "A1"
     else:
         norm = "B1"
 
     assert norm == expected_norm
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "raw_snippet,expected_level",
+    [
+        ("Sprachkenntnisse: Deutsch C2 (Muttersprache)", "C2"),
+        ("Sprachkenntnisse: Deutsch C1 fließend", "C1"),
+        ("Sprachkenntnisse: Deutsch B2", "B2"),
+        ("Sprachkenntnisse: Deutsch B1", "B1"),
+        ("Sprachkenntnisse: Deutsch A2", "A2"),
+        ("Sprachkenntnisse: Deutsch A1 Anfänger", "A1"),
+    ],
+)
+async def test_profile_cv_upload_preserves_extracted_german_level(
+    chal_db: AsyncSession, chal_user: User, raw_snippet: str, expected_level: str
+):
+    """Verify POST /api/profile/cv extracts and preserves the full CEFR spectrum (A1-C2)."""
+    token = create_session_token(chal_user.id, chal_user.email)
+    cookies = {"jobvis_session": token}
+    app.dependency_overrides[get_db] = lambda: chal_db
+
+    cv_text = f"Lebenslauf von Kandidat\n{raw_snippet}\nWohnort: Berlin\nBeruf: Verkäufer"
+    files = {"file": ("cefr_cv.txt", cv_text.encode("utf-8"), "text/plain")}
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test", cookies=cookies) as client:
+        resp = await client.post("/api/profile/cv", files=files)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["extracted_preferences"]["german_level"] == expected_level
+
+    # Verify profile in DB is updated
+    stmt = select(Profile).where(Profile.user_id == chal_user.id)
+    profile = (await chal_db.execute(stmt)).scalars().first()
+    assert profile is not None
+    assert profile.german_level == expected_level
+    assert profile.onboarding_step >= 1
+
+    app.dependency_overrides.clear()
 
 
 @pytest.mark.parametrize(

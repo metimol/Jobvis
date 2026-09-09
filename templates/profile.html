@@ -164,10 +164,12 @@
         <div class="form-group">
           <label class="form-label">{{ t.get('german_level', 'German Proficiency (CEFR)') }}</label>
           <select id="germanLevel" class="form-control">
+            <option value="A1" {% if profile and profile.german_level == 'A1' %}selected{% endif %}>A1 — Beginner German</option>
             <option value="A2" {% if profile and profile.german_level == 'A2' %}selected{% endif %}>A2 — Basic German</option>
             <option value="B1" {% if profile and profile.german_level == 'B1' %}selected{% endif %}>B1 — Intermediate German</option>
             <option value="B2" {% if profile and profile.german_level == 'B2' %}selected{% endif %}>B2 — Professional Working German</option>
             <option value="C1" {% if profile and profile.german_level == 'C1' %}selected{% endif %}>C1 — Advanced / Fluent German</option>
+            <option value="C2" {% if profile and profile.german_level == 'C2' %}selected{% endif %}>C2 — Native / Mastery German</option>
           </select>
         </div>
 

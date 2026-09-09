@@ -1,6 +1,7 @@
 """Settings router handling UI language preferences, reset choices, and cascading account deletion."""
 
 import logging
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, Response
 from sqlalchemy import delete, select
@@ -66,6 +67,33 @@ async def update_language(
     return SettingsResponse.model_validate(user_settings)
 
 
+@router.post(
+    "/language-guest",
+    response_model=SettingsResponse,
+    summary="Update UI Language for Guest (Unauthenticated)",
+)
+async def update_language_guest(
+    payload: LanguageUpdate,
+    response: Response,
+) -> SettingsResponse:
+    """Set UI language preference via cookie for unauthenticated users."""
+    response.set_cookie(
+        key="ui_language",
+        value=payload.ui_language,
+        max_age=60 * 60 * 24 * 365,  # 1 year
+        path="/",
+        httponly=False,
+        samesite="lax",
+    )
+    return SettingsResponse(
+        id="guest",
+        user_id="guest",
+        ui_language=payload.ui_language,
+        email_notifications=False,
+        updated_at=datetime.now(UTC),
+    )
+
+
 @router.post("/reset", response_model=MessageResponse, summary="Reset User Preferences and Choices")
 async def reset_preferences(
     current_user: User = Depends(get_current_user),
@@ -83,6 +111,8 @@ async def reset_preferences(
         profile.goals = None
         profile.location = None
         profile.radius_km = 25
+        profile.onboarding_completed = False
+        profile.onboarding_step = 0
 
     # Delete CV analyses
     await db.execute(delete(CVAnalysis).where(CVAnalysis.user_id == current_user.id))

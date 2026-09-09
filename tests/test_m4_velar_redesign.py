@@ -148,6 +148,8 @@ async def authenticated_user(m4_session: AsyncSession) -> User:
         location="Frankfurt",
         radius_km=35,
         goals="Logistics and Fleet Management",
+        onboarding_completed=True,
+        onboarding_step=8,
     )
     m4_session.add(user_profile)
     await m4_session.commit()

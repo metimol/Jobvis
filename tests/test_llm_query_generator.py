@@ -257,6 +257,8 @@ async def test_scheduler_integration_with_llm_query():
         radius_km=25,
         desired_job_type="all",
         german_level="B1",
+        onboarding_completed=True,
+        onboarding_step=8,
     )
     cv = CVAnalysis(
         user_id=user_id,

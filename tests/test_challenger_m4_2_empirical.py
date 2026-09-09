@@ -152,6 +152,8 @@ async def dummy_user(challenger_session: AsyncSession):
         location="Munchen",
         radius_km=50,
         goals="Senior Systems Engineering & Architecture",
+        onboarding_completed=True,
+        onboarding_step=8,
     )
     challenger_session.add(profile)
     await challenger_session.commit()

@@ -1,0 +1,1015 @@
+{% extends "base.html" %}
+
+{% block title %}{{ t.get('onboarding_title', 'Welcome to Jobvis') }} — Jobvis{% endblock %}
+
+{% block navbar %}{% endblock %}
+{% block footer %}{% endblock %}
+
+{% block head_extra %}
+<style>
+  .wizard-container {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Header */
+  .wizard-header {
+    text-align: center;
+    margin-bottom: 1rem;
+  }
+  .wizard-brand {
+    font-family: var(--font-display);
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: var(--strawberry-50);
+    text-decoration: none;
+    letter-spacing: 0.02em;
+  }
+  .wizard-brand span { color: var(--strawberry-400); text-shadow: 0 0 12px rgba(249,87,127,0.45); }
+
+  /* Progress */
+  .progress-wrapper {
+    margin-bottom: 0.5rem;
+  }
+  .progress-label {
+    font-size: 0.85rem;
+    color: var(--strawberry-300);
+    margin-bottom: 0.5rem;
+    text-align: center;
+  }
+  .progress-track {
+    width: 100%;
+    background: rgba(255,255,255,0.08);
+    border-radius: 8px;
+    height: 8px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: var(--primary-gradient);
+    border-radius: 8px;
+    transition: width 0.5s cubic-bezier(0.16,1,0.3,1);
+    box-shadow: 0 0 12px rgba(249,87,127,0.4);
+  }
+
+  /* Steps */
+  .wizard-step {
+    display: none;
+    flex-direction: column;
+    flex: 1;
+    animation: fadeSlideIn 0.4s ease;
+  }
+  .wizard-step.active {
+    display: flex;
+  }
+  @keyframes fadeSlideIn {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .step-title {
+    font-family: var(--font-display);
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--strawberry-50);
+    margin: 1.5rem 0 0.5rem;
+    text-align: center;
+  }
+  .step-subtitle {
+    color: var(--strawberry-200);
+    font-size: 1.05rem;
+    margin-bottom: 2rem;
+    text-align: center;
+    line-height: 1.5;
+  }
+
+  /* Cards grid for selection */
+  .option-cards {
+    display: grid;
+    gap: 0.85rem;
+  }
+  .option-cards.cols-2 {
+    grid-template-columns: 1fr 1fr;
+  }
+  .option-cards.cols-1 {
+    grid-template-columns: 1fr;
+  }
+  @media (max-width: 600px) {
+    .option-cards.cols-2 { grid-template-columns: 1fr; }
+  }
+  .option-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-card);
+    border-radius: 14px;
+    padding: 1.25rem 1.35rem;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    backdrop-filter: blur(14px);
+    position: relative;
+  }
+  .option-card:hover {
+    background: var(--bg-card-hover);
+    border-color: var(--strawberry-400);
+    box-shadow: 0 0 20px rgba(249,87,127,0.15);
+  }
+  .option-card.selected {
+    border-color: var(--strawberry-500);
+    background: rgba(249,87,127,0.1);
+    box-shadow: 0 0 24px rgba(249,87,127,0.25), inset 0 0 0 1px rgba(249,87,127,0.3);
+  }
+  .option-card .card-title {
+    font-family: var(--font-display);
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--strawberry-50);
+    margin-bottom: 0.35rem;
+  }
+  .option-card .card-desc {
+    font-size: 0.88rem;
+    color: var(--strawberry-200);
+    line-height: 1.45;
+  }
+
+  /* CV detected badge */
+  .cv-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    background: rgba(16,185,129,0.12);
+    color: #4ade80;
+    border: 1px solid rgba(16,185,129,0.3);
+    padding: 0.2rem 0.6rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-left: 0.5rem;
+  }
+
+  /* Dropzone */
+  .onboarding-dropzone {
+    border: 2px dashed rgba(249,87,127,0.35);
+    border-radius: 16px;
+    padding: 3rem 1.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    background: rgba(249,87,127,0.03);
+  }
+  .onboarding-dropzone:hover, .onboarding-dropzone.drag-over {
+    border-color: var(--strawberry-400);
+    background: rgba(249,87,127,0.08);
+    box-shadow: 0 0 24px rgba(249,87,127,0.15);
+  }
+  .onboarding-dropzone .drop-icon {
+    color: var(--strawberry-400);
+    margin-bottom: 0.85rem;
+    filter: drop-shadow(0 0 8px rgba(249,87,127,0.4));
+  }
+
+  /* Form inputs */
+  .wizard-input {
+    width: 100%;
+    padding: 0.85rem 1rem;
+    background: var(--bg-input);
+    border: 1px solid var(--border-card);
+    border-radius: 12px;
+    color: var(--strawberry-50);
+    font-size: 1.05rem;
+    font-family: var(--font-sans);
+    box-sizing: border-box;
+    transition: all 0.2s ease;
+  }
+  .wizard-input:focus {
+    outline: none;
+    border-color: var(--strawberry-400);
+    background: rgba(255,245,247,0.08);
+    box-shadow: 0 0 0 3px rgba(249,87,127,0.25);
+  }
+  .wizard-textarea {
+    resize: vertical;
+    min-height: 120px;
+  }
+
+  /* Slider */
+  .radius-display {
+    text-align: center;
+    margin-bottom: 1.5rem;
+  }
+  .radius-value {
+    font-family: var(--font-display);
+    font-size: 3rem;
+    font-weight: 800;
+    color: var(--strawberry-400);
+    text-shadow: 0 0 20px rgba(249,87,127,0.4);
+  }
+  .radius-unit {
+    font-size: 1.2rem;
+    color: var(--strawberry-200);
+    margin-left: 0.3rem;
+  }
+  input[type="range"].wizard-range {
+    width: 100%;
+    accent-color: var(--strawberry-500);
+    cursor: pointer;
+    height: 6px;
+  }
+  .radius-labels {
+    display: flex;
+    justify-content: space-between;
+    color: var(--strawberry-300);
+    font-size: 0.8rem;
+    margin-top: 0.5rem;
+  }
+
+  /* Review card */
+  .review-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .review-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--bg-card);
+    border: 1px solid var(--border-card);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    backdrop-filter: blur(14px);
+  }
+  .review-item-label {
+    font-size: 0.85rem;
+    color: var(--strawberry-300);
+    margin-bottom: 0.25rem;
+  }
+  .review-item-value {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--strawberry-50);
+  }
+  .review-edit-btn {
+    background: none;
+    border: 1px solid var(--border-card);
+    color: var(--strawberry-300);
+    padding: 0.35rem 0.75rem;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: var(--font-sans);
+  }
+  .review-edit-btn:hover {
+    border-color: var(--strawberry-400);
+    color: var(--strawberry-50);
+    background: rgba(249,87,127,0.1);
+  }
+
+  /* Completion spinner */
+  .completion-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    text-align: center;
+    gap: 1.5rem;
+  }
+  .spinner-ring {
+    width: 80px;
+    height: 80px;
+    border: 4px solid rgba(249,87,127,0.15);
+    border-top-color: var(--strawberry-500);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+  .completion-success {
+    display: none;
+    color: #4ade80;
+    font-size: 1.1rem;
+    font-weight: 600;
+  }
+
+  /* Navigation buttons */
+  .wizard-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: auto;
+    padding-top: 2rem;
+    gap: 1rem;
+  }
+  .wizard-nav .btn {
+    min-width: 120px;
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+  }
+  .nav-spacer { flex: 1; }
+
+  /* Language mini-switcher */
+  .wizard-lang {
+    position: absolute;
+    top: 1rem;
+    right: 1.5rem;
+  }
+  .wizard-lang select {
+    background: rgba(42,14,27,0.7);
+    border: 1px solid var(--border-card);
+    color: var(--strawberry-100);
+    padding: 0.4rem 0.7rem;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-family: var(--font-sans);
+    cursor: pointer;
+    outline: none;
+  }
+
+  /* CV analysis results */
+  .cv-results {
+    margin-top: 1.5rem;
+    padding: 1.25rem;
+    background: rgba(16,185,129,0.06);
+    border: 1px solid rgba(16,185,129,0.2);
+    border-radius: 12px;
+  }
+  .cv-results h3 {
+    color: #4ade80;
+    font-size: 1rem;
+    margin: 0 0 0.75rem;
+  }
+  .skills-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+  .skill-tag {
+    background: rgba(249,87,127,0.12);
+    color: var(--strawberry-300);
+    border: 1px solid rgba(249,87,127,0.25);
+    padding: 0.3rem 0.65rem;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    font-weight: 500;
+  }
+  .upload-status {
+    margin-top: 1rem;
+    font-size: 0.95rem;
+  }
+  .upload-spinner {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    color: var(--strawberry-400);
+    font-weight: 500;
+  }
+  .mini-spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(249,87,127,0.2);
+    border-top-color: var(--strawberry-500);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  .city-chip {
+    background: var(--bg-card);
+    border: 1px solid var(--border-card);
+    color: var(--strawberry-200);
+    padding: 0.3rem 0.65rem;
+    border-radius: 20px;
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: var(--font-sans);
+  }
+  .city-chip:hover {
+    border-color: var(--strawberry-400);
+    color: var(--strawberry-50);
+    background: rgba(249,87,127,0.12);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="wizard-container" id="onboardingWizard">
+  <!-- Language switcher -->
+  <div class="wizard-lang">
+    <select onchange="window.saveStepProgress ? window.saveStepProgress(true).finally(() => switchLanguage(this.value)) : switchLanguage(this.value)">
+      <option value="de" {% if lang == 'de' %}selected{% endif %}>DE</option>
+      <option value="en" {% if lang == 'en' %}selected{% endif %}>EN</option>
+      <option value="uk" {% if lang == 'uk' %}selected{% endif %}>UK</option>
+      <option value="ru" {% if lang == 'ru' %}selected{% endif %}>RU</option>
+    </select>
+  </div>
+
+  <!-- Header -->
+  <div class="wizard-header">
+    <a href="/" class="wizard-brand">JOB<span>VIS</span></a>
+  </div>
+
+  <!-- Progress bar -->
+  <div class="progress-wrapper">
+    <div class="progress-label" id="progressLabel">{{ t.get('onboarding_step_counter', 'Step {step} of 8').replace('{step}', '1') }}</div>
+    <div class="progress-track">
+      <div class="progress-fill" id="progressFill" style="width: 12.5%"></div>
+    </div>
+  </div>
+
+  <!-- ============ STEP 1: CV Upload ============ -->
+  <div class="wizard-step active" id="step1" data-step="1">
+    <h1 class="step-title">{{ t.get('wizard_step1_title', 'Upload Your CV') }}</h1>
+    <p class="step-subtitle">{{ t.get('wizard_step1_subtitle', 'Upload your CV. Our AI will automatically detect your skills, languages, and preferences.') }}</p>
+
+    <div class="onboarding-dropzone" id="cvDropZone" onclick="document.getElementById('cvFileInput').click()">
+      <svg class="drop-icon" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0 3 3m-3-3-3 3M6.75 19.5a4.5 4.5 0 0 1-1.41-8.775 5.25 5.25 0 0 1 10.233-2.33 3 3 0 0 1 3.758 3.848A3.752 3.752 0 0 1 18 19.5H6.75Z"/>
+      </svg>
+      <p style="margin: 0 0 0.35rem; font-weight: 600; color: var(--strawberry-50); font-size: 1.05rem;">{{ t.get('wizard_step1_dropzone', 'Click or drop your CV here') }}</p>
+      <span style="font-size: 0.85rem; color: var(--strawberry-300);">{{ t.get('wizard_step1_formats', 'PDF, DOCX, or TXT (max 10MB)') }}</span>
+      <input type="file" id="cvFileInput" accept=".pdf,.docx,.txt" style="display: none;">
+    </div>
+
+    <div class="upload-status" id="uploadStatus"></div>
+
+    <div class="cv-results" id="cvResults" style="{% if cv_analysis %}display: block;{% else %}display: none;{% endif %}">
+      <h3>✓ {{ t.get('wizard_step1_success', 'CV successfully analyzed!') }}</h3>
+      <div>
+        <strong style="font-size: 0.88rem; color: var(--strawberry-100);">{{ t.get('upload_cv', 'Detected Competencies') }}:</strong>
+        <div class="skills-tags" id="extractedSkills" style="margin-top: 0.4rem;">
+          {% if cv_analysis and cv_analysis.skills %}
+            {% for skill in cv_analysis.skills %}
+              <span class="skill-tag">{{ skill }}</span>
+            {% endfor %}
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ STEP 2: German Level ============ -->
+  <div class="wizard-step" id="step2" data-step="2">
+    <h1 class="step-title">{{ t.get('wizard_step2_title', 'German Language Level') }}</h1>
+    <p class="step-subtitle">{{ t.get('wizard_step2_subtitle', 'Select your current proficiency level based on CEFR:') }}</p>
+
+    <div class="option-cards cols-2" id="germanCards">
+      {% set cefr_levels = [
+        ('A1', t.get('cefr_a1_title', 'A1 — Absolute Beginner'), t.get('cefr_a1_desc', 'Understand and use familiar everyday expressions and basic phrases.')),
+        ('A2', t.get('cefr_a2_title', 'A2 — Basic German'), t.get('cefr_a2_desc', 'Understand simple sentences in routine everyday situations.')),
+        ('B1', t.get('cefr_b1_title', 'B1 — Intermediate'), t.get('cefr_b1_desc', 'Handle everyday conversations and understand main points at work.')),
+        ('B2', t.get('cefr_b2_title', 'B2 — Professional Working'), t.get('cefr_b2_desc', 'Communicate fluently and spontaneously in professional workplace settings.')),
+        ('C1', t.get('cefr_c1_title', 'C1 — Advanced / Fluent'), t.get('cefr_c1_desc', 'Express ideas flexibly for complex professional and technical tasks.')),
+        ('C2', t.get('cefr_c2_title', 'C2 — Mastery / Native'), t.get('cefr_c2_desc', 'Understand and express virtually everything effortlessly and precisely.'))
+      ] %}
+      {% for level, title, desc in cefr_levels %}
+      <div class="option-card" data-value="{{ level }}" onclick="selectOption('german', '{{ level }}', this)">
+        <div class="card-title">{{ title }}</div>
+        <div class="card-desc">{{ desc }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- ============ STEP 3: Job Type ============ -->
+  <div class="wizard-step" id="step3" data-step="3">
+    <h1 class="step-title">{{ t.get('wizard_step3_title', 'Desired Employment Type') }}</h1>
+    <p class="step-subtitle">{{ t.get('wizard_step3_subtitle', 'What work schedules are you open to?') }}</p>
+
+    <div class="option-cards cols-2" id="jobTypeCards">
+      {% set job_types = [
+        ('vz', t.get('full_time', 'Full Time (Vollzeit)'), t.get('job_type_vz_desc', '35–40 hours per week. Regular full-time position.')),
+        ('tz', t.get('part_time', 'Part Time (Teilzeit)'), t.get('job_type_tz_desc', '20–30 hours per week. Flexible part-time position.')),
+        ('mj', t.get('minijob', 'Minijob'), t.get('job_type_mj_desc', 'Up to €538/month. Minor employment.')),
+        ('all', t.get('all_job_types', 'All Types'), t.get('job_type_all_desc', 'Open to full-time, part-time, or minijob.'))
+      ] %}
+      {% for value, title, desc in job_types %}
+      <div class="option-card" data-value="{{ value }}" onclick="selectOption('jobType', '{{ value }}', this)">
+        <div class="card-title">{{ title }}</div>
+        <div class="card-desc">{{ desc }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- ============ STEP 4: City ============ -->
+  <div class="wizard-step" id="step4" data-step="4">
+    <h1 class="step-title">{{ t.get('wizard_step4_title', 'Where do you want to work?') }}</h1>
+    <p class="step-subtitle">{{ t.get('wizard_step4_subtitle', 'Enter your city or desired region in Germany:') }}</p>
+
+    <div style="max-width: 480px; margin: 0 auto; width: 100%;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+        <label for="cityInput" style="font-size: 0.85rem; color: var(--strawberry-300);">{{ t.get('location', 'City') }}</label>
+        <span class="cv-badge" id="cityCvBadge" style="display: {% if cv_analysis and profile.location %}inline-flex{% else %}none{% endif %};">✓ {{ t.get('cv_detected_badge', 'Detected from CV') }}</span>
+      </div>
+      <input type="text"
+             id="cityInput"
+             class="wizard-input"
+             placeholder="{{ t.get('wizard_step4_placeholder', 'e.g. Berlin, Cologne, Munich, Hamburg...') }}"
+             value="{{ profile.location or '' }}"
+             autocomplete="off">
+      <div class="city-chips" style="display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.75rem;">
+        {% for city in ['Berlin', 'München', 'Hamburg', 'Köln', 'Frankfurt', 'Leipzig', 'Stuttgart', 'Düsseldorf'] %}
+        <button type="button" class="city-chip" onclick="selectCity('{{ city }}')">{{ city }}</button>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ STEP 5: Radius ============ -->
+  <div class="wizard-step" id="step5" data-step="5">
+    <h1 class="step-title">{{ t.get('wizard_step5_title', 'Commute Radius') }}</h1>
+    <p class="step-subtitle">{{ t.get('wizard_step5_subtitle', 'How far are you willing to commute from your location?') }}</p>
+
+    <div style="max-width: 480px; margin: 0 auto; width: 100%;">
+      <div class="radius-display">
+        <span class="radius-value" id="radiusValue">{{ profile.radius_km if profile else 25 }}</span>
+        <span class="radius-unit">km</span>
+      </div>
+      <input type="range" id="radiusSlider" class="wizard-range"
+             min="5" max="200" step="5"
+             value="{{ profile.radius_km if profile else 25 }}"
+             oninput="document.getElementById('radiusValue').textContent = this.value">
+      <div class="radius-labels">
+        <span>5 km</span>
+        <span>100 km</span>
+        <span>200 km</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ STEP 6: Career Goals ============ -->
+  <div class="wizard-step" id="step6" data-step="6">
+    <h1 class="step-title">{{ t.get('wizard_step6_title', 'Career Goals & Preferred Roles') }}</h1>
+    <p class="step-subtitle">{{ t.get('wizard_step6_subtitle', 'What roles or industries are you targeting?') }}</p>
+
+    <div style="max-width: 520px; margin: 0 auto; width: 100%;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+        <label for="goalsInput" style="font-size: 0.85rem; color: var(--strawberry-300);">{{ t.get('career_goals', 'Career Goals') }}</label>
+        <span class="cv-badge" id="goalsCvBadge" style="display: {% if cv_analysis and profile.goals %}inline-flex{% else %}none{% endif %};">✓ {{ t.get('cv_detected_badge', 'Detected from CV') }}</span>
+      </div>
+      <textarea id="goalsInput"
+                class="wizard-input wizard-textarea"
+                placeholder="{{ t.get('wizard_step6_placeholder', 'e.g. warehouse logistics, IT support, customer service, retail...') }}">{{ profile.goals or '' }}</textarea>
+    </div>
+  </div>
+
+  <!-- ============ STEP 7: Review ============ -->
+  <div class="wizard-step" id="step7" data-step="7">
+    <h1 class="step-title">{{ t.get('wizard_step7_title', 'Review Your Profile') }}</h1>
+    <p class="step-subtitle">{{ t.get('wizard_step7_subtitle', 'Review your answers. Click any item to edit:') }}</p>
+
+    <div class="review-list" id="reviewList">
+      <div class="review-item">
+        <div>
+          <div class="review-item-label">{{ t.get('wizard_step2_title', 'German Language Level') }}</div>
+          <div class="review-item-value" id="reviewGerman">—</div>
+        </div>
+        <button class="review-edit-btn" onclick="goToStep(2)">{{ t.get('review_edit', 'Edit') }}</button>
+      </div>
+      <div class="review-item">
+        <div>
+          <div class="review-item-label">{{ t.get('wizard_step3_title', 'Desired Employment Type') }}</div>
+          <div class="review-item-value" id="reviewJobType">—</div>
+        </div>
+        <button class="review-edit-btn" onclick="goToStep(3)">{{ t.get('review_edit', 'Edit') }}</button>
+      </div>
+      <div class="review-item">
+        <div>
+          <div class="review-item-label">{{ t.get('wizard_step4_title', 'Location') }}</div>
+          <div class="review-item-value" id="reviewCity">—</div>
+        </div>
+        <button class="review-edit-btn" onclick="goToStep(4)">{{ t.get('review_edit', 'Edit') }}</button>
+      </div>
+      <div class="review-item">
+        <div>
+          <div class="review-item-label">{{ t.get('wizard_step5_title', 'Commute Radius') }}</div>
+          <div class="review-item-value" id="reviewRadius">—</div>
+        </div>
+        <button class="review-edit-btn" onclick="goToStep(5)">{{ t.get('review_edit', 'Edit') }}</button>
+      </div>
+      <div class="review-item">
+        <div>
+          <div class="review-item-label">{{ t.get('wizard_step6_title', 'Career Goals') }}</div>
+          <div class="review-item-value" id="reviewGoals">—</div>
+        </div>
+        <button class="review-edit-btn" onclick="goToStep(6)">{{ t.get('review_edit', 'Edit') }}</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ STEP 8: Completion ============ -->
+  <div class="wizard-step" id="step8" data-step="8">
+    <div class="completion-container">
+      <div class="spinner-ring" id="completionSpinner"></div>
+      <h1 class="step-title" style="margin-top: 0;">{{ t.get('wizard_step8_title', 'Finding Your Matches...') }}</h1>
+      <p class="step-subtitle" style="margin-bottom: 0;">{{ t.get('wizard_step8_subtitle', 'Searching Bundesagentur für Arbeit and scoring jobs with AI.') }}</p>
+      <p class="completion-success" id="completionSuccess">{{ t.get('wizard_step8_redirecting', 'Ready! Redirecting to your job feed...') }}</p>
+    </div>
+  </div>
+
+  <!-- Navigation buttons (hidden on step 8) -->
+  <div class="wizard-nav" id="wizardNav">
+    <button class="btn btn-outline" id="btnBack" onclick="prevStep()" style="visibility: hidden;">
+      ← {{ t.get('btn_back', 'Back') }}
+    </button>
+    <div class="nav-spacer"></div>
+    <button class="btn btn-outline" id="btnSkipCv" onclick="nextStep()" style="display: none;">
+      {{ t.get('btn_skip_cv', 'Skip CV & continue') }} →
+    </button>
+    <button class="btn btn-primary" id="btnNext" onclick="nextStep()" style="display: none;">
+      {{ t.get('btn_next', 'Next') }} →
+    </button>
+    <button class="btn btn-primary" id="btnFindJobs" onclick="completeOnboarding()" style="display: none;">
+      🚀 {{ t.get('btn_find_jobs', 'Find My Jobs') }}
+    </button>
+  </div>
+
+  <!-- Hidden data from server -->
+  <div style="display: none;">
+    <span id="serverHasCv">{% if cv_analysis %}true{% else %}false{% endif %}</span>
+    <span id="serverLocation">{{ profile.location or '' if profile else '' }}</span>
+    <span id="serverGerman">{{ profile.german_level or '' if profile else '' }}</span>
+    <span id="serverJobType">{{ profile.desired_job_type or 'all' if profile else 'all' }}</span>
+    <span id="serverRadius">{{ profile.radius_km if profile else 25 }}</span>
+    <span id="serverGoals">{{ profile.goals or '' if profile else '' }}</span>
+    <span id="serverStep">{{ profile.onboarding_step if profile else 0 }}</span>
+    <span id="stepCounterTemplate">{{ t.get('onboarding_step_counter', 'Step {step} of 8') }}</span>
+    <span id="cvDetectedBadge">{{ t.get('cv_detected_badge', 'Detected from CV') }}</span>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+(function() {
+  'use strict';
+
+  // ─── State ───
+  const state = {
+    currentStep: 1,
+    german: null,
+    jobType: null,
+    city: '',
+    radius: 25,
+    goals: '',
+    cvUploaded: false,
+    cvPrefs: null   // extracted preferences from CV
+  };
+
+  const TOTAL_STEPS = 8;
+
+  // ─── DOM refs ───
+  const progressFill  = document.getElementById('progressFill');
+  const progressLabel = document.getElementById('progressLabel');
+  const btnBack       = document.getElementById('btnBack');
+  const btnNext       = document.getElementById('btnNext');
+  const btnSkipCv     = document.getElementById('btnSkipCv');
+  const btnFindJobs   = document.getElementById('btnFindJobs');
+  const wizardNav     = document.getElementById('wizardNav');
+  const stepTemplate  = document.getElementById('stepCounterTemplate').textContent;
+  const cvBadgeText   = document.getElementById('cvDetectedBadge').textContent;
+
+  // ─── Init from server data ───
+  function init() {
+    const savedStep = parseInt(document.getElementById('serverStep').textContent) || 0;
+    const hasCv = document.getElementById('serverHasCv')?.textContent === 'true';
+    if (hasCv) {
+      state.cvUploaded = true;
+    }
+    state.german  = document.getElementById('serverGerman').textContent || null;
+    state.jobType = document.getElementById('serverJobType').textContent || null;
+    state.city    = document.getElementById('serverLocation').textContent || '';
+    state.radius  = parseInt(document.getElementById('serverRadius').textContent) || 25;
+    state.goals   = document.getElementById('serverGoals').textContent || '';
+
+    // Pre-select cards if we have server data
+    if (state.german) preselectCard('germanCards', state.german);
+    if (state.jobType && state.jobType !== 'all') preselectCard('jobTypeCards', state.jobType);
+
+    // Resume from saved step (but at least step 1)
+    const resumeStep = Math.max(1, Math.min(savedStep, 7));
+    goToStep(resumeStep);
+
+    // Set up CV dropzone
+    setupDropzone();
+  }
+
+  // ─── Navigation ───
+  window.goToStep = function(step) {
+    state.currentStep = step;
+    readFormInputs();
+    renderStep();
+  };
+
+  window.nextStep = function() {
+    readFormInputs();
+    if (state.currentStep < TOTAL_STEPS) {
+      state.currentStep++;
+      renderStep();
+    }
+    saveStepProgress();
+  };
+
+  window.prevStep = function() {
+    readFormInputs();
+    if (state.currentStep > 1) {
+      state.currentStep--;
+      renderStep();
+    }
+  };
+
+  function renderStep() {
+    // Hide all steps, show current
+    document.querySelectorAll('.wizard-step').forEach(s => s.classList.remove('active'));
+    const current = document.getElementById('step' + state.currentStep);
+    if (current) {
+      current.classList.remove('active');
+      // Force reflow for animation
+      void current.offsetWidth;
+      current.classList.add('active');
+    }
+
+    // Progress bar
+    const pct = (state.currentStep / TOTAL_STEPS) * 100;
+    progressFill.style.width = pct + '%';
+    progressLabel.textContent = stepTemplate.replace('{step}', state.currentStep);
+
+    // Navigation buttons
+    const isStep1 = state.currentStep === 1;
+    const isStep7 = state.currentStep === 7;
+    const isStep8 = state.currentStep === 8;
+
+    btnBack.style.visibility = isStep1 ? 'hidden' : 'visible';
+    wizardNav.style.display  = isStep8 ? 'none' : 'flex';
+
+    // Step 1: show skip + next (next only if CV uploaded)
+    btnSkipCv.style.display  = (isStep1 && !state.cvUploaded) ? 'inline-flex' : 'none';
+    btnNext.style.display    = (isStep1 && !state.cvUploaded) ? 'none' : (isStep7 ? 'none' : 'inline-flex');
+    btnFindJobs.style.display = isStep7 ? 'inline-flex' : 'none';
+
+    // Populate review on step 7
+    if (isStep7) populateReview();
+
+    // Focus input on step 4
+    if (state.currentStep === 4) {
+      setTimeout(() => document.getElementById('cityInput')?.focus(), 300);
+    }
+  }
+
+  // ─── Read current form values ───
+  function readFormInputs() {
+    const city = document.getElementById('cityInput');
+    if (city) state.city = city.value.trim();
+
+    const radius = document.getElementById('radiusSlider');
+    if (radius) state.radius = parseInt(radius.value) || 25;
+
+    const goals = document.getElementById('goalsInput');
+    if (goals) state.goals = goals.value.trim();
+  }
+
+  // ─── Card selection ───
+  window.selectOption = function(field, value, el) {
+    const container = el.parentElement;
+    container.querySelectorAll('.option-card').forEach(c => c.classList.remove('selected'));
+    el.classList.add('selected');
+    state[field] = value;
+  };
+
+  function preselectCard(containerId, value) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.querySelectorAll('.option-card').forEach(c => {
+      if (c.dataset.value === value) c.classList.add('selected');
+    });
+  }
+
+  // ─── CV Pre-fill with badges ───
+  function applyPrefsFromCv(prefs) {
+    state.cvPrefs = prefs;
+
+    if (prefs.german_level) {
+      state.german = prefs.german_level;
+      preselectCard('germanCards', prefs.german_level);
+      addCvBadge('germanCards', prefs.german_level);
+    }
+    if (prefs.desired_job_type && prefs.desired_job_type !== 'all') {
+      state.jobType = prefs.desired_job_type;
+      preselectCard('jobTypeCards', prefs.desired_job_type);
+      addCvBadge('jobTypeCards', prefs.desired_job_type);
+    }
+    if (prefs.city) {
+      state.city = prefs.city;
+      const cityEl = document.getElementById('cityInput');
+      if (cityEl) cityEl.value = prefs.city;
+      document.getElementById('cityCvBadge')?.style.setProperty('display', 'inline-flex');
+    }
+    if (prefs.radius_km) {
+      state.radius = prefs.radius_km;
+      const rSlider = document.getElementById('radiusSlider');
+      if (rSlider) rSlider.value = prefs.radius_km;
+      const rVal = document.getElementById('radiusValue');
+      if (rVal) rVal.textContent = prefs.radius_km;
+    }
+    if (prefs.goals) {
+      state.goals = prefs.goals;
+      const gEl = document.getElementById('goalsInput');
+      if (gEl) gEl.value = prefs.goals;
+      document.getElementById('goalsCvBadge')?.style.setProperty('display', 'inline-flex');
+    }
+  }
+
+  window.selectCity = function(city) {
+    const input = document.getElementById('cityInput');
+    if (input) {
+      input.value = city;
+      state.city = city;
+    }
+  };
+
+  function addCvBadge(containerId, value) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.querySelectorAll('.option-card').forEach(c => {
+      if (c.dataset.value === value && !c.querySelector('.cv-badge')) {
+        const badge = document.createElement('span');
+        badge.className = 'cv-badge';
+        badge.textContent = '✓ ' + cvBadgeText;
+        c.querySelector('.card-title').appendChild(badge);
+      }
+    });
+  }
+
+  // ─── Dropzone ───
+  function setupDropzone() {
+    const dropzone = document.getElementById('cvDropZone');
+    const fileInput = document.getElementById('cvFileInput');
+    if (!dropzone || !fileInput) return;
+
+    dropzone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropzone.classList.add('drag-over');
+    });
+    dropzone.addEventListener('dragleave', () => {
+      dropzone.classList.remove('drag-over');
+    });
+    dropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropzone.classList.remove('drag-over');
+      if (e.dataTransfer.files.length) uploadCv(e.dataTransfer.files[0]);
+    });
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files.length) uploadCv(fileInput.files[0]);
+    });
+  }
+
+  async function uploadCv(file) {
+    if (!file) return;
+    const statusDiv = document.getElementById('uploadStatus');
+    const resultsDiv = document.getElementById('cvResults');
+
+    statusDiv.innerHTML = '<div class="upload-spinner"><div class="mini-spinner"></div><span>{{ t.get("wizard_step1_analyzing", "Analyzing CV with AI...") }}</span></div>';
+    resultsDiv.style.display = 'none';
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const resp = await fetch('/api/profile/cv', { method: 'POST', body: formData });
+      if (resp.ok) {
+        const data = await resp.json();
+        state.cvUploaded = true;
+
+        // Show skills
+        if (data.skills && data.skills.length > 0) {
+          document.getElementById('extractedSkills').innerHTML =
+            data.skills.map(s => `<span class="skill-tag">${escapeHtml(s)}</span>`).join('');
+        }
+        resultsDiv.style.display = 'block';
+        statusDiv.innerHTML = '';
+
+        // Apply extracted preferences
+        if (data.extracted_preferences) {
+          applyPrefsFromCv(data.extracted_preferences);
+        }
+
+        // Update nav buttons
+        renderStep();
+      } else {
+        const err = await resp.json().catch(() => ({}));
+        statusDiv.innerHTML = `<span style="color: var(--danger);">❌ ${escapeHtml(err.detail || 'Failed to process CV')}</span>`;
+      }
+    } catch (e) {
+      statusDiv.innerHTML = `<span style="color: var(--danger);">❌ Network error: ${escapeHtml(e.message)}</span>`;
+    }
+  }
+
+  // ─── Save step progress ───
+  let _saveDebounceTimer = null;
+  async function _doSaveStepProgress() {
+    readFormInputs();
+    const payload = {
+      onboarding_step: state.currentStep,
+      german_level: state.german || 'B1',
+      desired_job_type: state.jobType || 'all',
+      location: state.city || null,
+      radius_km: state.radius,
+      goals: state.goals || null
+    };
+    try {
+      await fetch('/api/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    } catch (e) {
+      console.warn('Step save failed:', e);
+    }
+  }
+  function saveStepProgress(immediate = false) {
+    clearTimeout(_saveDebounceTimer);
+    if (immediate) {
+      return _doSaveStepProgress();
+    }
+    return new Promise((resolve) => {
+      _saveDebounceTimer = setTimeout(async () => {
+        await _doSaveStepProgress();
+        resolve();
+      }, 400);
+    });
+  }
+  window.saveStepProgress = saveStepProgress;
+
+  // ─── Review ───
+  const GERMAN_LABELS = { A1: 'A1', A2: 'A2', B1: 'B1', B2: 'B2', C1: 'C1', C2: 'C2' };
+  const JOB_LABELS = {
+    vz: '{{ t.get("full_time", "Full Time") }}',
+    tz: '{{ t.get("part_time", "Part Time") }}',
+    mj: '{{ t.get("minijob", "Minijob") }}',
+    all: '{{ t.get("all_job_types", "All Types") }}'
+  };
+
+  function populateReview() {
+    readFormInputs();
+    document.getElementById('reviewGerman').textContent  = state.german || '—';
+    document.getElementById('reviewJobType').textContent  = JOB_LABELS[state.jobType] || state.jobType || '—';
+    document.getElementById('reviewCity').textContent     = state.city || '—';
+    document.getElementById('reviewRadius').textContent   = state.radius + ' km';
+    document.getElementById('reviewGoals').textContent    = state.goals || '—';
+  }
+
+  // ─── Complete onboarding ───
+  window.completeOnboarding = async function() {
+    readFormInputs();
+
+    // Move to step 8 (completion screen)
+    state.currentStep = 8;
+    renderStep();
+
+    const payload = {
+      german_level: state.german || 'B1',
+      desired_job_type: state.jobType || 'all',
+      location: state.city || null,
+      radius_km: state.radius,
+      goals: state.goals || null
+    };
+
+    try {
+      const resp = await fetch('/api/onboarding/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (resp.ok) {
+        // Show success
+        document.getElementById('completionSpinner').style.display = 'none';
+        document.getElementById('completionSuccess').style.display = 'block';
+
+        // Redirect after short delay
+        setTimeout(() => { window.location.href = '/feed'; }, 1500);
+      } else {
+        // Even on error, mark completed and redirect
+        console.error('Onboarding completion error');
+        setTimeout(() => { window.location.href = '/feed'; }, 2000);
+      }
+    } catch (e) {
+      console.error('Network error during completion:', e);
+      setTimeout(() => { window.location.href = '/feed'; }, 2000);
+    }
+  };
+
+  // ─── Helpers ───
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+  }
+
+  // ─── Boot ───
+  init();
+})();
+</script>
+{% endblock %}

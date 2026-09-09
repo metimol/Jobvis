@@ -331,12 +331,12 @@ async def test_immediate_sync_on_new_user_oauth(m1_test_db: AsyncSession):
         mock_sync.return_value = {"status": "success", "matched": 5}
         user = await oauth_service.authenticate_or_link_user(m1_test_db, oauth_info)
         assert user.id is not None
-        mock_sync.assert_awaited_once_with(user.id, m1_test_db)
+        mock_sync.assert_not_called()
 
 
 @pytest.mark.asyncio
 async def test_immediate_sync_on_profile_update(m1_test_db: AsyncSession):
-    """Test that updating profile via POST /api/profile triggers run_sync_for_user."""
+    """Test that updating profile via POST /api/profile does NOT trigger synchronous sync."""
     # Setup test user and profile
     user = User(
         email="profupdate@example.com",
@@ -346,7 +346,13 @@ async def test_immediate_sync_on_profile_update(m1_test_db: AsyncSession):
     m1_test_db.add(user)
     await m1_test_db.flush()
 
-    profile = Profile(user_id=user.id, desired_job_type="all", german_level="B1", radius_km=25)
+    profile = Profile(
+        user_id=user.id,
+        desired_job_type="all",
+        german_level="B1",
+        radius_km=25,
+        onboarding_completed=True,
+    )
     m1_test_db.add(profile)
     await m1_test_db.commit()
 
@@ -371,14 +377,14 @@ async def test_immediate_sync_on_profile_update(m1_test_db: AsyncSession):
             )
             assert resp.status_code == 200
             assert resp.json()["german_level"] == "B2"
-            mock_sync.assert_awaited_once_with(user.id, m1_test_db)
+            mock_sync.assert_not_called()
 
     app.dependency_overrides.clear()
 
 
 @pytest.mark.asyncio
 async def test_immediate_sync_on_cv_upload(m1_test_db: AsyncSession):
-    """Test that uploading a CV via POST /api/profile/cv triggers run_sync_for_user."""
+    """Test that uploading a CV via POST /api/profile/cv does not trigger run_sync_for_user."""
     user = User(
         email="cvupld@example.com",
         name="CV Upload User",
@@ -412,7 +418,66 @@ async def test_immediate_sync_on_cv_upload(m1_test_db: AsyncSession):
             resp = await client.post("/api/profile/cv", files=files)
             assert resp.status_code == 200
             assert "Elektriker" in resp.json()["skills"]
-            mock_sync.assert_awaited_once_with(user.id, m1_test_db)
+            mock_sync.assert_not_called()
+
+    app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_immediate_sync_on_onboarding_complete(m1_test_db: AsyncSession):
+    """Test that completing onboarding via POST /api/onboarding/complete triggers run_sync_for_user."""
+    user = User(
+        email="obcomplete@example.com",
+        name="Onboarding Complete User",
+        google_id="goog-ob-comp-1",
+    )
+    m1_test_db.add(user)
+    await m1_test_db.flush()
+
+    profile = Profile(
+        user_id=user.id,
+        desired_job_type="all",
+        german_level="B1",
+        radius_km=25,
+        onboarding_completed=False,
+        onboarding_step=3,
+    )
+    m1_test_db.add(profile)
+    await m1_test_db.commit()
+
+    token = create_session_token(user.id, user.email)
+    cookies = {"jobvis_session": token}
+
+    app.dependency_overrides[get_db] = lambda: m1_test_db
+
+    with patch(
+        "app.services.scheduler.MatchingSchedulerService.run_sync_for_user",
+        new_callable=AsyncMock,
+    ) as mock_sync:
+        mock_sync.return_value = {"status": "success", "matched": 7}
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            cookies=cookies,
+        ) as client:
+            resp = await client.post(
+                "/api/onboarding/complete",
+                json={"german_level": "C1", "radius_km": 50, "location": "München"},
+            )
+            assert resp.status_code == 200
+            data = resp.json()
+            assert data["status"] == "success"
+            assert data["onboarding_completed"] is True
+            assert data["sync"] == "queued"
+            mock_sync.assert_awaited_once_with(user.id)
+
+    # Verify profile was updated in DB
+    await m1_test_db.refresh(profile)
+    assert profile.onboarding_completed is True
+    assert profile.onboarding_step == 8
+    assert profile.german_level == "C1"
+    assert profile.location == "München"
+    assert profile.radius_km == 50
 
     app.dependency_overrides.clear()
 

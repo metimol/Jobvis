@@ -93,6 +93,8 @@ class Profile(Base):
     goals = Column(Text, nullable=True)
     location = Column(String(255), default="Berlin")
     radius_km = Column(Integer, default=20)
+    onboarding_completed = Column(Boolean, default=False, nullable=False)
+    onboarding_step = Column(Integer, default=0, nullable=False)
     updated_at = Column(DateTime, default=lambda: datetime.now(UTC))
 
     user = relationship("User", back_populates="profile")

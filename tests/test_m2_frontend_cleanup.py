@@ -24,6 +24,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.config import settings
 from app.database import Base, get_db
+from app.models.profile import Profile
 from app.models.user import User
 from app.routers.pages import router as pages_router
 from app.services.oauth import create_session_token
@@ -133,6 +134,13 @@ async def test_get_home_page_authenticated_redirects_to_feed_302(
         google_id="google_m2_test_123",
     )
     m2_session.add(user)
+    await m2_session.flush()
+    profile = Profile(
+        user_id=user.id,
+        onboarding_completed=True,
+        onboarding_step=8,
+    )
+    m2_session.add(profile)
     await m2_session.commit()
     await m2_session.refresh(user)
 
@@ -157,6 +165,13 @@ async def test_get_home_page_authenticated_via_bearer_header_redirects_to_feed(
         github_id="gh_m2_test_456",
     )
     m2_session.add(user)
+    await m2_session.flush()
+    profile = Profile(
+        user_id=user.id,
+        onboarding_completed=True,
+        onboarding_step=8,
+    )
+    m2_session.add(profile)
     await m2_session.commit()
     await m2_session.refresh(user)
 
@@ -179,6 +194,13 @@ async def test_get_login_page_authenticated_redirects_to_feed_302(
         google_id="g_login_test_789",
     )
     m2_session.add(user)
+    await m2_session.flush()
+    profile = Profile(
+        user_id=user.id,
+        onboarding_completed=True,
+        onboarding_step=8,
+    )
+    m2_session.add(profile)
     await m2_session.commit()
     await m2_session.refresh(user)
 

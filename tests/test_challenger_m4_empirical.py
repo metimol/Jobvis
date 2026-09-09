@@ -40,6 +40,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.pool import StaticPool
 
 from app.database import Base, get_db
+from app.models.profile import Profile
 from app.models.user import User
 from app.routers.pages import router as pages_router
 from app.services.i18n import I18nService
@@ -531,6 +532,14 @@ class TestHTTPRouteBoundaries:
         """GET / and GET /login for authenticated user must redirect 302 to /feed."""
         user = User(email="test.redirect@jobvis.de", name="Redirect Candidate")
         challenger_session.add(user)
+        await challenger_session.flush()
+
+        profile = Profile(
+            user_id=user.id,
+            onboarding_completed=True,
+            onboarding_step=8,
+        )
+        challenger_session.add(profile)
         await challenger_session.commit()
         await challenger_session.refresh(user)
 

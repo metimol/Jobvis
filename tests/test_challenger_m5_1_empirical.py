@@ -107,6 +107,7 @@ async def authenticated_candidate(test_session_maker):
             desired_job_type="all",
             german_level="B1",
             goals="Softwareentwicklung",
+            onboarding_completed=True,
         )
         db.add(profile)
         user_settings = Settings(user_id=user.id, ui_language="de")

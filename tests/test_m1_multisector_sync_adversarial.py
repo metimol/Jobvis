@@ -501,7 +501,13 @@ async def test_scheduler_run_sync_error_rollback_and_failed_synclog(
     await adv_m1_session.flush()
     user_id_str = str(user.id)
 
-    profile = Profile(user_id=user_id_str, desired_job_type="all", german_level="B1", radius_km=25)
+    profile = Profile(
+        user_id=user_id_str,
+        desired_job_type="all",
+        german_level="B1",
+        radius_km=25,
+        onboarding_completed=True,
+    )
     adv_m1_session.add(profile)
     await adv_m1_session.commit()
 
@@ -558,7 +564,13 @@ async def test_sequential_lifecycle_syncs_deduplication(
     await adv_m1_session.flush()
     user_id_str = str(user.id)
 
-    profile = Profile(user_id=user_id_str, desired_job_type="all", german_level="B1", radius_km=25)
+    profile = Profile(
+        user_id=user_id_str,
+        desired_job_type="all",
+        german_level="B1",
+        radius_km=25,
+        onboarding_completed=True,
+    )
     adv_m1_session.add(profile)
     await adv_m1_session.commit()
 
@@ -655,7 +667,13 @@ async def test_concurrent_immediate_syncs_exception_isolation(
     await adv_m1_session.flush()
     user_id_str = str(user.id)
 
-    profile = Profile(user_id=user_id_str, desired_job_type="all", german_level="B1", radius_km=25)
+    profile = Profile(
+        user_id=user_id_str,
+        desired_job_type="all",
+        german_level="B1",
+        radius_km=25,
+        onboarding_completed=True,
+    )
     adv_m1_session.add(profile)
     await adv_m1_session.commit()
 

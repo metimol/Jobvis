@@ -689,13 +689,13 @@ async def test_adversarial_extreme_payload_boundaries(
         await adv_client.post("/api/profile", json={"radius_km": -10}, headers=headers)
     ).status_code == 422
 
-    # 3. CEFR Level validation: valid (A2, B1, B2, C1) vs invalid (A1, C2, D1, native)
-    for lvl in ["A2", "B1", "B2", "C1"]:
+    # 3. CEFR Level validation: valid (A1-C2) vs invalid (B3, Z1, D1, native, fluent)
+    for lvl in ["A1", "A2", "B1", "B2", "C1", "C2"]:
         resp = await adv_client.post("/api/profile", json={"german_level": lvl}, headers=headers)
         assert resp.status_code == 200
         assert resp.json()["german_level"] == lvl
 
-    for bad_lvl in ["A1", "C2", "native", "fluent", ""]:
+    for bad_lvl in ["B3", "Z1", "D1", "native", "fluent", ""]:
         resp = await adv_client.post(
             "/api/profile", json={"german_level": bad_lvl}, headers=headers
         )

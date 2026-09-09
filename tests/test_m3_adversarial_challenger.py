@@ -461,8 +461,8 @@ async def test_candidate_manual_edit_corrects_ai_imperfections(test_session: Asy
             assert saved["desired_job_type"] == "vz"
             assert saved["goals"] == "LKW-Fahrer im Fernverkehr"
 
-            # Verify sync was triggered
-            assert mock_sync.called
+            # Verify sync was NOT triggered on profile update
+            assert not mock_sync.called
 
     app.dependency_overrides.clear()
 

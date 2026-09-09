@@ -6,7 +6,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 JobTypeLiteral = Literal["vz", "tz", "mj", "all"]
-GermanLevelLiteral = Literal["A2", "B1", "B2", "C1"]
+GermanLevelLiteral = Literal["A1", "A2", "B1", "B2", "C1", "C2"]
 
 
 class ProfileBase(BaseModel):
@@ -17,6 +17,8 @@ class ProfileBase(BaseModel):
     goals: str | None = None
     location: str | None = None
     radius_km: int = Field(default=25, ge=1, le=200)
+    onboarding_completed: bool = False
+    onboarding_step: int = 0
 
 
 class ProfileUpdate(BaseModel):
@@ -27,6 +29,8 @@ class ProfileUpdate(BaseModel):
     goals: str | None = None
     location: str | None = None
     radius_km: int | None = Field(default=None, ge=1, le=200)
+    onboarding_completed: bool | None = None
+    onboarding_step: int | None = Field(default=None, ge=0, le=8)
 
 
 class ProfileResponse(BaseModel):
@@ -39,6 +43,8 @@ class ProfileResponse(BaseModel):
     goals: str | None = None
     location: str | None = None
     radius_km: int
+    onboarding_completed: bool = False
+    onboarding_step: int = 0
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

@@ -240,6 +240,7 @@
 <body>
 
   <!-- Navigation -->
+  {% block navbar %}
   <nav class="navbar">
     <a href="/" class="nav-brand">JOB<span>VIS</span></a>
 
@@ -265,23 +266,33 @@
       </div>
     </div>
   </nav>
+  {% endblock %}
 
   <!-- Page Content -->
   {% block content %}{% endblock %}
 
   <!-- Footer -->
+  {% block footer %}
   <footer class="footer">
     <p>© 2026 Jobvis. {{ t.get('hero_subtitle', 'AI-powered job matching for Jobcenter clients in Germany.') }}</p>
   </footer>
+  {% endblock %}
 
   <script>
     async function switchLanguage(newLang) {
       try {
-        await fetch('/api/settings/language', {
+        const resp = await fetch('/api/settings/language', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ui_language: newLang })
         });
+        if (resp.status === 401) {
+          await fetch('/api/settings/language-guest', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ui_language: newLang })
+          });
+        }
       } catch (err) {
         console.warn('Language switch persisted locally');
       }

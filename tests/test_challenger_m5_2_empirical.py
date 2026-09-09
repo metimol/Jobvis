@@ -178,6 +178,7 @@ async def test_user(db_session: AsyncSession) -> User:
         location="München",
         radius_km=50,
         goals="Lead Engineering & Systems Architect",
+        onboarding_completed=True,
     )
     db_session.add(user_profile)
     await db_session.commit()

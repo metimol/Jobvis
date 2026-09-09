@@ -70,12 +70,38 @@ async def get_db() -> AsyncGenerator[AsyncSession]:
 
 
 async def init_db() -> None:
-    """Initialize database tables defined in metadata."""
+    """Initialize database tables defined in metadata and apply lightweight migrations."""
     # Import all models so metadata is populated
     import app.models  # noqa: F401
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+        def _migrate(connection):
+            from sqlalchemy import inspect
+
+            inspector = inspect(connection)
+            table_names = inspector.get_table_names()
+            if "profiles" in table_names:
+                columns = [c["name"] for c in inspector.get_columns("profiles")]
+                if "onboarding_completed" not in columns:
+                    connection.exec_driver_sql(
+                        "ALTER TABLE profiles ADD COLUMN onboarding_completed BOOLEAN NOT NULL DEFAULT 0;"
+                    )
+                if "onboarding_step" not in columns:
+                    connection.exec_driver_sql(
+                        "ALTER TABLE profiles ADD COLUMN onboarding_step INTEGER NOT NULL DEFAULT 0;"
+                    )
+                if "cv_analyses" in table_names:
+                    connection.exec_driver_sql(
+                        """
+                        UPDATE profiles
+                        SET onboarding_completed = 1, onboarding_step = 8
+                        WHERE user_id IN (SELECT DISTINCT user_id FROM cv_analyses);
+                        """
+                    )
+
+        await conn.run_sync(_migrate)
 
 
 async def close_db() -> None:

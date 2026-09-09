@@ -245,7 +245,9 @@ class ArbeitsagenturClient:
         Returns:
             List of BAJobListing models.
         """
-        # TODO: Radius dont work
+        logger.debug(
+            "Received job search query: %s.", {k: v for k, v in locals().items() if k != "self"}
+        )
 
         response_model = await self.search_jobs_response(
             JobSearchParams(
@@ -290,6 +292,8 @@ class ArbeitsagenturClient:
                 items.append(BAJobListing.from_api_dict(raw_item))
 
         max_ergebnisse = data.get("maxErgebnisse") or len(items)
+
+        logger.debug(f"Found {len(items)} jobs in {url}")
 
         return BASearchResponse(
             stellenangebote=items,

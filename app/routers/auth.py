@@ -5,11 +5,13 @@ import secrets
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from fastapi.responses import RedirectResponse
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db
 from app.dependencies import get_current_user, get_current_user_optional
+from app.models.profile import Profile
 from app.models.user import User
 from app.schemas.auth import AuthStatusResponse, UserResponse
 from app.services.oauth import create_session_token, oauth_service
@@ -78,7 +80,18 @@ async def google_callback(
         )
 
     session_token = create_session_token(user.id, user.email)
-    next_url = request.cookies.get("oauth_next") or "/profile"
+    is_onboarded = bool(user.profile and getattr(user.profile, "onboarding_completed", False))
+    if not user.profile:
+        p_stmt = select(Profile).where(Profile.user_id == user.id)
+        p_res = (await db.execute(p_stmt)).scalars().first()
+        if p_res:
+            is_onboarded = bool(getattr(p_res, "onboarding_completed", False))
+
+    cookie_next = request.cookies.get("oauth_next")
+    if not is_onboarded:
+        next_url = "/settings" if cookie_next == "/settings" else "/onboarding"
+    else:
+        next_url = cookie_next or "/feed"
 
     response = RedirectResponse(url=next_url, status_code=status.HTTP_303_SEE_OTHER)
     response.set_cookie(
@@ -153,7 +166,18 @@ async def github_callback(
         )
 
     session_token = create_session_token(user.id, user.email)
-    next_url = request.cookies.get("oauth_next") or "/profile"
+    is_onboarded = bool(user.profile and getattr(user.profile, "onboarding_completed", False))
+    if not user.profile:
+        p_stmt = select(Profile).where(Profile.user_id == user.id)
+        p_res = (await db.execute(p_stmt)).scalars().first()
+        if p_res:
+            is_onboarded = bool(getattr(p_res, "onboarding_completed", False))
+
+    cookie_next = request.cookies.get("oauth_next")
+    if not is_onboarded:
+        next_url = "/settings" if cookie_next == "/settings" else "/onboarding"
+    else:
+        next_url = cookie_next or "/feed"
 
     response = RedirectResponse(url=next_url, status_code=status.HTTP_303_SEE_OTHER)
     response.set_cookie(

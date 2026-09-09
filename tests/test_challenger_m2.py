@@ -267,6 +267,15 @@ async def test_protected_pages_render_for_authenticated_user(
     await challenge_session.commit()
     await challenge_session.refresh(user)
 
+    # User must be onboarded to access /profile and /feed
+    profile = Profile(
+        user_id=user.id,
+        onboarding_completed=True,
+        onboarding_step=8,
+    )
+    challenge_session.add(profile)
+    await challenge_session.commit()
+
     token = create_session_token(user.id, user.email)
     headers = {"Cookie": f"{settings.SESSION_COOKIE_NAME}={token}"}
 

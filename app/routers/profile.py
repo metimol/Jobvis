@@ -2,8 +2,8 @@
 
 import logging
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
-from sqlalchemy import desc, select
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile, status
+from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -14,10 +14,13 @@ from app.schemas.profile import CVAnalysisResponse, ProfileResponse, ProfileUpda
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/profile", tags=["Profile"])
+router = APIRouter()
+profile_router = APIRouter(prefix="/api/profile", tags=["Profile"])
+
+onboarding_router = APIRouter(prefix="/api/onboarding", tags=["Onboarding"])
 
 
-@router.get("", response_model=ProfileResponse, summary="Get User Profile Preferences")
+@profile_router.get("", response_model=ProfileResponse, summary="Get User Profile Preferences")
 async def get_profile(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -34,6 +37,8 @@ async def get_profile(
             desired_job_type="all",
             german_level="B1",
             radius_km=25,
+            onboarding_completed=False,
+            onboarding_step=0,
         )
         db.add(profile)
         await db.commit()
@@ -42,14 +47,16 @@ async def get_profile(
     return ProfileResponse.model_validate(profile)
 
 
-@router.post("", response_model=ProfileResponse, summary="Update User Profile Preferences")
-@router.put("", response_model=ProfileResponse, summary="Update User Profile Preferences (PUT)")
+@profile_router.post("", response_model=ProfileResponse, summary="Update User Profile Preferences")
+@profile_router.put(
+    "", response_model=ProfileResponse, summary="Update User Profile Preferences (PUT)"
+)
 async def update_profile(
     payload: ProfileUpdate,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> ProfileResponse:
-    """Update job type (vz/tz/mj/all), German proficiency (A2-C1), goals, location, and radius."""
+    """Update job type (vz/tz/mj/all), German proficiency (A1-C2), goals, location, and radius."""
     stmt = select(Profile).where(Profile.user_id == current_user.id)
     result = await db.execute(stmt)
     profile = result.scalars().first()
@@ -68,26 +75,31 @@ async def update_profile(
         profile.location = payload.location
     if payload.radius_km is not None:
         profile.radius_km = payload.radius_km
+    if payload.onboarding_completed is not None:
+        profile.onboarding_completed = payload.onboarding_completed
+    if payload.onboarding_step is not None:
+        profile.onboarding_step = payload.onboarding_step
 
     await db.commit()
     await db.refresh(profile)
 
-    # Trigger immediate job search & matching sync
-    try:
-        from app.services.scheduler import scheduler_service
-
-        await scheduler_service.run_sync_for_user(current_user.id, db)
-    except Exception as sync_err:
-        logger.warning(
-            "Matching sync after profile update for user %s failed: %s",
-            current_user.id,
-            sync_err,
+    # Check R4 fallback: auto-mark existing users with >=1 CVAnalysis as onboarded
+    if not profile.onboarding_completed:
+        cv_count = await db.scalar(
+            select(func.count(CVAnalysis.id)).where(CVAnalysis.user_id == current_user.id)
         )
+        if cv_count and cv_count > 0:
+            profile.onboarding_completed = True
+            profile.onboarding_step = 8
+            await db.commit()
+            await db.refresh(profile)
 
     return ProfileResponse.model_validate(profile)
 
 
-@router.get("/cv", response_model=CVAnalysisResponse | None, summary="Get Latest CV Analysis")
+@profile_router.get(
+    "/cv", response_model=CVAnalysisResponse | None, summary="Get Latest CV Analysis"
+)
 async def get_latest_cv_analysis(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -108,7 +120,7 @@ async def get_latest_cv_analysis(
     return CVAnalysisResponse.model_validate(cv_analysis)
 
 
-@router.post("/cv", response_model=CVAnalysisResponse, summary="Upload and Analyze CV")
+@profile_router.post("/cv", response_model=CVAnalysisResponse, summary="Upload and Analyze CV")
 async def upload_cv(
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
@@ -117,8 +129,6 @@ async def upload_cv(
     """Upload a candidate CV document (PDF, DOCX, TXT), extract text, run AI analysis, and save."""
     from app.services.ai_matcher import cv_analyzer
     from app.services.cv_parser import CVParserService
-
-    # TODO: It should be gamification. First of all user upload his CV, then ask on some questions about his German knowledge, work type, etc. And then backend save all it and go to scrape first jobs bunch
 
     if not file.filename:
         raise HTTPException(
@@ -134,6 +144,15 @@ async def upload_cv(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Failed to read file: {e}",
+        )
+
+    if (
+        not content
+        or len(content.strip() if isinstance(content, bytes | bytearray) else content) == 0
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Uploaded file is empty.",
         )
 
     # Parse and extract text
@@ -165,41 +184,47 @@ async def upload_cv(
     )
     db.add(cv_record)
 
-    # Normalize extracted German level to valid Profile GermanLevelLiteral
+    # Normalize extracted German level to valid Profile GermanLevelLiteral (A1–C2)
     raw_german = (
         analysis.get("german_level") or analysis.get("detected_languages", {}).get("de") or "B1"
     )
-    raw_german_str = str(raw_german).upper()
-    if raw_german_str in ["C2", "C1", "MUTTERSPRACHE", "NATIVE"]:
+    raw_german_str = str(raw_german).strip().upper()
+    if raw_german_str in ["C2", "MUTTERSPRACHE", "NATIVE"]:
+        norm_german = "C2"
+    elif raw_german_str == "C1":
         norm_german = "C1"
     elif raw_german_str == "B2":
         norm_german = "B2"
-    elif raw_german_str in ["A1", "A2"]:
+    elif raw_german_str == "B1":
+        norm_german = "B1"
+    elif raw_german_str == "A2":
         norm_german = "A2"
+    elif raw_german_str == "A1":
+        norm_german = "A1"
     else:
         norm_german = "B1"
 
-    # Update profile German level if profile exists
+    # Update profile with extracted fields and advance onboarding step
     stmt = select(Profile).where(Profile.user_id == current_user.id)
     p_res = await db.execute(stmt)
     user_profile = p_res.scalars().first()
-    if user_profile:
-        user_profile.german_level = norm_german
+    if not user_profile:
+        user_profile = Profile(user_id=current_user.id)
+        db.add(user_profile)
+
+    user_profile.german_level = norm_german
+    if analysis.get("city"):
+        user_profile.location = analysis.get("city")
+    if analysis.get("radius_km"):
+        user_profile.radius_km = analysis.get("radius_km")
+    if analysis.get("desired_job_type"):
+        user_profile.desired_job_type = analysis.get("desired_job_type")
+    if analysis.get("goals"):
+        user_profile.goals = analysis.get("goals")
+    user_profile.onboarding_step = max(user_profile.onboarding_step or 0, 1)
 
     await db.commit()
     await db.refresh(cv_record)
-
-    # Trigger immediate job search & matching sync
-    try:
-        from app.services.scheduler import scheduler_service
-
-        await scheduler_service.run_sync_for_user(current_user.id, db)
-    except Exception as sync_err:
-        logger.warning(
-            "Matching sync after CV upload for user %s failed: %s",
-            current_user.id,
-            sync_err,
-        )
 
     # Extracted preferences for candidate review and manual editing
     extracted_preferences = {
@@ -213,3 +238,64 @@ async def upload_cv(
     response_data = CVAnalysisResponse.model_validate(cv_record)
     response_data.extracted_preferences = extracted_preferences
     return response_data
+
+
+@onboarding_router.post("/complete", summary="Complete Onboarding and Trigger First Job Scrape")
+@profile_router.post(
+    "/onboarding/complete",
+    summary="Complete Onboarding and Trigger First Job Scrape (Profile Subrouter)",
+)
+async def complete_onboarding(
+    background_tasks: BackgroundTasks,
+    payload: ProfileUpdate | None = None,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Finalize candidate onboarding wizard, mark completed, and trigger the initial job search."""
+    # TODO: After CV uploading, during onboarding, if change the language the whole onboarding is just skipping because AI already fill all necessary params
+    stmt = select(Profile).where(Profile.user_id == current_user.id)
+    profile = (await db.execute(stmt)).scalars().first()
+    if not profile:
+        profile = Profile(user_id=current_user.id)
+        db.add(profile)
+
+    if payload:
+        if payload.desired_job_type is not None:
+            profile.desired_job_type = payload.desired_job_type
+        if payload.german_level is not None:
+            profile.german_level = payload.german_level
+        if payload.goals is not None:
+            profile.goals = payload.goals
+        if payload.location is not None:
+            profile.location = payload.location
+        if payload.radius_km is not None:
+            profile.radius_km = payload.radius_km
+
+    profile.onboarding_completed = True
+    profile.onboarding_step = 8
+    await db.commit()
+    await db.refresh(profile)
+
+    # Trigger first job scraping and matching run in background (non-blocking)
+    background_tasks.add_task(_safe_run_sync_for_user, current_user.id)
+
+    return {
+        "status": "success",
+        "onboarding_completed": True,
+        "sync": "queued",
+    }
+
+
+async def _safe_run_sync_for_user(user_id: str) -> None:
+    """Safely execute background sync, isolating any unexpected error from ASGI pipeline."""
+    try:
+        from app.services.scheduler import scheduler_service
+
+        await scheduler_service.run_sync_for_user(user_id)
+    except Exception as exc:
+        logger.warning("Background sync for user %s encountered exception: %s", user_id, exc)
+
+
+# Include subrouters into main profile router
+router.include_router(profile_router)
+router.include_router(onboarding_router)

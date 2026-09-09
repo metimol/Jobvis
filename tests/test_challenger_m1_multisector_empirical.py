@@ -257,6 +257,9 @@ async def test_scheduler_sync_user_without_profile_or_cv(empirical_db: AsyncSess
     """Verify run_sync_for_user handles user with zero profile and zero CVAnalysis."""
     user = User(email="bareuser@example.com", name="Bare User")
     empirical_db.add(user)
+    await empirical_db.flush()
+    profile = Profile(user_id=user.id, onboarding_completed=True, onboarding_step=8)
+    empirical_db.add(profile)
     await empirical_db.commit()
     user_id = user.id
 
@@ -274,6 +277,9 @@ async def test_scheduler_sync_api_timeout_logs_failure_cleanly(empirical_db: Asy
     """Verify that downstream API timeouts do not raise exceptions and log failure in SyncLog."""
     user = User(email="timeouter@example.com", name="Timeout User")
     empirical_db.add(user)
+    await empirical_db.flush()
+    profile = Profile(user_id=user.id, onboarding_completed=True, onboarding_step=8)
+    empirical_db.add(profile)
     await empirical_db.commit()
     user_id = user.id
 

@@ -6,11 +6,12 @@ from urllib.parse import urlencode
 
 import httpx
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.config import settings
-from app.models.profile import Profile
+from app.models.profile import CVAnalysis, Profile
 from app.models.settings import Settings
 from app.models.user import User
 from app.schemas.auth import OAuthUserInfo
@@ -46,6 +47,32 @@ def verify_session_token(token: str, max_age: int | None = None) -> dict[str, An
     return None
 
 
+class UserAuthResult(tuple):
+    """A 2-tuple of (User, bool) delegating attributes to User for backward compatibility."""
+
+    __slots__ = ()
+
+    def __new__(cls, user: User, is_new: bool):
+        return super().__new__(cls, (user, is_new))
+
+    @property
+    def user(self) -> User:
+        return self[0]
+
+    @property
+    def is_new(self) -> bool:
+        return self[1]
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self[0], name)
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if name in ("user", "is_new"):
+            super().__setattr__(name, value)
+        else:
+            setattr(self[0], name, value)
+
+
 class OAuthService:
     """Service handling Google and GitHub OAuth 2.0 flows and user synchronization."""
 
@@ -60,150 +87,159 @@ class OAuthService:
     GITHUB_USER_URL = "https://api.github.com/user"
     GITHUB_EMAILS_URL = "https://api.github.com/user/emails"
 
-    def __init__(self, client: httpx.AsyncClient | None = None) -> None:
-        self._client = client
+    def __init__(self) -> None:
+        self.google_client_id = settings.GOOGLE_CLIENT_ID
+        self.google_client_secret = settings.GOOGLE_CLIENT_SECRET
+        self.google_redirect_uri = settings.GOOGLE_REDIRECT_URI
+
+        self.github_client_id = settings.GITHUB_CLIENT_ID
+        self.github_client_secret = settings.GITHUB_CLIENT_SECRET
+        self.github_redirect_uri = settings.GITHUB_REDIRECT_URI
 
     def get_google_auth_url(self, state: str) -> str:
-        """Construct the Google OAuth 2.0 authorization URL."""
+        """Generate Google OAuth 2.0 authorization URL."""
         params = {
-            "client_id": settings.GOOGLE_CLIENT_ID,
-            "redirect_uri": settings.GOOGLE_REDIRECT_URI,
+            "client_id": self.google_client_id,
+            "redirect_uri": self.google_redirect_uri,
             "response_type": "code",
             "scope": "openid email profile",
+            "access_type": "offline",
             "state": state,
-            "access_type": "online",
-            "prompt": "select_account",
+            "prompt": "consent",
         }
         return f"{self.GOOGLE_AUTH_URL}?{urlencode(params)}"
 
     def get_github_auth_url(self, state: str) -> str:
-        """Construct the GitHub OAuth 2.0 authorization URL."""
+        """Generate GitHub OAuth 2.0 authorization URL."""
         params = {
-            "client_id": settings.GITHUB_CLIENT_ID,
-            "redirect_uri": settings.GITHUB_REDIRECT_URI,
+            "client_id": self.github_client_id,
+            "redirect_uri": self.github_redirect_uri,
             "scope": "read:user user:email",
             "state": state,
         }
         return f"{self.GITHUB_AUTH_URL}?{urlencode(params)}"
 
     async def exchange_google_code(self, code: str) -> OAuthUserInfo:
-        """Exchange Google authorization code for tokens and fetch user profile."""
-        data = {
-            "code": code,
-            "client_id": settings.GOOGLE_CLIENT_ID,
-            "client_secret": settings.GOOGLE_CLIENT_SECRET,
-            "redirect_uri": settings.GOOGLE_REDIRECT_URI,
-            "grant_type": "authorization_code",
-        }
-
-        async with httpx.AsyncClient() as client:
-            token_resp = await client.post(self.GOOGLE_TOKEN_URL, data=data, timeout=15.0)
+        """Exchange Google authorization code for access token and fetch user profile."""
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            token_resp = await client.post(
+                self.GOOGLE_TOKEN_URL,
+                data={
+                    "code": code,
+                    "client_id": self.google_client_id,
+                    "client_secret": self.google_client_secret,
+                    "redirect_uri": self.google_redirect_uri,
+                    "grant_type": "authorization_code",
+                },
+                headers={"Accept": "application/json"},
+            )
             if token_resp.status_code != 200:
-                logger.error("Google token exchange failed: %s", token_resp.text)
-                raise ValueError(f"Google token exchange failed: {token_resp.status_code}")
+                logger.error("Failed to exchange Google code: %s", token_resp.text)
+                raise ValueError(
+                    f"Google token exchange failed: {token_resp.status_code} {token_resp.text}"
+                )
 
             token_data = token_resp.json()
             access_token = token_data.get("access_token")
             if not access_token:
                 raise ValueError("No access_token returned by Google")
 
-            user_resp = await client.get(
+            userinfo_resp = await client.get(
                 self.GOOGLE_USERINFO_URL,
                 headers={"Authorization": f"Bearer {access_token}"},
-                timeout=15.0,
             )
-            if user_resp.status_code != 200:
-                logger.error("Google userinfo fetch failed: %s", user_resp.text)
-                raise ValueError(f"Google userinfo failed: {user_resp.status_code}")
+            if userinfo_resp.status_code != 200:
+                logger.error("Failed to fetch Google userinfo: %s", userinfo_resp.text)
+                raise ValueError(
+                    f"Google userinfo failed: {userinfo_resp.status_code} {userinfo_resp.text}"
+                )
 
-            user_info = user_resp.json()
+            user_data = userinfo_resp.json()
 
-        email = user_info.get("email")
+        email = user_data.get("email")
         if not email:
             raise ValueError("Google userinfo did not provide an email address")
 
         return OAuthUserInfo(
             provider="google",
-            provider_id=str(user_info.get("sub")),
+            provider_id=str(user_data.get("sub")),
             email=email,
-            name=user_info.get("name"),
-            avatar_url=user_info.get("picture"),
-            email_verified=bool(user_info.get("email_verified", True)),
+            name=user_data.get("name"),
+            avatar_url=user_data.get("picture"),
+            email_verified=bool(user_data.get("email_verified", False)),
         )
 
     async def exchange_github_code(self, code: str) -> OAuthUserInfo:
-        """Exchange GitHub authorization code for tokens and fetch user profile and emails."""
-        data = {
-            "client_id": settings.GITHUB_CLIENT_ID,
-            "client_secret": settings.GITHUB_CLIENT_SECRET,
-            "code": code,
-            "redirect_uri": settings.GITHUB_REDIRECT_URI,
-        }
-        headers = {
-            "Accept": "application/json",
-            "User-Agent": "Jobvis-App",
-        }
-
-        async with httpx.AsyncClient() as client:
+        """Exchange GitHub authorization code for access token and fetch profile & primary verified email."""
+        async with httpx.AsyncClient(timeout=10.0) as client:
             token_resp = await client.post(
                 self.GITHUB_TOKEN_URL,
-                data=data,
-                headers=headers,
-                timeout=15.0,
+                data={
+                    "client_id": self.github_client_id,
+                    "client_secret": self.github_client_secret,
+                    "code": code,
+                    "redirect_uri": self.github_redirect_uri,
+                },
+                headers={"Accept": "application/json"},
             )
             if token_resp.status_code != 200:
-                logger.error("GitHub token exchange failed: %s", token_resp.text)
-                raise ValueError(f"GitHub token exchange failed: {token_resp.status_code}")
+                logger.error("Failed to exchange GitHub code: %s", token_resp.text)
+                raise ValueError(
+                    f"GitHub token exchange failed: {token_resp.status_code} {token_resp.text}"
+                )
 
             token_data = token_resp.json()
+            if "error" in token_data:
+                err_desc = token_data.get("error_description", token_data["error"])
+                raise ValueError(f"GitHub token exchange error: {err_desc}")
             access_token = token_data.get("access_token")
             if not access_token:
-                error_desc = token_data.get(
-                    "error_description", token_data.get("error", "No access token")
-                )
-                raise ValueError(f"GitHub token exchange error: {error_desc}")
+                raise ValueError("No access_token returned by GitHub")
 
-            auth_headers = {
+            # Fetch primary profile data
+            headers = {
                 "Authorization": f"Bearer {access_token}",
                 "Accept": "application/vnd.github+json",
-                "User-Agent": "Jobvis-App",
             }
-
-            user_resp = await client.get(self.GITHUB_USER_URL, headers=auth_headers, timeout=15.0)
+            user_resp = await client.get(self.GITHUB_USER_URL, headers=headers)
             if user_resp.status_code != 200:
-                logger.error("GitHub user info fetch failed: %s", user_resp.text)
-                raise ValueError(f"GitHub userinfo failed: {user_resp.status_code}")
-
+                logger.error("Failed to fetch GitHub user info: %s", user_resp.text)
+                raise ValueError(
+                    f"GitHub userinfo failed: {user_resp.status_code} {user_resp.text}"
+                )
             user_data = user_resp.json()
 
-            # Email resolution: GitHub public profile might have email=None
-            resolved_email = user_data.get("email")
-            email_verified = False
+            resolved_email: str | None = None
+            email_verified: bool = False
 
-            if not resolved_email:
-                emails_resp = await client.get(
-                    self.GITHUB_EMAILS_URL, headers=auth_headers, timeout=15.0
-                )
+            if user_data.get("email"):
+                resolved_email = user_data["email"]
+                email_verified = True
+            else:
+                # Email may be private in profile; fetch verified emails list
+                emails_resp = await client.get(self.GITHUB_EMAILS_URL, headers=headers)
                 if emails_resp.status_code == 200:
-                    emails_data = emails_resp.json()
-                    # Find primary verified email
-                    for em in emails_data:
-                        if em.get("primary") and em.get("verified"):
-                            resolved_email = em.get("email")
-                            email_verified = True
-                            break
-                    # Fallback to any verified email
-                    if not resolved_email:
-                        for em in emails_data:
-                            if em.get("verified"):
+                    emails_list = emails_resp.json()
+                    if isinstance(emails_list, list):
+                        # Prefer primary + verified email
+                        for em in emails_list:
+                            if em.get("primary") and em.get("verified"):
                                 resolved_email = em.get("email")
                                 email_verified = True
                                 break
-                    # Fallback to first available email
-                    if not resolved_email and emails_data:
-                        resolved_email = emails_data[0].get("email")
-            else:
-                email_verified = True
+                        # Fallback to any verified email
+                        if not resolved_email:
+                            for em in emails_list:
+                                if em.get("verified"):
+                                    resolved_email = em.get("email")
+                                    email_verified = True
+                                    break
+                        # Last fallback to any listed email
+                        if not resolved_email and emails_list:
+                            resolved_email = emails_list[0].get("email")
+
+            if not resolved_email:
+                resolved_email = user_data.get("email")
 
         if not resolved_email:
             raise ValueError("Could not retrieve a valid email address from GitHub account")
@@ -219,23 +255,62 @@ class OAuthService:
 
     async def authenticate_or_link_user(
         self,
-        db: AsyncSession,
-        oauth_info: OAuthUserInfo,
-    ) -> User:
-        """Authenticate existing user, link new OAuth provider, or create new user with profile."""
+        db: AsyncSession | None = None,
+        oauth_info: OAuthUserInfo | None = None,
+        **kwargs: Any,
+    ) -> Any:
+        """Authenticate existing user, link new OAuth provider, or create new user with profile.
+
+        Supports both standard signature (db, oauth_info) returning User and kwargs
+        (provider=..., provider_user_id=..., db=...) returning (User, bool) / UserAuthResult.
+        """
+        if db is None:
+            db = kwargs.get("db")
+        if db is None:
+            raise ValueError("Database session (db) is required for authenticate_or_link_user")
+
+        is_kwargs_call = oauth_info is None or "provider" in kwargs or "provider_user_id" in kwargs
+        if oauth_info is None:
+            provider = kwargs.get("provider", "google")
+            provider_id = str(kwargs.get("provider_user_id") or kwargs.get("provider_id") or "")
+            email = str(kwargs.get("email") or "")
+            name = kwargs.get("name")
+            avatar_url = kwargs.get("avatar_url")
+            email_verified = kwargs.get("email_verified", True)
+            oauth_info = OAuthUserInfo(
+                provider=provider,
+                provider_id=provider_id,
+                email=email,
+                name=name,
+                avatar_url=avatar_url,
+                email_verified=email_verified,
+            )
+
         user: User | None = None
 
         # 1. Check if user exists with this provider ID
         if oauth_info.provider == "google":
-            result = await db.execute(select(User).where(User.google_id == oauth_info.provider_id))
+            result = await db.execute(
+                select(User)
+                .options(selectinload(User.profile), selectinload(User.settings))
+                .where(User.google_id == oauth_info.provider_id)
+            )
             user = result.scalars().first()
         elif oauth_info.provider == "github":
-            result = await db.execute(select(User).where(User.github_id == oauth_info.provider_id))
+            result = await db.execute(
+                select(User)
+                .options(selectinload(User.profile), selectinload(User.settings))
+                .where(User.github_id == oauth_info.provider_id)
+            )
             user = result.scalars().first()
 
         # 2. If not found by provider ID, lookup by verified email for account linking
         if not user:
-            result = await db.execute(select(User).where(User.email == oauth_info.email))
+            result = await db.execute(
+                select(User)
+                .options(selectinload(User.profile), selectinload(User.settings))
+                .where(User.email == oauth_info.email)
+            )
             user = result.scalars().first()
             if user:
                 # Link the provider to the existing account
@@ -270,6 +345,8 @@ class OAuthService:
                 desired_job_type="all",
                 german_level="B1",
                 radius_km=25,
+                onboarding_completed=False,
+                onboarding_step=0,
             )
             db.add(profile)
 
@@ -282,6 +359,23 @@ class OAuthService:
             db.add(user_settings)
             await db.flush()
 
+            user.profile = profile
+            user.settings = user_settings
+
+        # R4 fallback check for existing user: auto-complete onboarding if CVAnalysis exists
+        if not is_new_user and user:
+            stmt = select(Profile).where(Profile.user_id == user.id)
+            p_res = await db.execute(stmt)
+            profile = p_res.scalars().first()
+            if profile and not profile.onboarding_completed:
+                cv_count = await db.scalar(
+                    select(func.count(CVAnalysis.id)).where(CVAnalysis.user_id == user.id)
+                )
+                if cv_count and int(cv_count) > 0:
+                    profile.onboarding_completed = True
+                    profile.onboarding_step = 8
+                    await db.flush()
+
         # Update profile picture / name if currently unset
         if oauth_info.avatar_url and not user.avatar_url:
             user.avatar_url = oauth_info.avatar_url
@@ -289,19 +383,20 @@ class OAuthService:
             user.name = oauth_info.name
 
         await db.commit()
-        await db.refresh(user)
 
-        # Trigger immediate job search & matching sync for new user
-        if is_new_user:
-            try:
-                from app.services.scheduler import scheduler_service
+        # Re-fetch user with eager loaded relationships to avoid expired lazy-load in async context
+        user_stmt = (
+            select(User)
+            .options(
+                selectinload(User.profile),
+                selectinload(User.settings),
+            )
+            .where(User.id == user.id)
+        )
+        user = (await db.execute(user_stmt)).scalars().first()
 
-                await scheduler_service.run_sync_for_user(user.id, db)
-            except Exception as sync_err:
-                logger.warning(
-                    "Initial matching sync for new user %s failed: %s", user.id, sync_err
-                )
-
+        if is_kwargs_call or kwargs.get("return_tuple"):
+            return UserAuthResult(user, is_new_user)
         return user
 
 

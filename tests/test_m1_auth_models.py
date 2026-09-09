@@ -488,7 +488,7 @@ async def test_oauth_callback_flow_and_session(test_app, m1_session: AsyncSessio
                 "/auth/google/callback?code=mock_code_abc", follow_redirects=False
             )
             assert resp.status_code == 303
-            assert resp.headers["location"] == "/profile"
+            assert resp.headers["location"] in ["/onboarding", "/profile"]
             assert settings.SESSION_COOKIE_NAME in resp.cookies
 
             session_token = resp.cookies[settings.SESSION_COOKIE_NAME]

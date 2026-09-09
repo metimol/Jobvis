@@ -129,7 +129,7 @@ def test_f2_boundary_github_upstream_server_error_500():
 
 def validate_profile_payload(payload: dict[str, Any]) -> dict[str, Any]:
     allowed_job_types = {"vz", "tz", "mj", "all"}
-    allowed_cefr = {"A2", "B1", "B2", "C1"}
+    allowed_cefr = {"A1", "A2", "B1", "B2", "C1", "C2"}
 
     if payload.get("desired_job_type") not in allowed_job_types:
         raise ValueError(f"Invalid desired_job_type: {payload.get('desired_job_type')}")
@@ -154,8 +154,16 @@ def test_f3_boundary_invalid_job_type_enum():
             validate_profile_payload({"desired_job_type": t, "german_level": "B1", "radius_km": 20})
 
 
+def test_f3_boundary_valid_cefr_levels():
+    for lvl in ["A1", "A2", "B1", "B2", "C1", "C2"]:
+        res = validate_profile_payload(
+            {"desired_job_type": "vz", "german_level": lvl, "radius_km": 20}
+        )
+        assert res["german_level"] == lvl
+
+
 def test_f3_boundary_invalid_cefr_levels():
-    invalid_cefr = ["A1", "C2", "Z9", "b1", "B3", "native"]
+    invalid_cefr = ["Z9", "b1", "B3", "native"]
     for lvl in invalid_cefr:
         with pytest.raises(ValueError, match="Invalid german_level"):
             validate_profile_payload(

@@ -7,8 +7,10 @@ with resilient heuristic fallback.
 """
 
 import asyncio
+import hashlib
 import logging
 import re
+import time
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -16,6 +18,10 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.config import settings
 
 logger = logging.getLogger(__name__)
+
+# In-memory TTL cache for LLM query results (avoids redundant Gemini calls)
+_query_cache: dict[str, tuple["BAQueryParams", float]] = {}
+_QUERY_CACHE_TTL = 300.0  # 5 minutes
 
 # Valid BA API working time options
 VALID_ARBEITSZEIT_VALUES = {"vz", "tz", "mj", "ho"}
@@ -441,6 +447,18 @@ async def generate_search_query(
         logger.debug("Goals empty or missing; using normalized profile/CV heuristic parameters.")
         return heuristic_params
 
+    # Check TTL cache before invoking LLM
+    cache_key = hashlib.sha256(
+        f"{goals_text}|{','.join(cv_dict.get('skills', []))}|{prefs_dict.get('location', '')}|{prefs_dict.get('desired_job_type', '')}".encode()
+    ).hexdigest()
+    cached = _query_cache.get(cache_key)
+    if cached is not None:
+        cached_result, cached_time = cached
+        if time.monotonic() - cached_time < _QUERY_CACHE_TTL:
+            logger.debug("Returning cached LLM query result for goals hash %s", cache_key[:8])
+            return cached_result
+        del _query_cache[cache_key]
+
     # Determine active LLM
     active_llm = llm
     if api_key is _QUERY_GEN_SENTINEL:
@@ -484,8 +502,10 @@ async def generate_search_query(
             "job_type": prefs_dict.get("desired_job_type") or "Not specified",
         }
 
+        # TODO: LangChain Gemini query generation failed or timed out
+
         res: BAQueryParams = await asyncio.wait_for(
-            chain.ainvoke(prompt_input),
+            asyncio.shield(chain.ainvoke(prompt_input)),
             timeout=timeout_seconds,
         )
 
@@ -512,19 +532,22 @@ async def generate_search_query(
         else:
             wo_val = heuristic_params.wo
 
-        return BAQueryParams(
+        result = BAQueryParams(
             was=was_val,
             wo=wo_val,
             arbeitszeit=clean_arbeitszeit,
             angebotsart=clean_angebotsart or 1,
         )
-
-    except Exception as exc:
+        _query_cache[cache_key] = (result, time.monotonic())
+    except (Exception, asyncio.CancelledError) as exc:
+        # LLM call is shielded from client disconnects; results are cached to avoid redundant invocations.
         logger.warning(
             "LangChain Gemini query generation failed or timed out (%s); using heuristic fallback.",
             exc,
         )
         return heuristic_params
+    else:
+        return result
 
 
 # Convenience alias
