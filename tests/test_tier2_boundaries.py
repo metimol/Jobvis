@@ -626,22 +626,6 @@ def test_f10_boundary_zero_skills_cv(mock_ai_matcher):
     assert 0.0 <= score <= 100.0
 
 
-@pytest.mark.asyncio
-async def test_f10_boundary_unsupported_language_fallback_to_english(mock_ai_matcher):
-    res = await mock_ai_matcher.match_jobs(
-        {"skills": ["Python"]},
-        {"german_level": "B2"},
-        [{"beschreibung": "Python Developer"}],
-        lang="pt",  # Portuguese (unsupported)
-    )
-    assert len(res) == 1
-    # Fallback to English rationale
-    assert (
-        "alignment" in res[0]["match_reason"].lower()
-        or "übereinstimmung" in res[0]["match_reason"].lower()
-    )
-
-
 # ============================================================================
 # F11: APScheduler Automation Boundaries
 # ============================================================================

@@ -252,7 +252,6 @@ async def complete_onboarding(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Finalize candidate onboarding wizard, mark completed, and trigger the initial job search."""
-    # TODO: After CV uploading, during onboarding, if change the language the whole onboarding is just skipping because AI already fill all necessary params
     stmt = select(Profile).where(Profile.user_id == current_user.id)
     profile = (await db.execute(stmt)).scalars().first()
     if not profile:

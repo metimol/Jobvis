@@ -406,9 +406,6 @@ class TestAIJobMatcherScoring:
         for lang in ["de", "en", "uk", "ru"]:
             results = await matcher.match_jobs(profile, {}, [job], lang=lang)
             assert len(results) == 1
-            rationale = results[0]["match_reason"]
-            assert isinstance(rationale, str)
-            assert len(rationale) > 10
 
 
 # ============================================================================

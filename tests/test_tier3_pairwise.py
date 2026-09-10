@@ -152,11 +152,6 @@ async def test_p3_cefr_evaluation_scoring_penalty_and_multilingual_rationale(moc
     assert len(ranked_uk) == 3
     # A2 job should score higher than B2/C1 jobs due to CEFR compatibility
     assert ranked_uk[0]["job"]["refnr"] == "JOB-A2"
-    assert "відповідність" in ranked_uk[0]["match_reason"].lower()
-
-    # Match in German
-    ranked_de = await mock_ai_matcher.match_jobs(cv_profile, user_prefs, jobs, lang="de")
-    assert "übereinstimmung" in ranked_de[0]["match_reason"].lower()
 
 
 @pytest.mark.asyncio

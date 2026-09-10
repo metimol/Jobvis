@@ -346,7 +346,6 @@ class JobMatchResult(BaseModel):
 
     job: Any
     score: float
-    match_reason: str
     factors: dict[str, float] = Field(default_factory=dict)
 
 
@@ -872,18 +871,10 @@ class AIJobMatcher:
         results = []
         for job in jobs:
             score = self.calculate_score(cv_profile, user_prefs, job)
-            reasons = {
-                "en": f"High alignment with your professional qualifications and work experience ({score}% match).",
-                "de": f"Hohe Übereinstimmung mit Ihren Fachkompetenzen und Ihrer Berufserfahrung ({score}% Übereinstimmung).",
-                "uk": f"Висока відповідність кваліфікації та професійного досвіду ({score}% збіг).",
-                "ru": f"Высокое соответствие квалификации и профессионального опыта ({score}% совпадение).",
-            }
-            reason = reasons.get(lang, reasons["en"])
             results.append(
                 {
                     "job": job,
                     "score": score,
-                    "match_reason": reason,
                     "factors": {
                         "skills": 0.40,
                         "experience": 0.25,

@@ -10,7 +10,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.models.job import Job, MatchedJob
-from app.models.settings import Settings
 from app.models.user import User
 
 logger = logging.getLogger(__name__)
@@ -31,7 +30,6 @@ class MatchedJobResponse(BaseModel):
     external_url: str | None = None
     score: float
     status: str
-    match_reason: str | None = None
     created_at: str
 
     model_config = ConfigDict(from_attributes=True)
@@ -62,11 +60,6 @@ async def get_feed(
     db: AsyncSession = Depends(get_db),
 ) -> FeedListResponse:
     """Retrieve personalized AI-ranked job opportunities with multilingual rationale."""
-    # Get user preferred language
-    s_stmt = select(Settings).where(Settings.user_id == current_user.id)
-    user_settings = (await db.execute(s_stmt)).scalars().first()
-    ui_lang = user_settings.ui_language if user_settings else "de"
-
     # Base query joining MatchedJob with Job
     query = (
         select(MatchedJob, Job)
@@ -93,19 +86,6 @@ async def get_feed(
 
     items = []
     for matched_job, job in results:
-        # Find localized match reason
-        match_reason = None
-        if matched_job.match_reasons:
-            for r in matched_job.match_reasons:
-                if isinstance(r, dict) and r.get("lang") == ui_lang:
-                    match_reason = r.get("text")
-                    break
-            if not match_reason and isinstance(matched_job.match_reasons[0], dict):
-                match_reason = matched_job.match_reasons[0].get("text")
-
-        if not match_reason:
-            match_reason = f"Empfohlen mit {round(matched_job.score)}% Übereinstimmung."
-
         items.append(
             MatchedJobResponse(
                 id=matched_job.id,
@@ -118,7 +98,6 @@ async def get_feed(
                 external_url=job.external_url,
                 score=matched_job.score,
                 status=matched_job.status,
-                match_reason=match_reason,
                 created_at=matched_job.created_at.isoformat() if matched_job.created_at else "",
             )
         )
@@ -169,6 +148,5 @@ async def update_match_status(
         external_url=job.external_url,
         score=matched_job.score,
         status=matched_job.status,
-        match_reason=matched_job.match_reasons[0].get("text") if matched_job.match_reasons else "",
         created_at=matched_job.created_at.isoformat() if matched_job.created_at else "",
     )

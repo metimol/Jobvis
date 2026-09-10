@@ -2,9 +2,9 @@
 
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
-from sqlalchemy import JSON, DateTime, Float, ForeignKey, String, Text, func
+from sqlalchemy import DateTime, Float, ForeignKey, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -88,11 +88,6 @@ class MatchedJob(Base):
     )
 
     score: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
-    match_reasons: Mapped[list[dict[str, Any]]] = mapped_column(
-        JSON,
-        default=list,
-        nullable=False,
-    )
     status: Mapped[str] = mapped_column(
         String(20),
         default="new",

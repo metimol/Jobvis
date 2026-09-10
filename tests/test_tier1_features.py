@@ -917,23 +917,6 @@ def test_f10_multi_factor_goals_weight(mock_ai_matcher):
     assert score > 75.0
 
 
-@pytest.mark.asyncio
-async def test_f10_multilingual_match_rationales(mock_ai_matcher, ba_job_details_fixture):
-    cv_profile = {"skills": ["Python", "FastAPI"]}
-    user_prefs = {"german_level": "B2"}
-    jobs = [ba_job_details_fixture]
-
-    res_en = await mock_ai_matcher.match_jobs(cv_profile, user_prefs, jobs, lang="en")
-    res_de = await mock_ai_matcher.match_jobs(cv_profile, user_prefs, jobs, lang="de")
-    res_uk = await mock_ai_matcher.match_jobs(cv_profile, user_prefs, jobs, lang="uk")
-    res_ru = await mock_ai_matcher.match_jobs(cv_profile, user_prefs, jobs, lang="ru")
-
-    assert "alignment" in res_en[0]["match_reason"].lower()
-    assert "übereinstimmung" in res_de[0]["match_reason"].lower()
-    assert "відповідність" in res_uk[0]["match_reason"].lower()
-    assert "соответствие" in res_ru[0]["match_reason"].lower()
-
-
 # ============================================================================
 # F11: APScheduler Automation
 # ============================================================================
@@ -1127,7 +1110,6 @@ async def test_f12_pipeline_persist_matched_jobs(db_session, ba_job_details_fixt
         user_id=user.id,
         job_id=job_record.id,
         score=92.5,
-        match_reasons={"de": "Hervorragende Passgenauigkeit"},
         status="new",
     )
     db_session.add(matched_record)
@@ -1351,15 +1333,6 @@ def test_f16_feed_cefr_badge_indicator():
     badge_html = f'<span class="badge badge-cefr">{job_level}</span>'
     assert "B2" in badge_html
     assert "badge-cefr" in badge_html
-
-
-@pytest.mark.asyncio
-async def test_f16_feed_ai_reasoning_localization(mock_ai_matcher):
-    cv = {"skills": ["Python"]}
-    prefs = {"german_level": "B2"}
-    jobs = [{"beschreibung": "Python B2"}]
-    res = await mock_ai_matcher.match_jobs(cv, prefs, jobs, lang="uk")
-    assert "відповідність" in res[0]["match_reason"]
 
 
 @pytest.mark.asyncio

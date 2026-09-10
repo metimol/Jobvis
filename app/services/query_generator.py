@@ -333,7 +333,9 @@ def extract_heuristic_query(
     )
     if loc_match:
         cand_loc = loc_match.group(1).strip()
-        if cand_loc.lower() not in {
+
+        # Expanded ignore list with common tech/industry terms to prevent false positives
+        ignore_words = {
             "der",
             "die",
             "das",
@@ -344,8 +346,27 @@ def extract_heuristic_query(
             "the",
             "retail",
             "marketing",
-        }:
+            "software",
+            "engineering",
+            "it",
+            "backend",
+            "frontend",
+            "android",
+            "tech",
+            "development",
+            "data",
+            "web",
+            "cloud",
+            "design",
+            "management",
+            "sales",
+        }
+
+        # Split the candidate string and check if any word hits the ignore list
+        cand_loc_lower = cand_loc.lower()
+        if not any(word in ignore_words for word in cand_loc_lower.split()):
             wo = cand_loc
+
     if not wo and arbeitszeit != "ho":
         wo = prefs_dict.get("location") or cv_dict.get("city") or None
 
@@ -414,7 +435,7 @@ async def generate_search_query(
     user_prefs: dict[str, Any] | Any | None = None,
     llm: Any | None = None,
     api_key: Any = _QUERY_GEN_SENTINEL,
-    timeout_seconds: float = 8.0,
+    timeout_seconds: float = 100.0,
 ) -> BAQueryParams:
     """Generate optimal Arbeitsagentur API search parameters from natural language goals and CV profile.
 
@@ -501,8 +522,6 @@ async def generate_search_query(
             "location": prefs_dict.get("location") or cv_dict.get("city") or "Not specified",
             "job_type": prefs_dict.get("desired_job_type") or "Not specified",
         }
-
-        # TODO: LangChain Gemini query generation failed or timed out
 
         res: BAQueryParams = await asyncio.wait_for(
             asyncio.shield(chain.ainvoke(prompt_input)),

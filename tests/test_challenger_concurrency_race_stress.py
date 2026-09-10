@@ -549,10 +549,7 @@ async def test_query_generator_ttl_cache_avoids_redundant_llm_calls():
 
     # First invocation: cache miss, triggers LLM
     res1 = await generate_search_query(
-        goals=goals,
-        cv_profile=cv_profile,
-        user_prefs=user_prefs,
-        llm=mock_llm,
+        goals=goals, cv_profile=cv_profile, user_prefs=user_prefs, llm=mock_llm
     )
     assert res1.was == "Tischler Schreiner Holzbau"
     assert res1.wo == "Nürnberg"
@@ -563,10 +560,7 @@ async def test_query_generator_ttl_cache_avoids_redundant_llm_calls():
 
     # Second invocation with identical inputs: cache hit, bypasses LLM
     res2 = await generate_search_query(
-        goals=goals,
-        cv_profile=cv_profile,
-        user_prefs=user_prefs,
-        llm=mock_llm,
+        goals=goals, cv_profile=cv_profile, user_prefs=user_prefs, llm=mock_llm
     )
     assert res2.was == res1.was
     assert res2.wo == res1.wo
@@ -580,10 +574,7 @@ async def test_query_generator_ttl_cache_avoids_redundant_llm_calls():
 
     # Third invocation: cache expired, re-invokes LLM
     res3 = await generate_search_query(
-        goals=goals,
-        cv_profile=cv_profile,
-        user_prefs=user_prefs,
-        llm=mock_llm,
+        goals=goals, cv_profile=cv_profile, user_prefs=user_prefs, llm=mock_llm
     )
     assert res3.was == "Tischler Schreiner Holzbau"
     # Second response now consumed: mock_llm.i incremented to 2
@@ -623,10 +614,7 @@ async def test_query_generator_cancellation_shielding_and_cache_integrity():
     # Run query generation inside a task and cancel it after 0.04s
     task = asyncio.create_task(
         generate_search_query(
-            goals=goals,
-            cv_profile=cv_profile,
-            user_prefs=user_prefs,
-            llm=slow_runnable,
+            goals=goals, cv_profile=cv_profile, user_prefs=user_prefs, llm=slow_runnable
         )
     )
 
@@ -658,10 +646,7 @@ async def test_query_generator_cancellation_shielding_and_cache_integrity():
     clean_llm = FakeListLLM(responses=[fast_response])
 
     clean_res = await generate_search_query(
-        goals=goals,
-        cv_profile=cv_profile,
-        user_prefs=user_prefs,
-        llm=clean_llm,
+        goals=goals, cv_profile=cv_profile, user_prefs=user_prefs, llm=clean_llm
     )
     assert clean_res is not None
     assert clean_res.was is not None

@@ -161,7 +161,6 @@ async def test_full_cascade_deletion_gdpr(m1_session: AsyncSession):
         user_id=user.id,
         job_id=job.id,
         score=92.5,
-        match_reasons=[{"reason": "High skill match"}],
         status="new",
     )
     m1_session.add(matched_job)

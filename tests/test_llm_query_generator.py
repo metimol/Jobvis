@@ -307,7 +307,7 @@ async def test_scheduler_integration_with_llm_query():
 
     async def mock_gen(*args, **kwargs):
         kwargs["llm"] = mock_llm_sched
-        return await generate_search_query(*args, **kwargs)
+        return await generate_search_query(**kwargs)
 
     with patch("app.services.query_generator.generate_search_query", side_effect=mock_gen):
         scheduler = MatchingSchedulerService()

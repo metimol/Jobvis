@@ -130,7 +130,6 @@ async def test_scenario_s1_ukrainian_refugee_onboarding_journey(
             user_id=user.id,
             job_id=job_db.id,
             score=res["score"],
-            match_reasons={"uk": res["match_reason"]},
             status="new",
         )
         db_session.add(matched_db)
@@ -152,7 +151,6 @@ async def test_scenario_s1_ukrainian_refugee_onboarding_journey(
         .all()
     )
     assert len(feed_items) >= 1
-    assert "відповідність" in feed_items[0].match_reasons.get("uk", "")
 
     # User saves top opportunity
     feed_items[0].status = "saved"
@@ -368,7 +366,6 @@ async def test_scenario_s4_minijob_seeker_with_language_barrier(
         lang="ru",
     )
     assert len(matched) > 0
-    assert "соответствие" in matched[0]["match_reason"].lower()
 
 
 @pytest.mark.asyncio

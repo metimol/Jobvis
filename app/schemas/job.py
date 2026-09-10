@@ -64,7 +64,6 @@ class MatchedJobResponse(BaseModel):
     user_id: str
     job_id: str
     score: float
-    match_reasons: list[dict[str, Any]] = Field(default_factory=list)
     status: JobStatusLiteral
     created_at: datetime | None = None
     job: JobResponse | None = None
@@ -176,9 +175,6 @@ class BAJobListing(BaseModel):
     )
     score: float | None = Field(
         default=None, description="AI matching score (0.0 to 1.0 or 0 to 100)"
-    )
-    match_reasons: list[Any] | dict[str, Any] | None = Field(
-        default=None, description="AI rationale for matching"
     )
     raw_data: dict[str, Any] | None = Field(
         default=None, description="Original raw payload from API"

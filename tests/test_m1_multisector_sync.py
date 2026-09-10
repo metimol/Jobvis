@@ -15,7 +15,6 @@ from app.models.user import User
 from app.schemas.auth import OAuthUserInfo
 from app.services.ai_matcher import (
     AICVAnalyzer,
-    AIJobMatcher,
 )
 from app.services.oauth import OAuthService, create_session_token
 from main import app
@@ -268,44 +267,6 @@ async def test_ai_cv_analyzer_logging(caplog):
         res = await analyzer.analyze_cv(cv_text)
         assert len(res["skills"]) > 0
         assert any("Heuristic CV analysis succeeded" in record.message for record in caplog.records)
-
-
-@pytest.mark.asyncio
-async def test_ai_job_matcher_generalized_rationales():
-    """Test generalized, domain-neutral match rationales across all 4 languages."""
-    matcher = AIJobMatcher()
-    candidate_profile = {
-        "skills": ["Tischler", "Maler"],
-        "experience_years": 4.0,
-        "education": ["Berufsausbildung"],
-        "detected_languages": {"de": "B1"},
-        "keywords": ["tischler", "maler"],
-    }
-    user_prefs = {"german_level": "B1", "goals": "Handwerk Tischler"}
-    job = {
-        "title": "Tischler / Schreiner gesucht",
-        "employer": "Holzbau GmbH",
-        "description": "Erfahrener Tischler für Möbelbau und Montage.",
-    }
-
-    # Test DE
-    matches_de = await matcher.match_jobs(candidate_profile, user_prefs, [job], lang="de")
-    assert len(matches_de) == 1
-    assert "übereinstimmung" in matches_de[0]["match_reason"].lower()
-    assert "Fachkompetenzen" in matches_de[0]["match_reason"]
-
-    # Test EN
-    matches_en = await matcher.match_jobs(candidate_profile, user_prefs, [job], lang="en")
-    assert "alignment" in matches_en[0]["match_reason"].lower()
-    assert "professional qualifications" in matches_en[0]["match_reason"]
-
-    # Test UK
-    matches_uk = await matcher.match_jobs(candidate_profile, user_prefs, [job], lang="uk")
-    assert "відповідність" in matches_uk[0]["match_reason"].lower()
-
-    # Test RU
-    matches_ru = await matcher.match_jobs(candidate_profile, user_prefs, [job], lang="ru")
-    assert "соответствие" in matches_ru[0]["match_reason"].lower()
 
 
 # ============================================================================

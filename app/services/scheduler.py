@@ -13,7 +13,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import async_session_maker
 from app.models.job import Job, MatchedJob
 from app.models.profile import CVAnalysis, Profile
-from app.models.settings import Settings
 from app.models.sync_log import SyncLog
 from app.models.user import User
 from app.services.ai_matcher import ai_matcher
@@ -138,18 +137,11 @@ class MatchingSchedulerService:
             )
             cv_analysis = (await db.execute(c_stmt)).scalars().first()
 
-            # 3. Fetch UI language from settings
-            s_stmt = select(Settings).where(Settings.user_id == user_id)
-            user_settings = (await db.execute(s_stmt)).scalars().first()
-            ui_lang = user_settings.ui_language if user_settings else "de"
-
             # Generate optimal BA search parameters from natural language goals and CV profile
             from app.services.query_generator import generate_search_query
 
             search_params = await generate_search_query(
-                goals=profile.goals if profile else None,
-                cv_profile=cv_analysis,
-                user_prefs=profile,
+                goals=profile.goals if profile else None, cv_profile=cv_analysis, user_prefs=profile
             )
 
             query = search_params.was or ""
@@ -291,13 +283,6 @@ class MatchingSchedulerService:
             matched_jobs_to_save = []
             for job_rec, ba_job in persisted_job_records:
                 score = ai_matcher.calculate_score(cv_profile_dict, user_pref_dict, ba_job)
-                reasons = {
-                    "en": f"High alignment with your professional qualifications and work experience ({score}% match).",
-                    "de": f"Hohe Übereinstimmung mit Ihren Fachkompetenzen und Ihrer Berufserfahrung ({score}% Übereinstimmung).",
-                    "uk": f"Висока відповідність кваліфікації та професійного досвіду ({score}% збіг).",
-                    "ru": f"Высокое соответствие квалификации и профессионального опыта ({score}% совпадение).",
-                }
-                reason = reasons.get(ui_lang, reasons["en"])
 
                 # Check if matched job already exists for this user and job
                 m_stmt = select(MatchedJob).where(
@@ -310,7 +295,6 @@ class MatchingSchedulerService:
                         user_id=user_id,
                         job_id=job_rec.id,
                         score=score,
-                        match_reasons=[{"lang": ui_lang, "text": reason, "score": score}],
                         status="new",
                     )
                     db.add(match_rec)

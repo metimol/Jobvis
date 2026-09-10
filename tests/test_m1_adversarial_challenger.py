@@ -168,7 +168,6 @@ async def test_adversarial_deep_cascade_and_isolation(adv_session: AsyncSession)
             user_id=user_a.id,
             job_id=ref_job.id,
             score=70.0 + k * 2.5,
-            match_reasons=[{"factor": "skills", "score": 90}],
             status="new",
         )
         adv_session.add(mj)
@@ -221,7 +220,6 @@ async def test_adversarial_deep_cascade_and_isolation(adv_session: AsyncSession)
             user_id=user_b.id,
             job_id=ref_job.id,
             score=85.0,
-            match_reasons=[],
             status="saved",
         )
         adv_session.add(mj_b)

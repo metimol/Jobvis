@@ -141,7 +141,6 @@ class MatchedJob(Base):
     user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     job_id = Column(String(36), ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False)
     score = Column(Float, default=0.0)
-    match_reasons = Column(JSON, default=dict)
     status = Column(String(32), default="new")  # 'new', 'viewed', 'saved', 'dismissed'
     created_at = Column(DateTime, default=lambda: datetime.now(UTC))
 
@@ -407,7 +406,6 @@ class MockAIJobMatcher:
                 {
                     "job": job,
                     "score": score,
-                    "match_reason": reasons.get(lang, reasons["en"]),
                     "factors": {
                         "skills": 0.8,
                         "experience": 0.85,

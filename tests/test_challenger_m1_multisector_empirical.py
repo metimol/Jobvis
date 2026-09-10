@@ -234,8 +234,6 @@ async def test_ai_job_matcher_multilingual_and_unknown_languages():
         results = await matcher.match_jobs(cv, prefs, jobs, lang=lang_code)
         assert len(results) == 1
         assert "score" in results[0]
-        assert "match_reason" in results[0]
-        assert len(results[0]["match_reason"]) > 10
 
 
 # ============================================================================
