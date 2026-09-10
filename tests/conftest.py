@@ -8,174 +8,22 @@ os.environ.pop("GOOGLE_API_KEY", None)
 
 import asyncio
 import json
-import uuid
 from collections.abc import AsyncGenerator
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 import pytest
 import pytest_asyncio
-from sqlalchemy import (
-    JSON,
-    Boolean,
-    Column,
-    DateTime,
-    Float,
-    ForeignKey,
-    Integer,
-    String,
-    Text,
-)
+from sqlalchemy import event
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
     create_async_engine,
 )
-from sqlalchemy.orm import declarative_base, relationship
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
-# Declarative base for test database models
-Base = declarative_base()
-
-
-class User(Base):
-    __tablename__ = "users"
-
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    email = Column(String(255), unique=True, nullable=False)
-    name = Column(String(255), nullable=True)
-    avatar_url = Column(String(512), nullable=True)
-    google_id = Column(String(255), unique=True, nullable=True)
-    github_id = Column(String(255), unique=True, nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
-    updated_at = Column(
-        DateTime,
-        default=lambda: datetime.now(UTC),
-        onupdate=lambda: datetime.now(UTC),
-    )
-
-    profile = relationship(
-        "Profile",
-        back_populates="user",
-        cascade="all, delete-orphan",
-        uselist=False,
-        lazy="selectin",
-    )
-    cv_analysis = relationship(
-        "CVAnalysis", back_populates="user", cascade="all, delete-orphan", lazy="selectin"
-    )
-    matched_jobs = relationship(
-        "MatchedJob", back_populates="user", cascade="all, delete-orphan", lazy="selectin"
-    )
-    settings = relationship(
-        "Settings",
-        back_populates="user",
-        cascade="all, delete-orphan",
-        uselist=False,
-        lazy="selectin",
-    )
-    sync_logs = relationship(
-        "SyncLog", back_populates="user", cascade="all, delete-orphan", lazy="selectin"
-    )
-
-
-class Profile(Base):
-    __tablename__ = "profiles"
-
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(
-        String(36), ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False
-    )
-    desired_job_type = Column(String(32), default="all")  # 'vz', 'tz', 'mj', 'all'
-    german_level = Column(String(8), default="B1")  # 'A2', 'B1', 'B2', 'C1'
-    goals = Column(Text, nullable=True)
-    location = Column(String(255), default="Berlin")
-    radius_km = Column(Integer, default=20)
-    onboarding_completed = Column(Boolean, default=False, nullable=False)
-    onboarding_step = Column(Integer, default=0, nullable=False)
-    updated_at = Column(DateTime, default=lambda: datetime.now(UTC))
-
-    user = relationship("User", back_populates="profile")
-
-
-class CVAnalysis(Base):
-    __tablename__ = "cv_analyses"
-
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    raw_text = Column(Text, nullable=False)
-    skills = Column(JSON, default=list)
-    experience_years = Column(Float, default=0.0)
-    education = Column(JSON, default=list)
-    detected_languages = Column(JSON, default=dict)
-    keywords = Column(JSON, default=list)
-    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
-
-    user = relationship("User", back_populates="cv_analysis")
-
-
-class Job(Base):
-    __tablename__ = "jobs"
-
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    ref_nr = Column(String(64), unique=True, nullable=False)
-    canonical_hash = Column(String(64), index=True, nullable=False)
-    title = Column(String(255), nullable=False)
-    employer = Column(String(255), nullable=False)
-    location = Column(String(255), nullable=False)
-    working_time = Column(String(32), default="vz")
-    description = Column(Text, nullable=True)
-    external_url = Column(String(512), nullable=True)
-    published_date = Column(DateTime, default=lambda: datetime.now(UTC))
-    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
-
-    matched_entries = relationship("MatchedJob", back_populates="job", cascade="all, delete-orphan")
-
-
-class MatchedJob(Base):
-    __tablename__ = "matched_jobs"
-
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    job_id = Column(String(36), ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False)
-    score = Column(Float, default=0.0)
-    status = Column(String(32), default="new")  # 'new', 'viewed', 'saved', 'dismissed'
-    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
-
-    user = relationship("User", back_populates="matched_jobs")
-    job = relationship("Job", back_populates="matched_entries")
-
-
-class Settings(Base):
-    __tablename__ = "settings"
-
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(
-        String(36), ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False
-    )
-    ui_language = Column(String(8), default="de")  # 'en', 'de', 'uk', 'ru'
-    email_notifications = Column(Boolean, default=True)
-    updated_at = Column(DateTime, default=lambda: datetime.now(UTC))
-
-    user = relationship("User", back_populates="settings")
-
-
-class SyncLog(Base):
-    __tablename__ = "sync_logs"
-
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    status = Column(String(32), default="success")  # 'success', 'failed', 'partial'
-    jobs_scraped = Column(Integer, default=0)
-    jobs_deduped = Column(Integer, default=0)
-    jobs_matched = Column(Integer, default=0)
-    error_message = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
-
-    user = relationship("User", back_populates="sync_logs")
-
+from app.database import Base
 
 # In-memory async SQLite engine for test isolation
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
@@ -191,8 +39,22 @@ def event_loop():
 
 @pytest_asyncio.fixture(scope="function")
 async def test_db_engine():
-    """Create in-memory SQLite engine and initialize tables."""
-    engine = create_async_engine(TEST_DATABASE_URL, echo=False)
+    """Create in-memory SQLite engine and initialize real application tables."""
+    engine = create_async_engine(
+        TEST_DATABASE_URL,
+        connect_args={"check_same_thread": False},
+        echo=False,
+    )
+
+    @event.listens_for(engine.sync_engine, "connect")
+    def _set_sqlite_pragma(dbapi_connection, connection_record):
+        try:
+            cursor = dbapi_connection.cursor()
+            cursor.execute("PRAGMA foreign_keys=ON")
+            cursor.close()
+        except Exception:
+            pass
+
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield engine
@@ -208,6 +70,7 @@ async def db_session(test_db_engine) -> AsyncGenerator[AsyncSession]:
         bind=test_db_engine,
         class_=AsyncSession,
         expire_on_commit=False,
+        autoflush=False,
     )
     async with session_factory() as session:
         yield session
