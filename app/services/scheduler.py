@@ -280,20 +280,54 @@ class MatchingSchedulerService:
                 "goals": profile.goals if profile else "",
             }
 
-            matched_jobs_to_save = []
+            job_rec_by_id = {}
+            jobs_to_match = []
             for job_rec, ba_job in persisted_job_records:
-                score = ai_matcher.calculate_score(cv_profile_dict, user_pref_dict, ba_job)
+                job_rec_by_id[job_rec.id] = job_rec
+                jobs_to_match.append(
+                    {
+                        "id": job_rec.id,
+                        "ref_nr": job_rec.ref_nr,
+                        "title": job_rec.title,
+                        "employer": job_rec.employer
+                        or (getattr(ba_job, "employer", None) if ba_job else None)
+                        or (ba_job.get("employer") if isinstance(ba_job, dict) else None),
+                        "location": job_rec.location
+                        or (getattr(ba_job, "location", None) if ba_job else None)
+                        or (ba_job.get("location") if isinstance(ba_job, dict) else None),
+                        "description": job_rec.description
+                        or (getattr(ba_job, "description", None) if ba_job else None)
+                        or (ba_job.get("description") if isinstance(ba_job, dict) else None),
+                    }
+                )
+
+            match_results = await ai_matcher.match_jobs(
+                cv_profile_dict, user_pref_dict, jobs_to_match
+            )
+
+            matched_jobs_to_save = []
+            for item in match_results:
+                matched_job_data = item.get("job", {})
+                job_id = (
+                    matched_job_data.get("id")
+                    if isinstance(matched_job_data, dict)
+                    else getattr(matched_job_data, "id", None)
+                )
+                score = float(item.get("score", 0.0))
+
+                if not job_id or job_id not in job_rec_by_id:
+                    continue
 
                 # Check if matched job already exists for this user and job
                 m_stmt = select(MatchedJob).where(
                     MatchedJob.user_id == user_id,
-                    MatchedJob.job_id == job_rec.id,
+                    MatchedJob.job_id == job_id,
                 )
                 existing_match = (await db.execute(m_stmt)).scalars().first()
                 if not existing_match:
                     match_rec = MatchedJob(
                         user_id=user_id,
-                        job_id=job_rec.id,
+                        job_id=job_id,
                         score=score,
                         status="new",
                     )

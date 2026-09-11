@@ -1,11 +1,15 @@
 """Tests for AI job matching algorithms, multilingual rationales, and query generation."""
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 
 from app.services.ai_matcher import (
     AICVAnalyzer,
     AIJobMatcher,
     ExtractedCVProfile,
+    JobMatchResult,
+    JobMatchResultLLM,
     ai_matcher,
 )
 from app.services.cv_parser import CVParserService
@@ -162,7 +166,7 @@ async def test_ai_job_matcher_multilingual_and_unknown_languages():
     jobs = [{"title": "Koch gesucht", "description": "Gute Arbeitsbedingungen."}]
 
     for lang_code in ["de", "en", "uk", "ru", "fr", "es", "ja", ""]:
-        results = await matcher.match_jobs(cv, prefs, jobs, lang=lang_code)
+        results = await matcher.match_jobs(cv, prefs, jobs)
         assert len(results) == 1
         assert "score" in results[0]
 
@@ -223,7 +227,7 @@ class TestAIJobMatcherScoring:
         job = {"title": "Tischler gesucht", "description": "Möbelbau in Werkstatt."}
 
         for lang in ["de", "en", "uk", "ru"]:
-            results = await matcher.match_jobs(profile, {}, [job], lang=lang)
+            results = await matcher.match_jobs(profile, {}, [job])
             assert len(results) == 1
 
 
@@ -366,5 +370,138 @@ async def test_ai_job_matcher_all_8_sectors_scoring_and_rationales():
             ("uk", "кваліфікації"),
             ("ru", "квалификации"),
         ]:
-            matches = await matcher.match_jobs(candidate, user_prefs, [job], lang=lang)
+            matches = await matcher.match_jobs(candidate, user_prefs, [job])
             assert len(matches) == 1
+
+
+# ===========================================================================
+# 6. Real LLM Job Scoring & Fallback Resilience
+# ===========================================================================
+@pytest.mark.asyncio
+async def test_calculate_score_with_llm_empty_and_no_key():
+    """Verify calculate_score_with_llm returns empty list when no jobs or no valid API key."""
+    # Empty jobs
+    matcher = AIJobMatcher(api_key="valid-mock-test-key-12345")
+    res_empty = await matcher.calculate_score_with_llm({"skills": ["Python"]}, [])
+    assert res_empty == []
+
+    # None API key
+    matcher_no_key = AIJobMatcher(api_key=None)
+    res_no_key = await matcher_no_key.calculate_score_with_llm(
+        {"skills": ["Python"]}, [{"id": "j1", "title": "Python Dev"}]
+    )
+    assert res_no_key == []
+
+    # Mock API key
+    matcher_mock = AIJobMatcher(api_key="mock-api-key")
+    res_mock = await matcher_mock.calculate_score_with_llm(
+        {"skills": ["Python"]}, [{"id": "j1", "title": "Python Dev"}]
+    )
+    assert res_mock == []
+
+
+@pytest.mark.asyncio
+async def test_calculate_score_with_llm_mock_chain():
+    """Verify calculate_score_with_llm invokes chain and normalizes scores appropriately."""
+    matcher = AIJobMatcher(api_key="valid-test-secret-key-12345")
+
+    mock_llm = MagicMock()
+    mock_llm_response = JobMatchResultLLM(
+        results=[
+            JobMatchResult(job_id="job_0", score=0.88, reasoning="Strong Python match"),
+            JobMatchResult(job_id="job_1", score=92.0, reasoning="Direct match for tech stack"),
+        ]
+    )
+
+    fake_ai_config = MagicMock(model=mock_llm)
+    with (
+        patch.dict("sys.modules", {"ai.config": fake_ai_config}),
+        patch(
+            "langchain_core.runnables.base.RunnableSequence.ainvoke",
+            new_callable=AsyncMock,
+        ) as mock_invoke,
+    ):
+        mock_invoke.return_value = mock_llm_response
+
+        candidate = ExtractedCVProfile(skills=["Python", "FastAPI"], experience_years=3.0)
+        jobs = [
+            {"id": "job_0", "title": "Backend Python", "description": "FastAPI role"},
+            {"id": "job_1", "title": "Senior Python", "description": "Python expert"},
+        ]
+
+        scored = await matcher.calculate_score_with_llm(candidate, jobs)
+        assert len(scored) == 2
+        # Verify 0.88 was scaled to 88.0
+        assert scored[0].job_id == "job_0"
+        assert scored[0].score == 88.0
+        # Verify 92.0 remained 92.0
+        assert scored[1].job_id == "job_1"
+        assert scored[1].score == 92.0
+
+
+@pytest.mark.asyncio
+async def test_match_jobs_with_llm_scoring_success():
+    """Verify match_jobs prioritizes LLM scores and maps them back to the input jobs."""
+    matcher = AIJobMatcher(api_key="valid-test-secret-key-12345")
+
+    fake_llm_results = [
+        JobMatchResult(job_id="job_alpha", score=95.0, reasoning="Excellent fit"),
+        JobMatchResult(job_id="job_beta", score=55.0, reasoning="Moderate fit"),
+    ]
+
+    with patch.object(matcher, "calculate_score_with_llm", new_callable=AsyncMock) as mock_calc:
+        mock_calc.return_value = fake_llm_results
+
+        jobs = [
+            {"id": "job_beta", "title": "Junior Developer"},
+            {"id": "job_alpha", "title": "Senior Python Engineer"},
+        ]
+
+        results = await matcher.match_jobs({"skills": ["Python"]}, {}, jobs)
+        assert len(results) == 2
+        # Sorted descending by score
+        assert results[0]["job"]["id"] == "job_alpha"
+        assert results[0]["score"] == 95.0
+        assert results[1]["job"]["id"] == "job_beta"
+        assert results[1]["score"] == 55.0
+
+
+@pytest.mark.asyncio
+async def test_match_jobs_with_partial_llm_results_falls_back_for_missing():
+    """Verify match_jobs falls back to heuristic scoring for any jobs omitted by the LLM."""
+    matcher = AIJobMatcher(api_key="valid-test-secret-key-12345")
+
+    # LLM only scores job_1, omits job_2
+    fake_llm_results = [
+        JobMatchResult(job_id="job_1", score=89.0),
+    ]
+
+    with patch.object(matcher, "calculate_score_with_llm", new_callable=AsyncMock) as mock_calc:
+        mock_calc.return_value = fake_llm_results
+
+        jobs = [
+            {"id": "job_1", "title": "Python Developer", "description": "Python"},
+            {"id": "job_2", "title": "Java Developer", "description": "Java"},
+        ]
+
+        results = await matcher.match_jobs({"skills": ["Python"]}, {}, jobs)
+        assert len(results) == 2
+        job_ids = [r["job"]["id"] for r in results]
+        assert "job_1" in job_ids
+        assert "job_2" in job_ids
+
+
+@pytest.mark.asyncio
+async def test_match_jobs_llm_exception_falls_back_to_heuristics():
+    """Verify that if LLM raises an error, match_jobs falls back to heuristic scoring."""
+    matcher = AIJobMatcher(api_key="valid-test-secret-key-12345")
+
+    with patch.object(matcher, "calculate_score_with_llm", new_callable=AsyncMock) as mock_calc:
+        mock_calc.side_effect = RuntimeError("Google GenAI Rate Limit / Timeout")
+
+        jobs = [{"id": "j1", "title": "Software Developer", "description": "Python"}]
+        results = await matcher.match_jobs({"skills": ["Python"]}, {}, jobs)
+
+        assert len(results) == 1
+        assert "score" in results[0]
+        assert 0.0 <= results[0]["score"] <= 100.0

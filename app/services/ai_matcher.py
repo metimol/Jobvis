@@ -1,10 +1,12 @@
 """AI Job Matching and CV Analysis Service using LangChain Google GenAI and Heuristics."""
 
+import asyncio
+import json
 import logging
 import re
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 from app.config import settings
 
@@ -342,11 +344,31 @@ class ExtractedCVProfile(BaseModel):
 
 
 class JobMatchResult(BaseModel):
-    """Result of AI match scoring for a candidate against a job vacancy."""
+    """Result of match scoring for a candidate against a job vacancy."""
 
-    job: Any
-    score: float
+    model_config = ConfigDict(extra="ignore", populate_by_name=True)
+
+    job_id: str = Field(
+        default="",
+        validation_alias=AliasChoices("job_id", "id"),
+        description="Unique id or reference number of the job matching the input id",
+    )
+    score: float = Field(
+        default=0.0,
+        description="Match score from 0.0 to 100.0 based on candidate qualifications and job requirements",
+    )
+    job: Any = None
     factors: dict[str, float] = Field(default_factory=dict)
+    reasoning: str | None = Field(default=None, description="Brief justification for the score")
+
+
+class JobMatchResultLLM(BaseModel):
+    """Results (List) of AI match scoring for job vacancies."""
+
+    results: list[JobMatchResult] = Field(
+        default_factory=list,
+        description="Scoring results for each candidate job evaluation",
+    )
 
 
 _API_KEY_SENTINEL = object()
@@ -723,6 +745,12 @@ class AIJobMatcher:
 
     # Real-time job match analyzer combining semantic heuristics and batch AI
 
+    def __init__(self, api_key: Any = _API_KEY_SENTINEL):
+        if api_key is _API_KEY_SENTINEL:
+            self.api_key = settings.GOOGLE_API_KEY
+        else:
+            self.api_key = api_key
+
     def calculate_score(
         self,
         cv_profile: dict[str, Any] | ExtractedCVProfile,
@@ -850,6 +878,137 @@ class AIJobMatcher:
         )
         return final_score
 
+    async def calculate_score_with_llm(
+        self,
+        cv_profile: dict[str, Any] | ExtractedCVProfile,
+        jobs: list[Any],
+        user_prefs: dict[str, Any] | Any | None = None,
+        timeout_seconds: float = 200.0,
+    ) -> list[JobMatchResult]:
+        """Score candidate profile against vacancies using Google GenAI (LLM)."""
+        if not jobs:
+            return []
+
+        if (
+            not self.api_key
+            or str(self.api_key).startswith("mock-")
+            or len(str(self.api_key)) <= 10
+        ):
+            return []
+
+        try:
+            from ai.config import model as llm
+        except Exception as err:
+            logger.warning("Failed to initialize Google GenAI model for job scoring: %s", err)
+            return []
+
+        from langchain_core.output_parsers import PydanticOutputParser
+        from langchain_core.prompts import PromptTemplate
+
+        parser = PydanticOutputParser(pydantic_object=JobMatchResultLLM)
+        prompt = PromptTemplate(
+            template=(
+                "You are an expert technical recruiter and career advisor for Jobvis and the German Jobcenter.\n"
+                "Evaluate the candidate profile against each of the following job postings.\n"
+                "For every job in the list, compute a compatibility score between 0.0 and 100.0 based on:\n"
+                "1. Skills Alignment (40%): Does the candidate have the required technical or vocational skills?\n"
+                "2. Experience Alignment (25%): Does candidate experience level match what the role requires?\n"
+                "3. German Language Alignment (20%): Does candidate German level (CEFR A1-C2) meet job requirements?\n"
+                "4. Career Goals Alignment (15%): Does the job align with candidate stated goals and target roles?\n\n"
+                "{format_instructions}\n\n"
+                "Candidate Profile:\n{cv_profile}\n\n"
+                "Jobs to Evaluate:\n{jobs_batch}\n"
+            ),
+            input_variables=["cv_profile", "jobs_batch"],
+            partial_variables={"format_instructions": parser.get_format_instructions()},
+        )
+        chain = prompt | llm | parser
+
+        if isinstance(cv_profile, ExtractedCVProfile):
+            profile_data = cv_profile.model_dump()
+        elif isinstance(cv_profile, dict):
+            profile_data = dict(cv_profile)
+        else:
+            profile_data = {}
+
+        if user_prefs:
+            if isinstance(user_prefs, dict):
+                p_dict = user_prefs
+            elif hasattr(user_prefs, "model_dump"):
+                p_dict = user_prefs.model_dump()
+            else:
+                p_dict = {
+                    "german_level": getattr(user_prefs, "german_level", "B1"),
+                    "desired_job_type": getattr(user_prefs, "desired_job_type", "all"),
+                    "goals": getattr(user_prefs, "goals", ""),
+                }
+            for k in ("german_level", "desired_job_type", "goals"):
+                val = p_dict.get(k)
+                if val and not profile_data.get(k):
+                    profile_data[k] = val
+
+        lightweight_jobs = []
+        for idx, j in enumerate(jobs):
+            if isinstance(j, dict):
+                jid = str(
+                    j.get("id")
+                    or j.get("ref_nr")
+                    or j.get("referenznummer")
+                    or j.get("hashId")
+                    or f"job_{idx}"
+                )
+                title = str(j.get("title") or j.get("stellenangebotsTitel") or j.get("beruf") or "")
+                employer = str(j.get("employer") or j.get("firma") or "")
+                desc = str(j.get("description") or j.get("beschreibung") or "")
+            elif hasattr(j, "model_dump"):
+                d = j.model_dump()
+                jid = str(
+                    d.get("id")
+                    or d.get("ref_nr")
+                    or d.get("hashId")
+                    or getattr(j, "ref_nr", f"job_{idx}")
+                )
+                title = str(d.get("title") or getattr(j, "title", ""))
+                employer = str(d.get("employer") or getattr(j, "employer", ""))
+                desc = str(d.get("description") or getattr(j, "description", ""))
+            else:
+                jid = str(getattr(j, "id", None) or getattr(j, "ref_nr", None) or f"job_{idx}")
+                title = str(getattr(j, "title", "") or "")
+                employer = str(getattr(j, "employer", "") or "")
+                desc = str(getattr(j, "description", "") or "")
+
+            lightweight_jobs.append(
+                {
+                    "job_id": jid,
+                    "title": title,
+                    "employer": employer,
+                    "description": desc[:1500],
+                }
+            )
+
+        res: JobMatchResultLLM = await asyncio.wait_for(
+            asyncio.shield(
+                chain.ainvoke(
+                    {
+                        "cv_profile": json.dumps(profile_data, default=str),
+                        "jobs_batch": json.dumps(lightweight_jobs, default=str),
+                    }
+                )
+            ),
+            timeout=timeout_seconds,
+        )
+
+        for item in res.results:
+            try:
+                raw_s = float(item.score)
+                if 0.0 < raw_s <= 1.0:
+                    raw_s *= 100.0
+                item.score = round(max(0.0, min(100.0, raw_s)), 1)
+            except (ValueError, TypeError):
+                item.score = 50.0
+
+        return res.results
+
     async def match_jobs(
         self,
         cv_profile: dict[str, Any] | ExtractedCVProfile,
@@ -857,18 +1016,100 @@ class AIJobMatcher:
         jobs: list[Any],
         lang: str = "de",
     ) -> list[dict[str, Any]]:
-        """Score candidate profile against list of vacancies and generate localized explanations."""
+        """Score candidate profile against list of vacancies and generate match results."""
+        if not jobs:
+            return []
+
         candidate_skills = (
             cv_profile.skills
             if isinstance(cv_profile, ExtractedCVProfile)
             else (cv_profile.get("skills", []) if isinstance(cv_profile, dict) else [])
         )
-        logger.info(
+        logger.debug(
             "Matching %d jobs against candidate profile (%d skills)",
             len(jobs),
             len(candidate_skills),
         )
-        results = []
+        results: list[dict[str, Any]] = []
+
+        if self.api_key and not self.api_key.startswith("mock-") and len(self.api_key) > 10:
+            try:
+                # Map jobs by all possible identifiers and by index
+                id_to_job: dict[str, Any] = {}
+                for idx, j in enumerate(jobs):
+                    id_to_job[f"job_{idx}"] = j
+                    if isinstance(j, dict):
+                        for k in ("id", "ref_nr", "referenznummer", "hashId"):
+                            val = j.get(k)
+                            if val:
+                                id_to_job[str(val)] = j
+                    elif hasattr(j, "model_dump"):
+                        d = j.model_dump()
+                        for k in ("id", "ref_nr", "hashId"):
+                            val = d.get(k)
+                            if val:
+                                id_to_job[str(val)] = j
+                        if getattr(j, "ref_nr", None):
+                            id_to_job[str(j.ref_nr)] = j
+                    else:
+                        for k in ("id", "ref_nr", "hashId"):
+                            val = getattr(j, k, None)
+                            if val:
+                                id_to_job[str(val)] = j
+
+                ai_results = await self.calculate_score_with_llm(
+                    cv_profile, jobs, user_prefs=user_prefs
+                )
+
+                scored_job_refs = set()
+                for ai_res in ai_results:
+                    jid_str = str(getattr(ai_res, "job_id", "") or "")
+                    matched_job = id_to_job.get(jid_str)
+                    if matched_job is not None and id(matched_job) not in scored_job_refs:
+                        scored_job_refs.add(id(matched_job))
+                        score = float(ai_res.score)
+                        logger.debug(
+                            "AI Job Match scoring [%s]: score=%.1f",
+                            jid_str,
+                            score,
+                        )
+                        results.append(
+                            {
+                                "job": matched_job,
+                                "score": score,
+                                "factors": {
+                                    "skills": 0.40,
+                                    "experience": 0.25,
+                                    "german_level": 0.20,
+                                    "goals_alignment": 0.15,
+                                },
+                            }
+                        )
+
+                # If some jobs were not returned by LLM, score them with heuristic fallback
+                for j in jobs:
+                    if id(j) not in scored_job_refs:
+                        score = self.calculate_score(cv_profile, user_prefs, j)
+                        results.append(
+                            {
+                                "job": j,
+                                "score": score,
+                                "factors": {
+                                    "skills": 0.40,
+                                    "experience": 0.25,
+                                    "german_level": 0.20,
+                                    "goals_alignment": 0.15,
+                                },
+                            }
+                        )
+
+                return sorted(results, key=lambda x: x["score"], reverse=True)
+            except Exception as e:
+                logger.warning(
+                    "Google GenAI job scoring failed (%s), falling back to heuristics.", e
+                )
+                results.clear()
+
         for job in jobs:
             score = self.calculate_score(cv_profile, user_prefs, job)
             results.append(
