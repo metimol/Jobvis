@@ -511,7 +511,7 @@
     <div class="cv-results" id="cvResults" style="{% if cv_analysis %}display: block;{% else %}display: none;{% endif %}">
       <h3>✓ {{ t.get('wizard_step1_success', 'CV successfully analyzed!') }}</h3>
       <div>
-        <strong style="font-size: 0.88rem; color: var(--strawberry-100);">{{ t.get('upload_cv', 'Detected Competencies') }}:</strong>
+        <strong style="font-size: 0.88rem; color: var(--strawberry-100);">{{ t.get('detected_competencies', 'Detected Competencies') }}:</strong>
         <div class="skills-tags" id="extractedSkills" style="margin-top: 0.4rem;">
           {% if cv_analysis and cv_analysis.skills %}
             {% for skill in cv_analysis.skills %}
@@ -744,6 +744,9 @@
   const wizardNav     = document.getElementById('wizardNav');
   const stepTemplate  = document.getElementById('stepCounterTemplate').textContent;
   const cvBadgeText   = document.getElementById('cvDetectedBadge').textContent;
+  const TEXT_ANALYZING_CV = {{ t.get("wizard_step1_analyzing", "Analyzing CV with AI...") | tojson }};
+  const TEXT_CV_PROCESS_ERROR = {{ t.get("cv_process_error", "Failed to process CV") | tojson }};
+  const TEXT_NETWORK_ERROR = {{ t.get("network_error_prefix", "Network error") | tojson }};
 
   // ─── Init from server data ───
   function init() {
@@ -944,7 +947,7 @@
     const statusDiv = document.getElementById('uploadStatus');
     const resultsDiv = document.getElementById('cvResults');
 
-    statusDiv.innerHTML = '<div class="upload-spinner"><div class="mini-spinner"></div><span>{{ t.get("wizard_step1_analyzing", "Analyzing CV with AI...") }}</span></div>';
+    statusDiv.innerHTML = `<div class="upload-spinner"><div class="mini-spinner"></div><span>${escapeHtml(TEXT_ANALYZING_CV)}</span></div>`;
     resultsDiv.style.display = 'none';
 
     const formData = new FormData();
@@ -973,10 +976,11 @@
         renderStep();
       } else {
         const err = await resp.json().catch(() => ({}));
-        statusDiv.innerHTML = `<span style="color: var(--danger);">❌ ${escapeHtml(err.detail || 'Failed to process CV')}</span>`;
+        const errMsg = escapeHtml(err.detail) || escapeHtml(TEXT_CV_PROCESS_ERROR);
+        statusDiv.innerHTML = `<span style="color: var(--danger);">❌ ${errMsg}</span>`;
       }
     } catch (e) {
-      statusDiv.innerHTML = `<span style="color: var(--danger);">❌ Network error: ${escapeHtml(e.message)}</span>`;
+      statusDiv.innerHTML = `<span style="color: var(--danger);">❌ ${escapeHtml(TEXT_NETWORK_ERROR)}: ${escapeHtml(e.message)}</span>`;
     }
   }
 
@@ -1019,10 +1023,10 @@
   // ─── Review ───
   const GERMAN_LABELS = { A1: 'A1', A2: 'A2', B1: 'B1', B2: 'B2', C1: 'C1', C2: 'C2' };
   const JOB_LABELS = {
-    vz: '{{ t.get("full_time", "Full Time") }}',
-    tz: '{{ t.get("part_time", "Part Time") }}',
-    mj: '{{ t.get("minijob", "Minijob") }}',
-    all: '{{ t.get("all_job_types", "All Types") }}'
+    vz: {{ t.get("full_time", "Full Time") | tojson }},
+    tz: {{ t.get("part_time", "Part Time") | tojson }},
+    mj: {{ t.get("minijob", "Minijob") | tojson }},
+    all: {{ t.get("all_job_types", "All Types") | tojson }}
   };
 
   function populateReview() {

@@ -589,6 +589,8 @@ class TestMultilingualParityAndStress:
         for loc in ["en", "uk", "ru"]:
             missing_in_loc = de_keys - dictionaries[loc]
             assert not missing_in_loc, f"Keys {missing_in_loc} in de.json are missing in {loc}.json"
+            extra_in_loc = dictionaries[loc] - de_keys
+            assert not extra_in_loc, f"Keys {extra_in_loc} in {loc}.json are missing in de.json"
 
     @pytest.mark.parametrize("locale", ["de", "en", "uk", "ru"])
     def test_special_characters_and_alphabets_in_locales(self, locale):
@@ -626,6 +628,132 @@ class TestMultilingualParityAndStress:
         assert I18nService.translate("nav_home", "uk") == "Головна"
         assert I18nService.translate("nav_home", "de") == "Startseite"
         assert I18nService.translate("non_existent_key_12345", "en") == "non_existent_key_12345"
+
+    @pytest.mark.parametrize(
+        "tmpl_name",
+        [
+            "base.html",
+            "index.html",
+            "login.html",
+            "profile.html",
+            "feed.html",
+            "settings.html",
+            "onboarding.html",
+        ],
+    )
+    def test_rendered_template_javascript_syntax(self, jinja_env, tmpl_name):
+        """Verify that JavaScript blocks rendered across all templates and locales contain valid JS syntax."""
+        import shutil
+        import subprocess
+        import tempfile
+
+        node_exe = shutil.which("node")
+        if not node_exe:
+            pytest.skip("Node.js not installed")
+
+        template = jinja_env.get_template(tmpl_name)
+        for loc in ["de", "en", "uk", "ru"]:
+            d = I18nService.get_dictionary(loc)
+            rendered = template.render(
+                t=d,
+                lang=loc,
+                current_user={"id": 1, "email": "test@jobvis.de"},
+                profile={
+                    "desired_job_type": "vz",
+                    "german_level": "B2",
+                    "location": "Berlin",
+                    "radius_km": 25,
+                    "goals": "IT",
+                },
+                cv_analysis={"experience_years": 3, "skills": ["Python"]},
+                supported_langs=["de", "en", "uk", "ru"],
+            )
+            scripts = re.findall(r"<script.*?>([\s\S]*?)</script>", rendered)
+            for i, s in enumerate(scripts):
+                if not s.strip():
+                    continue
+                with tempfile.NamedTemporaryFile(
+                    mode="w", suffix=".js", delete=False, encoding="utf-8"
+                ) as f:
+                    f.write(s)
+                    temp_path = f.name
+                try:
+                    res = subprocess.run(
+                        [node_exe, "--check", temp_path],
+                        capture_output=True,
+                        text=True,
+                        check=False,
+                    )
+                    assert (
+                        res.returncode == 0
+                    ), f"{tmpl_name} in {loc} script #{i} syntax error: {res.stderr}"
+                finally:
+                    Path(temp_path).unlink(missing_ok=True)
+
+    @pytest.mark.parametrize(
+        "tmpl_name",
+        [
+            "base.html",
+            "index.html",
+            "login.html",
+            "profile.html",
+            "feed.html",
+            "settings.html",
+            "onboarding.html",
+        ],
+    )
+    def test_rendered_template_javascript_syntax_with_adversarial_quotes(
+        self, jinja_env, tmpl_name
+    ):
+        """Verify templates rendered with translations containing single quotes, double quotes, and backticks contain valid JS syntax."""
+        import shutil
+        import subprocess
+        import tempfile
+
+        node_exe = shutil.which("node")
+        if not node_exe:
+            pytest.skip("Node.js not installed")
+
+        en_dict = I18nService.get_dictionary("en")
+        # Inoculate every translation key with single quotes, double quotes, and special characters
+        adversarial_dict = {k: f'Candidate\'s "special" `{v}`' for k, v in en_dict.items()}
+
+        template = jinja_env.get_template(tmpl_name)
+        rendered = template.render(
+            t=adversarial_dict,
+            lang="en",
+            current_user={"id": 1, "email": "test@jobvis.de"},
+            profile={
+                "desired_job_type": "vz",
+                "german_level": "B2",
+                "location": "Berlin",
+                "radius_km": 25,
+                "goals": "IT",
+            },
+            cv_analysis={"experience_years": 3, "skills": ["Python"]},
+            supported_langs=["de", "en", "uk", "ru"],
+        )
+        scripts = re.findall(r"<script.*?>([\s\S]*?)</script>", rendered)
+        for i, s in enumerate(scripts):
+            if not s.strip():
+                continue
+            with tempfile.NamedTemporaryFile(
+                mode="w", suffix=".js", delete=False, encoding="utf-8"
+            ) as f:
+                f.write(s)
+                temp_path = f.name
+            try:
+                res = subprocess.run(
+                    [node_exe, "--check", temp_path],
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                assert (
+                    res.returncode == 0
+                ), f"{tmpl_name} with adversarial quotes script #{i} syntax error: {res.stderr}"
+            finally:
+                Path(temp_path).unlink(missing_ok=True)
 
 
 class TestAdversarialTemplateRendering:
@@ -762,6 +890,8 @@ class TestAdversarialTemplateRendering:
             "lang": "de",
             "current_user": {"id": 1, "email": "bench@test.de"},
         }
+        # Warm-up to ensure bytecode caching
+        _ = template.render(**context)
         start_time = time.perf_counter()
         for _ in range(1000):
             _ = template.render(**context)

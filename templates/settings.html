@@ -90,7 +90,7 @@
   <div class="settings-layout">
     <div>
       <h1 style="font-size: 2.25rem; font-weight: 800; margin: 0 0 0.35rem 0; color: var(--strawberry-50);">{{ t.get('settings_title', 'Account & Language Settings') }}</h1>
-      <p style="color: var(--strawberry-200); margin: 0; font-size: 1.05rem;">Manage your application language, reset job filters, or delete your account.</p>
+      <p style="color: var(--strawberry-200); margin: 0; font-size: 1.05rem;">{{ t.get('settings_subtitle', 'Manage your application language, reset job filters, or delete your account.') }}</p>
     </div>
 
     <!-- UI Language Setting -->
@@ -111,7 +111,7 @@
     <div class="card">
       <h2>{{ t.get('reset_choices', 'Reset Profile & Preferences') }}</h2>
       <p style="color: var(--strawberry-200); font-size: 0.95rem; line-height: 1.6; margin-bottom: 1.35rem;">
-        Resets your job type, location, and language filters back to default values, and clears previous CV analysis history.
+        {{ t.get('reset_choices_desc', 'Resets your job type, location, and language filters back to default values, and clears previous CV analysis history.') }}
       </p>
       <button class="btn btn-outline" onclick="resetUserPreferences()">{{ t.get('reset_choices', 'Reset to Defaults') }}</button>
       <span id="resetStatus" style="margin-left: 1.25rem; font-size: 0.9rem;"></span>
@@ -121,7 +121,7 @@
     <div class="card danger-card">
       <h2>{{ t.get('danger_zone', 'Danger Zone') }} — {{ t.get('delete_account', 'Delete Account') }}</h2>
       <p style="color: var(--strawberry-200); font-size: 0.95rem; line-height: 1.6; margin-bottom: 1.35rem;">
-        Permanently delete your account, saved preferences, uploaded CVs, and all matching history. This action cannot be undone (GDPR compliant).
+        {{ t.get('delete_account_desc', 'Permanently delete your account, saved preferences, uploaded CVs, and all matching history. This action cannot be undone (GDPR compliant).') }}
       </p>
       <button class="btn btn-danger" onclick="deleteUserAccount()">
         {{ t.get('delete_account', 'Permanently Delete Account') }}
@@ -142,50 +142,50 @@
         body: JSON.stringify({ ui_language: newLang })
       });
       if (resp.ok) {
-        statusSpan.textContent = '✓ Saved! Reloading...';
+        statusSpan.textContent = '✓ ' + {{ t.get("settings_saved", "Saved! Reloading...") | tojson }};
         setTimeout(() => window.location.reload(), 600);
       }
     } catch (e) {
-      statusSpan.textContent = 'Failed to save';
+      statusSpan.textContent = {{ t.get("settings_save_error", "Failed to save") | tojson }};
     }
   }
 
   async function resetUserPreferences() {
-    if (!confirm('Are you sure you want to reset all preferences to default values?')) return;
+    if (!confirm({{ t.get("reset_confirm_prompt", "Are you sure you want to reset all preferences to default values?") | tojson }})) return;
     const statusSpan = document.getElementById('resetStatus');
     statusSpan.style.color = 'var(--strawberry-400)';
-    statusSpan.textContent = 'Resetting...';
+    statusSpan.textContent = {{ t.get("resetting_in_progress", "Resetting...") | tojson }};
 
     try {
       const resp = await fetch('/api/settings/reset', { method: 'POST' });
       if (resp.ok) {
         statusSpan.style.color = 'var(--success)';
-        statusSpan.textContent = '✓ Preferences successfully reset!';
+        statusSpan.textContent = '✓ ' + {{ t.get("reset_success", "Preferences successfully reset!") | tojson }};
         setTimeout(() => window.location.href = '/onboarding', 1000);
       }
     } catch (e) {
       statusSpan.style.color = 'var(--danger)';
-      statusSpan.textContent = 'Failed to reset preferences';
+      statusSpan.textContent = {{ t.get("reset_error", "Failed to reset preferences") | tojson }};
     }
   }
 
   async function deleteUserAccount() {
-    const confirmation = prompt('Type "DELETE" to confirm permanent account deletion:');
+    const confirmation = prompt({{ t.get("delete_confirm_prompt", "Type DELETE to confirm permanent account deletion:") | tojson }});
     if (confirmation !== 'DELETE') {
-      alert('Deletion cancelled.');
+      alert({{ t.get("delete_cancelled", "Deletion cancelled.") | tojson }});
       return;
     }
 
     try {
       const resp = await fetch('/api/settings/delete-account', { method: 'POST' });
       if (resp.ok) {
-        alert('Your account and all associated data have been permanently deleted.');
+        alert({{ t.get("delete_success", "Your account and all associated data have been permanently deleted.") | tojson }});
         window.location.href = '/';
       } else {
-        alert('Failed to delete account.');
+        alert({{ t.get("delete_error", "Failed to delete account.") | tojson }});
       }
     } catch (e) {
-      alert('Error connecting to server.');
+      alert({{ t.get("network_error", "Error connecting to server.") | tojson }});
     }
   }
 </script>

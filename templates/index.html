@@ -156,19 +156,19 @@
 {% block content %}
 <section class="hero-section">
   <div class="hero-content">
-    <div class="hero-badge">
+    <div class="hero-badge welcome" data-badge="Welcome">
       <span>👋</span>
-      <span>Welcome</span>
+      <span>{{ t.get('hero_badge_welcome', 'Welcome') }}</span>
     </div>
     <h1 class="hero-title">{{ t.get('hero_title', 'AI-Powered Job Search for Jobcenter Clients') }}</h1>
     <p class="hero-subtitle">{{ t.get('hero_subtitle', 'Automatically match your CV and language skills with vacancies from Bundesagentur für Arbeit twice daily.') }}</p>
 
     <div class="hero-actions">
       {% if current_user %}
-        <a href="/feed" class="btn btn-primary" style="padding: 0.85rem 2.25rem; font-size: 1.05rem;">{{ t.get('nav_feed', 'View Matched Jobs') }} →</a>
-        <a href="/profile" class="btn btn-outline" style="padding: 0.85rem 2rem;">{{ t.get('nav_profile', 'Update Profile & CV') }}</a>
+        <a href="/feed" class="btn btn-primary" style="padding: 0.85rem 2.25rem; font-size: 1.05rem;">{{ t.get('hero_cta_feed', 'View Matched Jobs') }} →</a>
+        <a href="/profile" class="btn btn-outline" style="padding: 0.85rem 2rem;">{{ t.get('hero_cta_profile', 'Update Profile & CV') }}</a>
       {% else %}
-        <a href="/login" class="btn btn-primary" style="padding: 0.85rem 2.25rem; font-size: 1.05rem;">{{ t.get('upload_cv', 'Get Started — Upload CV') }} →</a>
+        <a href="/login" class="btn btn-primary" style="padding: 0.85rem 2.25rem; font-size: 1.05rem;">{{ t.get('hero_cta_upload', 'Get Started — Upload CV') }} →</a>
         <a href="/login" class="btn btn-outline" style="padding: 0.85rem 2rem;">{{ t.get('nav_login', 'Sign In') }}</a>
       {% endif %}
     </div>
@@ -179,38 +179,38 @@
   <div class="features-grid">
     <div class="feature-card">
       <div class="feature-icon-box">⚡</div>
-      <h3>Bundesagentur für Arbeit Direct</h3>
-      <p>Direct integration with the official Arbeitsagentur REST API ensures real-time access to thousands of verified job vacancies across Germany.</p>
+      <h3>{{ t.get('feature_ba_direct_title', 'Bundesagentur für Arbeit Direct') }}</h3>
+      <p>{{ t.get('feature_ba_direct_desc', 'Direct integration with the official Arbeitsagentur REST API ensures real-time access to thousands of verified job vacancies across Germany.') }}</p>
     </div>
 
     <div class="feature-card">
       <div class="feature-icon-box">📄</div>
-      <h3>Multi-Format AI CV Parsing</h3>
-      <p>Upload your CV in PDF, DOCX, or plain text. Our AI extracts your professional competencies, career history, and skills automatically.</p>
+      <h3>{{ t.get('feature_cv_parsing_title', 'Multi-Format AI CV Parsing') }}</h3>
+      <p>{{ t.get('feature_cv_parsing_desc', 'Upload your CV in PDF, DOCX, or plain text. Our AI extracts your professional competencies, career history, and skills automatically.') }}</p>
     </div>
 
     <div class="feature-card">
       <div class="feature-icon-box">🌐</div>
-      <h3>CEFR Language & Goals Alignment</h3>
-      <p>Multi-factor matching evaluates German language proficiency (A2–C1), job type (Full-time, Part-time, Minijob), and your personal career goals.</p>
+      <h3>{{ t.get('feature_cefr_alignment_title', 'CEFR Language & Goals Alignment') }}</h3>
+      <p>{{ t.get('feature_cefr_alignment_desc', 'Multi-factor matching evaluates German language proficiency (A2–C1), job type (Full-time, Part-time, Minijob), and your personal career goals.') }}</p>
     </div>
 
     <div class="feature-card">
       <div class="feature-icon-box">⏰</div>
-      <h3>Twice-Daily Automation</h3>
-      <p>Background APScheduler pipelines query, deduplicate, and rank fresh vacancies at 06:00 and 18:00 every day without manual effort.</p>
+      <h3>{{ t.get('feature_automation_title', 'Twice-Daily Automation') }}</h3>
+      <p>{{ t.get('feature_automation_desc', 'Background APScheduler pipelines query, deduplicate, and rank fresh vacancies at 06:00 and 18:00 every day without manual effort.') }}</p>
     </div>
 
     <div class="feature-card">
       <div class="feature-icon-box">🛡️</div>
-      <h3>Strict 3-Tier Deduplication</h3>
-      <p>Composite SHA-256 fingerprinting removes repetitive postings and recruiter spam before AI scoring for a clean job feed.</p>
+      <h3>{{ t.get('feature_deduplication_title', 'Strict 3-Tier Deduplication') }}</h3>
+      <p>{{ t.get('feature_deduplication_desc', 'Composite SHA-256 fingerprinting removes repetitive postings and recruiter spam before AI scoring for a clean job feed.') }}</p>
     </div>
 
     <div class="feature-card">
       <div class="feature-icon-box">🌍</div>
-      <h3>4-Language Multilingual UI</h3>
-      <p>Full native interface and AI match rationale support in German, English, Ukrainian, and Russian.</p>
+      <h3>{{ t.get('feature_multilingual_title', '4-Language Multilingual UI') }}</h3>
+      <p>{{ t.get('feature_multilingual_desc', 'Full native interface and AI match rationale support in German, English, Ukrainian, and Russian.') }}</p>
     </div>
   </div>
 </div>

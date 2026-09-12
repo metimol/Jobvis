@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}Jobvis — AI Job Search for Jobcenter Clients{% endblock %}</title>
-  <meta name="description" content="AI-powered job matching platform connected directly to Bundesagentur für Arbeit.">
+  <title>{% block title %}Jobvis — {{ t.get('brand_subtitle', 'AI Job Search for Jobcenter Clients') }}{% endblock %}</title>
+  <meta name="description" content="{{ t.get('meta_description', 'AI-powered job matching platform connected directly to Bundesagentur für Arbeit.') }}">
   <meta name="color-scheme" content="dark">
   <link rel="icon" type="image/svg+xml" href="/assets/img/favicon.svg">
 
@@ -448,7 +448,7 @@
   <nav class="navbar" id="mainNavbar">
     <a href="/" class="nav-brand">JOB<span>VIS</span></a>
 
-    <button type="button" class="nav-toggle" id="navToggle" aria-label="Toggle navigation" aria-expanded="false" aria-controls="navLinks" onclick="toggleMobileNav()">
+    <button type="button" class="nav-toggle" id="navToggle" aria-label="{{ t.get('nav_toggle', 'Toggle navigation') }}" aria-expanded="false" aria-controls="navLinks" onclick="toggleMobileNav()">
       <span class="hamburger-bar"></span>
       <span class="hamburger-bar"></span>
       <span class="hamburger-bar"></span>
@@ -467,7 +467,7 @@
 
       <!-- Language Selector -->
       <div class="lang-switcher">
-        <select id="globalLangSelect" onchange="switchLanguage(this.value)" style="min-height: 44px; padding: 0.5rem 0.85rem;" aria-label="Select Language">
+        <select id="globalLangSelect" onchange="switchLanguage(this.value)" style="min-height: 44px; padding: 0.5rem 0.85rem;" aria-label="{{ t.get('select_language', 'Select Language') }}">
           <option value="de" {% if lang == 'de' %}selected{% endif %}>Deutsch (DE)</option>
           <option value="en" {% if lang == 'en' %}selected{% endif %}>English (EN)</option>
           <option value="uk" {% if lang == 'uk' %}selected{% endif %}>Українська (UK)</option>
