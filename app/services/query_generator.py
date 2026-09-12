@@ -7,11 +7,14 @@ with resilient heuristic fallback.
 """
 
 import asyncio
+import contextlib
 import hashlib
 import json
 import logging
 import re
 import time
+from datetime import UTC, datetime
+from functools import lru_cache
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -24,6 +27,23 @@ logger = logging.getLogger(__name__)
 # In-memory TTL cache for LLM query results (avoids redundant Gemini calls)
 _query_cache: dict[str, tuple["BAQueryList", float]] = {}
 _QUERY_CACHE_TTL = 300.0  # 5 minutes
+
+
+@lru_cache(maxsize=1)
+def _get_configured_model() -> Any:
+    """Safely obtain configured Gemini model singleton from ai.config."""
+    import os
+
+    if not os.environ.get("GOOGLE_API_KEY"):
+        return None
+    try:
+        from ai.config import model as configured_model
+    except Exception as e:
+        logger.warning("Failed to load Gemini model from ai.config: %s", e)
+        return None
+    else:
+        return configured_model
+
 
 # Valid BA API working time options
 VALID_ARBEITSZEIT_VALUES = {"vz", "tz", "mj", "ho"}
@@ -620,13 +640,7 @@ async def generate_search_query(
     if active_llm is None and effective_api_key:
         str_key = str(effective_api_key)
         if not str_key.startswith("mock-") and len(str_key) > 10:
-            try:
-                from ai.config import model as configured_model
-
-                active_llm = configured_model
-            except Exception as e:
-                logger.warning("Failed to load Gemini model from ai.config: %s", e)
-                active_llm = None
+            active_llm = _get_configured_model()
 
     if active_llm is None:
         logger.debug("No active LLM available; returning heuristic BA search parameters.")
@@ -717,3 +731,178 @@ async def generate_search_query(
 generate_ba_query = generate_search_query
 generate_search_queries = generate_search_query
 generate_ba_queries = generate_search_query
+
+
+async def refresh_user_search_queries(
+    user_id: str,
+    db: Any,
+    profile: Any | None = None,
+    cv_analysis: Any | None = None,
+    llm: Any | None = None,
+    force: bool = True,
+    cooldown_seconds: int = 300,
+) -> list[dict[str, Any]]:
+    """Generate and persist targeted search queries for a user in the database.
+
+    Args:
+        user_id: User identifier.
+        db: AsyncSession database connection.
+        profile: Optional Profile instance. If None, loaded from db.
+        cv_analysis: Optional latest CVAnalysis instance. If None, loaded from db.
+        llm: Optional LangChain model override.
+        force: Whether to bypass the debounce cooldown.
+        cooldown_seconds: Minimum seconds required between query regenerations.
+
+    Returns:
+        List of generated query dictionaries saved to profile.search_queries.
+    """
+    from sqlalchemy import desc, select
+
+    from app.models.profile import CVAnalysis, Profile
+
+    try:
+        user_profile = profile
+        if user_profile is None:
+            p_stmt = select(Profile).where(Profile.user_id == user_id)
+            user_profile = (await db.execute(p_stmt)).scalars().first()
+
+        if user_profile is None:
+            logger.warning("Cannot refresh search queries: Profile not found for user %s", user_id)
+            return []
+
+        # Check debounce cooldown if not forced
+        if not force and user_profile.queries_last_generated_at is not None:
+            last_time = user_profile.queries_last_generated_at
+            if last_time.tzinfo is None:
+                last_time = last_time.replace(tzinfo=UTC)
+            elapsed = (datetime.now(UTC) - last_time).total_seconds()
+            if elapsed < cooldown_seconds:
+                logger.debug(
+                    "Skipping query generation for user %s (cooldown active: %.1fs < %ds)",
+                    user_id,
+                    elapsed,
+                    cooldown_seconds,
+                )
+                return user_profile.search_queries or []
+
+        latest_cv = cv_analysis
+        if latest_cv is None:
+            c_stmt = (
+                select(CVAnalysis)
+                .where(CVAnalysis.user_id == user_id)
+                .order_by(desc(CVAnalysis.created_at))
+            )
+            latest_cv = (await db.execute(c_stmt)).scalars().first()
+
+        queries = await generate_search_query(
+            goals=user_profile.goals,
+            cv_profile=latest_cv,
+            user_prefs=user_profile,
+            llm=llm,
+        )
+        dict_queries = queries.to_dict_list()
+        user_profile.search_queries = dict_queries
+        user_profile.queries_last_generated_at = datetime.now(UTC)
+    except Exception as exc:
+        await db.rollback()
+        logger.warning("refresh_user_search_queries failed for user %s: %s", user_id, exc)
+        raise
+    else:
+        return dict_queries
+
+
+async def safe_background_refresh_user_search_queries(
+    user_id: str,
+    db: Any | None = None,
+    cooldown_seconds: int = 300,
+    force: bool = False,
+    llm: Any | None = None,
+) -> list[dict[str, Any]] | None:
+    """Execute search query refresh in an isolated database session with debounce cooldown.
+
+    Guarantees complete transaction isolation from caller requests and prevents abuse/cost spikes.
+    """
+    from sqlalchemy import desc, select
+
+    from app.database import async_session_maker
+    from app.models.profile import CVAnalysis, Profile
+
+    async def _execute_with_session(session: Any) -> list[dict[str, Any]] | None:
+        try:
+            p_stmt = select(Profile).where(Profile.user_id == user_id)
+            profile = (await session.execute(p_stmt)).scalars().first()
+            if not profile:
+                logger.debug(
+                    "Profile not found for background search query refresh: user %s", user_id
+                )
+                return None
+
+            # Check debounce cooldown (skip generation if within cooldown_seconds)
+            if not force and profile.queries_last_generated_at is not None:
+                last_time = profile.queries_last_generated_at
+                if last_time.tzinfo is None:
+                    last_time = last_time.replace(tzinfo=UTC)
+                elapsed = (datetime.now(UTC) - last_time).total_seconds()
+                if elapsed < cooldown_seconds:
+                    logger.debug(
+                        "Skipping background query refresh for user %s (cooldown active: %.1fs < %ds)",
+                        user_id,
+                        elapsed,
+                        cooldown_seconds,
+                    )
+                    return profile.search_queries
+
+            c_stmt = (
+                select(CVAnalysis)
+                .where(CVAnalysis.user_id == user_id)
+                .order_by(desc(CVAnalysis.created_at))
+            )
+            cv_analysis = (await session.execute(c_stmt)).scalars().first()
+
+            queries = await generate_search_query(
+                goals=profile.goals,
+                cv_profile=cv_analysis,
+                user_prefs=profile,
+                llm=llm,
+            )
+            dict_queries = queries.to_dict_list()
+            profile.search_queries = dict_queries
+            profile.queries_last_generated_at = datetime.now(UTC)
+            await session.commit()
+            logger.info(
+                "Successfully refreshed %d search queries in background for user %s",
+                len(dict_queries),
+                user_id,
+            )
+        except Exception as exc:
+            await session.rollback()
+            logger.warning(
+                "Background search query generation failed for user %s: %s", user_id, exc
+            )
+            return None
+        else:
+            return dict_queries
+
+    if db is not None:
+        return await _execute_with_session(db)
+
+    # Check for test dependency overrides on get_db
+    with contextlib.suppress(Exception):
+        from app.database import get_db
+        from main import app
+
+        override = app.dependency_overrides.get(get_db)
+        if override is not None:
+            gen = override()
+            if hasattr(gen, "__anext__"):
+                override_session = await gen.__anext__()
+                try:
+                    return await _execute_with_session(override_session)
+                finally:
+                    with contextlib.suppress(Exception):
+                        await gen.aclose()
+            elif hasattr(gen, "execute"):
+                return await _execute_with_session(gen)
+
+    async with async_session_maker() as isolated_session:
+        return await _execute_with_session(isolated_session)

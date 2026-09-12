@@ -14,6 +14,8 @@ from app.services.query_generator import (
     generate_ba_query,
     generate_search_queries,
     generate_search_query,
+    refresh_user_search_queries,
+    safe_background_refresh_user_search_queries,
 )
 
 __all__ = [
@@ -27,5 +29,7 @@ __all__ = [
     "generate_search_queries",
     "generate_search_query",
     "oauth_service",
+    "refresh_user_search_queries",
+    "safe_background_refresh_user_search_queries",
     "verify_session_token",
 ]

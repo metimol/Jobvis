@@ -11,6 +11,9 @@ from app.dependencies import get_current_user
 from app.models.profile import CVAnalysis, Profile
 from app.models.user import User
 from app.schemas.profile import CVAnalysisResponse, ProfileResponse, ProfileUpdate
+from app.services.query_generator import (
+    safe_background_refresh_user_search_queries,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +56,7 @@ async def get_profile(
 )
 async def update_profile(
     payload: ProfileUpdate,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> ProfileResponse:
@@ -79,6 +83,13 @@ async def update_profile(
         profile.onboarding_completed = payload.onboarding_completed
     if payload.onboarding_step is not None:
         profile.onboarding_step = payload.onboarding_step
+
+    # Refresh persisted search queries in background if search parameters changed (non-blocking)
+    if any(
+        v is not None
+        for v in (payload.desired_job_type, payload.goals, payload.location, payload.radius_km)
+    ):
+        background_tasks.add_task(_safe_refresh_user_search_queries, current_user.id)
 
     await db.commit()
     await db.refresh(profile)
@@ -123,6 +134,7 @@ async def get_latest_cv_analysis(
 @profile_router.post("/cv", response_model=CVAnalysisResponse, summary="Upload and Analyze CV")
 async def upload_cv(
     file: UploadFile = File(...),
+    background_tasks: BackgroundTasks = BackgroundTasks(),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> CVAnalysisResponse:
@@ -223,6 +235,9 @@ async def upload_cv(
         user_profile.goals = analysis.get("goals")
     user_profile.onboarding_step = max(user_profile.onboarding_step or 0, 1)
 
+    # Refresh precomputed search queries in background with newly extracted CV skills and profile
+    background_tasks.add_task(_safe_refresh_user_search_queries, current_user.id, force=True)
+
     await db.commit()
     await db.refresh(cv_record)
 
@@ -275,7 +290,8 @@ async def complete_onboarding(
     await db.commit()
     await db.refresh(profile)
 
-    # Trigger first job scraping and matching run in background (non-blocking)
+    # Refresh search queries and trigger first matching sync in background (non-blocking)
+    background_tasks.add_task(_safe_refresh_user_search_queries, current_user.id, force=True)
     background_tasks.add_task(_safe_run_sync_for_user, current_user.id)
 
     return {
@@ -283,6 +299,14 @@ async def complete_onboarding(
         "onboarding_completed": True,
         "sync": "queued",
     }
+
+
+async def _safe_refresh_user_search_queries(user_id: str, force: bool = False) -> None:
+    """Safely refresh search queries in the background without blocking the HTTP pipeline."""
+    try:
+        await safe_background_refresh_user_search_queries(user_id, force=force)
+    except Exception as exc:
+        logger.warning("Background search query generation for user %s failed: %s", user_id, exc)
 
 
 async def _safe_run_sync_for_user(user_id: str) -> None:

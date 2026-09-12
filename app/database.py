@@ -24,16 +24,20 @@ db_url = settings.DATABASE_URL
 if db_url.startswith("mysql://"):
     db_url = db_url.replace("mysql://", "mysql+aiomysql://", 1)
 
-# Connect args (e.g. SQLite thread check)
+# Connect args and engine kwargs (e.g. SQLite thread check & StaticPool)
 connect_args = {}
+engine_kwargs = {"future": True, "echo": settings.DB_ECHO}
 if "sqlite" in db_url:
     connect_args["check_same_thread"] = False
+    if ":memory:" in db_url:
+        from sqlalchemy.pool import StaticPool
+
+        engine_kwargs["poolclass"] = StaticPool
 
 engine = create_async_engine(
     db_url,
-    echo=settings.DB_ECHO,
     connect_args=connect_args,
-    future=True,
+    **engine_kwargs,
 )
 
 # Enable foreign keys for SQLite
@@ -91,6 +95,14 @@ async def init_db() -> None:
                 if "onboarding_step" not in columns:
                     connection.exec_driver_sql(
                         "ALTER TABLE profiles ADD COLUMN onboarding_step INTEGER NOT NULL DEFAULT 0;"
+                    )
+                if "search_queries" not in columns:
+                    connection.exec_driver_sql(
+                        "ALTER TABLE profiles ADD COLUMN search_queries JSON NULL;"
+                    )
+                if "queries_last_generated_at" not in columns:
+                    connection.exec_driver_sql(
+                        "ALTER TABLE profiles ADD COLUMN queries_last_generated_at DATETIME NULL;"
                     )
                 if "cv_analyses" in table_names:
                     connection.exec_driver_sql(

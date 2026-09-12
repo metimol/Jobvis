@@ -19,15 +19,15 @@ from app.services.scheduler import scheduler_service
 if os.getenv("ENVIRONMENT") != "test":
     load_dotenv()
 
-# Initialize Sentry SDK
-sentry_sdk.init(
-    dsn=settings.SENTRY_DSN,
-    send_default_pii=True,
-    enable_logs=True,
-    traces_sample_rate=1.0,
-    profile_session_sample_rate=1.0,
-    profile_lifecycle="trace",
-)
+    # Initialize Sentry SDK
+    sentry_sdk.init(
+        dsn=settings.SENTRY_DSN,
+        send_default_pii=True,
+        enable_logs=True,
+        traces_sample_rate=1.0,
+        profile_session_sample_rate=1.0,
+        profile_lifecycle="trace",
+    )
 
 # Setup application logging
 logging.basicConfig(

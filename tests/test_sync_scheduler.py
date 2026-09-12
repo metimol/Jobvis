@@ -1851,3 +1851,233 @@ async def test_oauth_signup_isolated_from_sync_crash(empirical_db: AsyncSession)
         user = await oauth_service.authenticate_or_link_user(empirical_db, oauth_info)
         assert user.id is not None
         assert user.email == "resilient_oauth@example.com"
+
+
+@pytest.mark.asyncio
+async def test_scheduler_sync_with_persisted_search_queries_zero_llm(empirical_db: AsyncSession):
+    """Verify scheduler uses persisted profile.search_queries with zero LLM generation calls."""
+    user = User(email="zero_llm@example.com", name="Zero LLM User")
+    empirical_db.add(user)
+    await empirical_db.flush()
+
+    persisted_queries = [
+        {"was": "Python Entwickler", "wo": "Berlin", "arbeitszeit": "vz", "angebotsart": 1},
+        {"was": "DevOps Engineer", "wo": "Berlin", "arbeitszeit": "vz", "angebotsart": 1},
+    ]
+
+    profile = Profile(
+        user_id=user.id,
+        desired_job_type="vz",
+        german_level="B2",
+        location="Berlin",
+        radius_km=25,
+        goals="Python Entwickler",
+        onboarding_completed=True,
+        onboarding_step=8,
+        search_queries=persisted_queries,
+    )
+    empirical_db.add(profile)
+    await empirical_db.commit()
+
+    job1 = BAJobListing(
+        ref_nr="REF-ZERO-1",
+        title="Python Dev",
+        employer="Tech AG",
+        location="Berlin",
+        working_time="vz",
+    )
+    job2 = BAJobListing(
+        ref_nr="REF-ZERO-2",
+        title="DevOps Lead",
+        employer="Cloud AG",
+        location="Berlin",
+        working_time="vz",
+    )
+
+    mock_ba = AsyncMock()
+    mock_ba.search_jobs.side_effect = [[job1], [job2]]
+
+    with patch("app.services.query_generator.generate_search_query") as mock_gen:
+        scheduler = MatchingSchedulerService()
+        result = await scheduler.run_sync_for_user(user.id, empirical_db, ba_client=mock_ba)
+
+        assert result["status"] == "success"
+        # Verify LLM query generator was NEVER called
+        mock_gen.assert_not_called()
+        # Verify both persisted queries were executed by BA client
+        assert mock_ba.search_jobs.await_count == 2
+        calls = mock_ba.search_jobs.await_args_list
+        assert calls[0].kwargs["query"] == "Python Entwickler"
+        assert calls[1].kwargs["query"] == "DevOps Engineer"
+        assert result["scraped"] == 2
+        assert result["deduped"] == 2
+
+
+@pytest.mark.asyncio
+async def test_scheduler_sync_falls_back_and_persists_queries_when_none(empirical_db: AsyncSession):
+    """Verify scheduler falls back to generating search queries and persists them to DB when empty."""
+    user = User(email="fallback_persist@example.com", name="Fallback User")
+    empirical_db.add(user)
+    await empirical_db.flush()
+
+    profile = Profile(
+        user_id=user.id,
+        desired_job_type="vz",
+        german_level="B2",
+        location="Hamburg",
+        radius_km=20,
+        goals="Frontend Entwickler",
+        onboarding_completed=True,
+        onboarding_step=8,
+        search_queries=None,
+    )
+    empirical_db.add(profile)
+    await empirical_db.commit()
+
+    mock_ba = AsyncMock()
+    mock_ba.search_jobs.return_value = []
+
+    scheduler = MatchingSchedulerService()
+    result = await scheduler.run_sync_for_user(user.id, empirical_db, ba_client=mock_ba)
+
+    assert result["status"] == "success"
+    # Query profile back from DB to ensure search_queries were persisted
+    stmt = select(Profile).where(Profile.user_id == user.id)
+    refreshed_profile = (await empirical_db.execute(stmt)).scalar_one()
+    assert refreshed_profile.search_queries is not None
+    assert len(refreshed_profile.search_queries) >= 1
+    assert any("Frontend" in q.get("was", "") for q in refreshed_profile.search_queries)
+
+
+@pytest.mark.asyncio
+async def test_refresh_user_search_queries_helper(empirical_db: AsyncSession):
+    """Verify refresh_user_search_queries updates DB and returns query dict list."""
+    from app.services.query_generator import refresh_user_search_queries
+
+    user = User(email="refresh_helper@example.com", name="Refresh Helper User")
+    empirical_db.add(user)
+    await empirical_db.flush()
+
+    profile = Profile(
+        user_id=user.id,
+        desired_job_type="tz",
+        german_level="C1",
+        location="Köln",
+        radius_km=30,
+        goals="Data Scientist",
+        onboarding_completed=True,
+        onboarding_step=8,
+        search_queries=None,
+    )
+    empirical_db.add(profile)
+    await empirical_db.commit()
+
+    queries = await refresh_user_search_queries(user.id, empirical_db)
+    assert isinstance(queries, list)
+    assert len(queries) >= 1
+    assert queries[0]["wo"] == "Köln"
+    assert queries[0]["arbeitszeit"] == "tz"
+
+    # Verify committed in DB
+    stmt = select(Profile).where(Profile.user_id == user.id)
+    db_profile = (await empirical_db.execute(stmt)).scalar_one()
+    assert db_profile.search_queries == queries
+    assert db_profile.queries_last_generated_at is not None
+
+
+@pytest.mark.asyncio
+async def test_background_search_queries_debouncing_and_force(empirical_db: AsyncSession):
+    """Verify safe_background_refresh_user_search_queries debounces rapid calls within cooldown."""
+    from app.services.query_generator import (
+        BAQueryList,
+        BAQueryParams,
+        safe_background_refresh_user_search_queries,
+    )
+
+    user = User(email="debounce_test@example.com", name="Debounce User")
+    empirical_db.add(user)
+    await empirical_db.flush()
+
+    profile = Profile(
+        user_id=user.id,
+        desired_job_type="vz",
+        german_level="B2",
+        location="Stuttgart",
+        radius_km=25,
+        goals="Automotive Engineer",
+        onboarding_completed=True,
+        onboarding_step=8,
+    )
+    empirical_db.add(profile)
+    await empirical_db.commit()
+
+    # 1. First execution: queries generated, queries_last_generated_at stamped
+    res1 = await safe_background_refresh_user_search_queries(user.id, db=empirical_db)
+    assert res1 is not None
+    assert len(res1) >= 1
+
+    stmt = select(Profile).where(Profile.user_id == user.id)
+    p1 = (await empirical_db.execute(stmt)).scalar_one()
+    first_timestamp = p1.queries_last_generated_at
+    assert first_timestamp is not None
+
+    # 2. Second rapid execution within cooldown (e.g. 300s): generation skipped / debounced
+    mock_batch = BAQueryList([BAQueryParams(was="Mock Should Not Be Called", wo="Stuttgart")])
+    with patch(
+        "app.services.query_generator.generate_search_query", return_value=mock_batch
+    ) as mock_gen:
+        res2 = await safe_background_refresh_user_search_queries(
+            user.id, db=empirical_db, cooldown_seconds=300, force=False
+        )
+        mock_gen.assert_not_called()
+        assert res2 == res1
+
+    # 3. Third execution with force=True: cooldown bypassed
+    with patch(
+        "app.services.query_generator.generate_search_query", return_value=mock_batch
+    ) as mock_gen:
+        res3 = await safe_background_refresh_user_search_queries(
+            user.id, db=empirical_db, cooldown_seconds=300, force=True
+        )
+        mock_gen.assert_called_once()
+        assert res3 is not None
+        assert res3[0]["was"] == "Mock Should Not Be Called"
+
+
+@pytest.mark.asyncio
+async def test_background_search_queries_transaction_isolation_on_error(
+    empirical_db: AsyncSession,
+):
+    """Verify failure during background query refresh rolls back cleanly without poisoning session."""
+    from app.services.query_generator import safe_background_refresh_user_search_queries
+
+    user = User(email="tx_poison_test@example.com", name="TX Poison User")
+    empirical_db.add(user)
+    await empirical_db.flush()
+    user_id = str(user.id)
+
+    profile = Profile(
+        user_id=user_id,
+        desired_job_type="vz",
+        german_level="B2",
+        location="Bremen",
+        radius_km=15,
+        goals="Logistics Specialist",
+        onboarding_completed=True,
+        onboarding_step=8,
+    )
+    empirical_db.add(profile)
+    await empirical_db.commit()
+
+    # Simulate an error during LLM generation
+    with patch(
+        "app.services.query_generator.generate_search_query",
+        side_effect=RuntimeError("LLM API exploded"),
+    ):
+        res = await safe_background_refresh_user_search_queries(user_id, db=empirical_db)
+        assert res is None
+
+    # Verify empirical_db is NOT poisoned with PendingRollbackError and can still execute normal queries
+    stmt = select(Profile).where(Profile.user_id == user_id)
+    profile_check = (await empirical_db.execute(stmt)).scalar_one()
+    assert profile_check.goals == "Logistics Specialist"

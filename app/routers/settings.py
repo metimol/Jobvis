@@ -113,6 +113,8 @@ async def reset_preferences(
         profile.radius_km = 25
         profile.onboarding_completed = False
         profile.onboarding_step = 0
+        profile.search_queries = None
+        profile.queries_last_generated_at = None
 
     # Delete CV analyses
     await db.execute(delete(CVAnalysis).where(CVAnalysis.user_id == current_user.id))

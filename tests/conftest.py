@@ -2,8 +2,9 @@
 
 import os
 
-# Explicitly mark test environment and protect against external live LLM calls
+# Explicitly mark test environment and protect against external live calls
 os.environ["ENVIRONMENT"] = "test"
+os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
 os.environ.pop("GOOGLE_API_KEY", None)
 
 import asyncio
@@ -29,12 +30,13 @@ from app.database import Base
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 
 
-@pytest.fixture(scope="session")
-def event_loop():
-    """Create session-scoped asyncio event loop."""
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
+@pytest.fixture(autouse=True)
+def reset_scheduler_locks():
+    """Reset MatchingSchedulerService user locks between tests to avoid cross-loop lock sharing."""
+    from app.services.scheduler import scheduler_service
+
+    scheduler_service._user_locks.clear()
+    scheduler_service._lock = asyncio.Lock()
 
 
 @pytest_asyncio.fixture(scope="function")

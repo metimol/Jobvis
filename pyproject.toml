@@ -108,3 +108,11 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["S101", "ARG001", "ARG002", "PLR2004", "S105", "S106", "PT", "SLF001", "N806", "S701", "B007", "PERF102", "E741", "PLC0415", "PLC2701", "PLR0914", "SIM", "PERF", "B017", "RUF013", "S110", "E402", "RET504", "F841", "TRY", "S603", "S607"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "strict"
+asyncio_default_fixture_loop_scope = "function"
+filterwarnings = [
+    "error::pytest.PytestUnraisableExceptionWarning",
+    "ignore:.*is marked with '@pytest.mark.asyncio' but it is not an async function.*:pytest.PytestWarning",
+]

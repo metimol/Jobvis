@@ -15,9 +15,11 @@ from app.models.job import Job, MatchedJob
 from app.models.profile import CVAnalysis, Profile
 from app.models.sync_log import SyncLog
 from app.models.user import User
+from app.services import query_generator
 from app.services.ai_matcher import ai_matcher
 from app.services.arbeitsagentur import ArbeitsagenturClient
 from app.services.deduplicator import JobDeduplicator
+from app.services.query_generator import BAQueryList, BAQueryParams
 
 logger = logging.getLogger(__name__)
 
@@ -137,12 +139,20 @@ class MatchingSchedulerService:
             )
             cv_analysis = (await db.execute(c_stmt)).scalars().first()
 
-            # Generate optimal BA search parameters from natural language goals and CV profile
-            from app.services.query_generator import generate_search_query
-
-            search_queries = await generate_search_query(
-                goals=profile.goals if profile else None, cv_profile=cv_analysis, user_prefs=profile
-            )
+            # Load precomputed search queries from DB if available (zero LLM calls during scheduled sync!)
+            if profile and profile.search_queries:
+                search_queries = BAQueryList(
+                    [BAQueryParams(**q) for q in profile.search_queries if isinstance(q, dict)]
+                )
+            else:
+                search_queries = await query_generator.generate_search_query(
+                    goals=profile.goals if profile else None,
+                    cv_profile=cv_analysis,
+                    user_prefs=profile,
+                )
+                if profile:
+                    profile.search_queries = search_queries.to_dict_list()
+                    await db.flush()
 
             # Query Arbeitsagentur across all generated targeted queries
             own_client = False

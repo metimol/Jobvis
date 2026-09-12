@@ -69,6 +69,12 @@ class Profile(Base):
         nullable=False,
     )
 
+    # Persisted targeted search queries for Arbeitsagentur scraping
+    search_queries: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON, nullable=True)
+    queries_last_generated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

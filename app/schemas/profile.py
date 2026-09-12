@@ -45,6 +45,8 @@ class ProfileResponse(BaseModel):
     radius_km: int
     onboarding_completed: bool = False
     onboarding_step: int = 0
+    search_queries: list[dict[str, Any]] | None = None
+    queries_last_generated_at: datetime | None = None
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

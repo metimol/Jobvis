@@ -606,3 +606,72 @@ def test_profile_template_dom_and_script_contracts():
     # 6. Check saveProfile function reads form values and POSTs to /api/profile
     assert "async function saveProfile(e)" in html
     assert "fetch('/api/profile'" in html or 'fetch("/api/profile"' in html
+
+
+# ===========================================================================
+# 5. Persisted Search Queries & Settings Reset
+# ===========================================================================
+
+
+@pytest.mark.asyncio
+async def test_profile_update_persists_search_queries(
+    emp_client: AsyncClient, onboarded_user: User, emp_db: AsyncSession
+):
+    """Verify updating profile search fields generates and persists search_queries in DB and response."""
+    from sqlalchemy import select
+
+    token = create_session_token(onboarded_user.id, onboarded_user.email)
+    emp_client.cookies.set("jobvis_session", token)
+
+    resp = await emp_client.post(
+        "/api/profile",
+        json={
+            "goals": "Full Stack Developer und Python Spezialist",
+            "location": "München",
+            "desired_job_type": "vz",
+            "radius_km": 30,
+        },
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "search_queries" in data
+    assert data["location"] == "München"
+    assert data["goals"] == "Full Stack Developer und Python Spezialist"
+
+    # Verify DB state directly (updated asynchronously in background task)
+    stmt = select(Profile).where(Profile.user_id == onboarded_user.id)
+    profile = (await emp_db.execute(stmt)).scalar_one()
+    assert profile.search_queries is not None
+    assert len(profile.search_queries) >= 1
+    assert profile.search_queries[0]["wo"] == "München"
+    assert profile.queries_last_generated_at is not None
+
+
+@pytest.mark.asyncio
+async def test_settings_reset_clears_search_queries(
+    emp_client: AsyncClient, onboarded_user: User, emp_db: AsyncSession
+):
+    """Verify resetting settings clears persisted search_queries and timestamp back to None."""
+    from datetime import UTC, datetime
+
+    from sqlalchemy import select
+
+    # Seed profile with search_queries and timestamp
+    stmt = select(Profile).where(Profile.user_id == onboarded_user.id)
+    profile = (await emp_db.execute(stmt)).scalar_one()
+    profile.search_queries = [
+        {"was": "Python", "wo": "Berlin", "arbeitszeit": "vz", "angebotsart": 1}
+    ]
+    profile.queries_last_generated_at = datetime.now(UTC)
+    await emp_db.commit()
+
+    token = create_session_token(onboarded_user.id, onboarded_user.email)
+    emp_client.cookies.set("jobvis_session", token)
+
+    resp = await emp_client.post("/api/settings/reset")
+    assert resp.status_code == 200
+
+    # Verify search_queries and queries_last_generated_at are None in DB
+    refreshed_profile = (await emp_db.execute(stmt)).scalar_one()
+    assert refreshed_profile.search_queries is None
+    assert refreshed_profile.queries_last_generated_at is None
