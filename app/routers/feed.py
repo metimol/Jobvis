@@ -31,6 +31,7 @@ class MatchedJobResponse(BaseModel):
     score: float
     status: str
     created_at: str
+    published_date: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -99,6 +100,7 @@ async def get_feed(
                 score=matched_job.score,
                 status=matched_job.status,
                 created_at=matched_job.created_at.isoformat() if matched_job.created_at else "",
+                published_date=job.published_date.isoformat() if job.published_date else None,
             )
         )
 
@@ -149,4 +151,5 @@ async def update_match_status(
         score=matched_job.score,
         status=matched_job.status,
         created_at=matched_job.created_at.isoformat() if matched_job.created_at else "",
+        published_date=job.published_date.isoformat() if job.published_date else None,
     )

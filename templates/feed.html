@@ -8,7 +8,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 2.25rem;
+    margin-bottom: 1.5rem;
     flex-wrap: wrap;
     gap: 1.25rem;
   }
@@ -16,6 +16,73 @@
     display: flex;
     gap: 0.75rem;
     align-items: center;
+  }
+  .feed-toolbar {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    background: var(--bg-card);
+    border: 1px solid var(--border-card);
+    border-radius: 14px;
+    padding: 0.85rem 1.35rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    box-shadow: 0 4px 20px -4px rgba(0, 0, 0, 0.3);
+  }
+  .sort-control {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-left: auto;
+  }
+  .sort-label {
+    font-size: 0.875rem;
+    color: var(--strawberry-300);
+    font-weight: 600;
+  }
+  .sort-select {
+    background: rgba(255, 245, 247, 0.04);
+    border: 1px solid var(--border-card);
+    color: var(--strawberry-100);
+    padding: 0.45rem 1.1rem;
+    border-radius: 10px;
+    font-size: 0.875rem;
+    font-family: var(--font-sans);
+    font-weight: 600;
+    cursor: pointer;
+    outline: none;
+    transition: all 0.25s ease;
+  }
+  .sort-select:hover, .sort-select:focus {
+    border-color: var(--strawberry-400);
+    background: rgba(255, 122, 156, 0.08);
+  }
+  .sort-select option {
+    background: #1e131d;
+    color: var(--strawberry-100);
+  }
+  .sort-dir-btn {
+    background: rgba(255, 245, 247, 0.04);
+    border: 1px solid var(--border-card);
+    color: var(--strawberry-300);
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.25s ease;
+  }
+  .sort-dir-btn:hover {
+    background: rgba(255, 122, 156, 0.12);
+    color: var(--strawberry-50);
+    border-color: var(--strawberry-400);
   }
   .filter-btn {
     background: rgba(255, 245, 247, 0.04);
@@ -121,9 +188,22 @@
     </div>
 
     <div class="feed-controls">
-      <button class="filter-btn active" onclick="loadFeed(null, this)">All</button>
-      <button class="filter-btn" onclick="loadFeed('new', this)">New</button>
-      <button class="filter-btn" onclick="loadFeed('saved', this)">Saved</button>
+      <button class="filter-btn active" onclick="loadFeed(null, this)">{{ t.get('filter_all', 'All') }}</button>
+      <button class="filter-btn" onclick="loadFeed('new', this)">{{ t.get('filter_new', 'New') }}</button>
+      <button class="filter-btn" onclick="loadFeed('saved', this)">{{ t.get('filter_saved', 'Saved') }}</button>
+    </div>
+  </div>
+
+  <div class="feed-toolbar">
+    <div class="sort-control">
+      <label for="sortSelect" class="sort-label">{{ t.get('sort_by', 'Sort by') }}:</label>
+      <select id="sortSelect" class="sort-select" onchange="changeSort(this.value)">
+        <option value="matching">{{ t.get('sort_matching', 'Best Match') }}</option>
+        <option value="date">{{ t.get('sort_date', 'Date') }}</option>
+      </select>
+      <button id="sortDirBtn" class="sort-dir-btn" onclick="toggleSortDirection()" title="Toggle sort direction">
+        <span id="sortDirIcon">↓</span>
+      </button>
     </div>
   </div>
 
@@ -136,37 +216,81 @@
 {% block scripts_extra %}
 <script>
   let currentStatusFilter = null;
+  let currentSort = 'matching';
+  let sortInverted = false;
+  let currentItems = [];
 
-  async function loadFeed(statusFilter, btnElem) {
-    if (btnElem) {
-      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-      btnElem.classList.add('active');
-    }
-    currentStatusFilter = statusFilter;
-
-    const container = document.getElementById('feedContainer');
-    let url = '/api/feed?size=50';
-    if (statusFilter) url += `&status=${encodeURIComponent(statusFilter)}`;
-
+  function formatDate(dateStr) {
+    if (!dateStr) return '';
     try {
-      const resp = await fetch(url);
-      if (!resp.ok) throw new Error('Failed to load feed');
-      const data = await resp.json();
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return '';
+      return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+    } catch (e) {
+      return '';
+    }
+  }
 
-      if (!data.items || data.items.length === 0) {
-        container.innerHTML = `
-          <div class="empty-state">
-            <svg width="56" height="56" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="color: var(--strawberry-400); margin-bottom: 1.25rem; filter: drop-shadow(0 0 10px rgba(249,87,127,0.3));">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 14.15v4.25c0 1.094-.787 2.036-1.872 2.18-2.087.277-4.216.42-6.378.42s-4.291-.143-6.378-.42c-1.085-.144-1.872-1.086-1.872-2.18v-4.25m16.5 0a2.18 2.18 0 0 0 .75-1.661V8.706c0-1.081-.768-2.015-1.837-2.175a48.114 48.114 0 0 0-3.413-.387m4.5 8.006c-.194.165-.42.295-.673.38A23.978 23.978 0 0 1 12 15.75c-2.648 0-5.195-.429-7.577-1.22a2.016 2.016 0 0 1-.673-.38m0 0A2.18 2.18 0 0 1 3 12.489V8.706c0-1.081.768-2.015 1.837-2.175a48.111 48.111 0 0 1 3.413-.387m7.5 0V5.25A2.25 2.25 0 0 0 13.5 3h-3a2.25 2.25 0 0 0-2.25 2.25v.894m7.5 0a48.667 48.667 0 0 0-7.5 0"/>
-            </svg>
-            <h3 style="font-family: var(--font-display); font-size: 1.4rem; margin-bottom: 0.65rem; color: var(--strawberry-50);">{{ t.get('feed_title', 'No matches found yet') }}</h3>
-            <p style="color: var(--strawberry-200); max-width: 520px; margin: 0 auto 1.75rem; line-height: 1.6;">{{ t.get('feed_empty', 'No job recommendations yet. Upload your CV and set preferences to start receiving twice-daily matches.') }}</p>
-          </div>
-        `;
-        return;
+  function compareItems(a, b, sortCriterion, inverted) {
+    let res = 0;
+    if (sortCriterion === 'matching') {
+      const scoreA = Number(a.score) || 0;
+      const scoreB = Number(b.score) || 0;
+      res = scoreB - scoreA;
+      if (res === 0) {
+        const dateA = new Date(a.published_date || a.created_at || 0).getTime() || 0;
+        const dateB = new Date(b.published_date || b.created_at || 0).getTime() || 0;
+        res = dateB - dateA;
       }
+    } else if (sortCriterion === 'date') {
+      const dateA = new Date(a.published_date || a.created_at || 0).getTime() || 0;
+      const dateB = new Date(b.published_date || b.created_at || 0).getTime() || 0;
+      res = dateB - dateA;
+      if (res === 0) {
+        res = (Number(b.score) || 0) - (Number(a.score) || 0);
+      }
+    }
 
-      container.innerHTML = data.items.map(item => `
+    return inverted ? -res : res;
+  }
+
+  function changeSort(newSort) {
+    currentSort = newSort;
+    sortInverted = false;
+    const icon = document.getElementById('sortDirIcon');
+    if (icon) icon.textContent = '↓';
+    renderFeed();
+  }
+
+  function toggleSortDirection() {
+    sortInverted = !sortInverted;
+    const icon = document.getElementById('sortDirIcon');
+    if (icon) icon.textContent = sortInverted ? '↑' : '↓';
+    renderFeed();
+  }
+
+  function renderFeed() {
+    const container = document.getElementById('feedContainer');
+    if (!currentItems || currentItems.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <svg width="56" height="56" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="color: var(--strawberry-400); margin-bottom: 1.25rem; filter: drop-shadow(0 0 10px rgba(249,87,127,0.3));">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 14.15v4.25c0 1.094-.787 2.036-1.872 2.18-2.087.277-4.216.42-6.378.42s-4.291-.143-6.378-.42c-1.085-.144-1.872-1.086-1.872-2.18v-4.25m16.5 0a2.18 2.18 0 0 0 .75-1.661V8.706c0-1.081-.768-2.015-1.837-2.175a48.114 48.114 0 0 0-3.413-.387m4.5 8.006c-.194.165-.42.295-.673.38A23.978 23.978 0 0 1 12 15.75c-2.648 0-5.195-.429-7.577-1.22a2.016 2.016 0 0 1-.673-.38m0 0A2.18 2.18 0 0 1 3 12.489V8.706c0-1.081.768-2.015 1.837-2.175a48.111 48.111 0 0 1 3.413-.387m7.5 0V5.25A2.25 2.25 0 0 0 13.5 3h-3a2.25 2.25 0 0 0-2.25 2.25v.894m7.5 0a48.667 48.667 0 0 0-7.5 0"/>
+          </svg>
+          <h3 style="font-family: var(--font-display); font-size: 1.4rem; margin-bottom: 0.65rem; color: var(--strawberry-50);">{{ t.get('feed_title', 'No matches found yet') }}</h3>
+          <p style="color: var(--strawberry-200); max-width: 520px; margin: 0 auto 1.75rem; line-height: 1.6;">{{ t.get('feed_empty', 'No job recommendations yet. Upload your CV and set preferences to start receiving twice-daily matches.') }}</p>
+        </div>
+      `;
+      return;
+    }
+
+    const sortedItems = [...currentItems].sort((a, b) => compareItems(a, b, currentSort, sortInverted));
+
+    container.innerHTML = sortedItems.map(item => {
+      const dateVal = item.published_date || item.created_at;
+      const dateText = formatDate(dateVal);
+
+      return `
         <div class="job-card" id="match-${item.id}">
           <div class="job-card-top">
             <div>
@@ -174,6 +298,7 @@
               <div class="job-meta">
                 <span>🏢 ${escapeHtml(item.employer || 'Bundesagentur Listing')}</span>
                 <span>📍 ${escapeHtml(item.location || 'Deutschland')}</span>
+                ${dateText ? `<span>📅 ${escapeHtml(dateText)}</span>` : ''}
                 ${item.working_time ? `<span class="badge" style="background: rgba(255,245,247,0.06); color: var(--strawberry-200); border: 1px solid var(--border-card);">${escapeHtml(item.working_time)}</span>` : ''}
               </div>
             </div>
@@ -199,8 +324,28 @@
             ` : ''}
           </div>
         </div>
-      `).join('');
+      `;
+    }).join('');
+  }
 
+  async function loadFeed(statusFilter, btnElem) {
+    if (btnElem) {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btnElem.classList.add('active');
+    }
+    currentStatusFilter = statusFilter;
+
+    const container = document.getElementById('feedContainer');
+    let url = '/api/feed?size=50';
+    if (statusFilter) url += `&status=${encodeURIComponent(statusFilter)}`;
+
+    try {
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error('Failed to load feed');
+      const data = await resp.json();
+
+      currentItems = data.items || [];
+      renderFeed();
     } catch (err) {
       container.innerHTML = `<div style="color: var(--danger); text-align: center; padding: 2.5rem;">Error loading feed: ${escapeHtml(err.message)}</div>`;
     }
@@ -215,10 +360,17 @@
       });
       if (resp.ok) {
         if (newStatus === 'dismissed') {
+          currentItems = currentItems.filter(item => item.id !== matchId);
           const card = document.getElementById(`match-${matchId}`);
           if (card) card.remove();
+          if (currentItems.length === 0) renderFeed();
         } else {
-          loadFeed(currentStatusFilter);
+          const item = currentItems.find(i => i.id === matchId);
+          if (item) item.status = newStatus;
+          if (currentStatusFilter && currentStatusFilter !== newStatus) {
+            currentItems = currentItems.filter(i => i.id !== matchId);
+          }
+          renderFeed();
         }
       }
     } catch (e) {

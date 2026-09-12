@@ -78,5 +78,8 @@
   "review_edit": "Edit",
   "wizard_step8_title": "Finding Your Matches...",
   "wizard_step8_subtitle": "Searching Bundesagentur für Arbeit and scoring jobs with AI.",
-  "wizard_step8_redirecting": "Ready! Redirecting to your job feed..."
+  "wizard_step8_redirecting": "Ready! Redirecting to your job feed...",
+  "sort_by": "Sort by",
+  "sort_matching": "Best Match",
+  "sort_date": "Date"
 }

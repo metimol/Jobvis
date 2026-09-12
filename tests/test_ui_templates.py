@@ -432,6 +432,8 @@ async def test_get_feed_page_authenticated_velar_elements(
     assert "feedContainer" in html
     assert "feed-controls" in html
     assert "filter-btn" in html
+    assert "sortSelect" in html
+    assert "sortDirBtn" in html
 
 
 @pytest.mark.asyncio
@@ -722,6 +724,21 @@ class TestAdversarialTemplateRendering:
         assert "escapeHtml" in rendered
         assert "function escapeHtml" in rendered
         assert "&amp;" in rendered and "&lt;" in rendered and "&gt;" in rendered
+
+    def test_feed_template_sorting_controls(self, jinja_env):
+        """Verify feed.html renders sorting controls, sort options for rating and date, and sort comparator."""
+        template = jinja_env.get_template("feed.html")
+        rendered = template.render(
+            t=I18nService.get_dictionary("de"),
+            lang="de",
+            current_user={"id": 1},
+        )
+        assert "sortSelect" in rendered
+        assert 'value="matching"' in rendered
+        assert 'value="date"' in rendered
+        assert "sortDirBtn" in rendered
+        assert "function compareItems" in rendered
+        assert "function renderFeed" in rendered
 
     def test_settings_template_with_all_supported_locales(self, jinja_env):
         """Verify settings.html correctly marks the selected option for each supported locale."""

@@ -240,6 +240,9 @@ async def get_feed_page(
     user_settings = (await db.execute(s_stmt)).scalars().first()
     ui_lang = user_settings.ui_language if user_settings else app_settings.DEFAULT_UI_LANGUAGE
 
+    p_stmt = select(Profile).where(Profile.user_id == current_user.id)
+    profile = (await db.execute(p_stmt)).scalars().first()
+
     translations = I18nService.get_dictionary(ui_lang)
     return templates.TemplateResponse(
         request=request,
@@ -247,6 +250,7 @@ async def get_feed_page(
         context={
             "request": request,
             "current_user": current_user,
+            "profile": profile,
             "lang": ui_lang,
             "t": translations,
             "supported_langs": I18nService.SUPPORTED_LANGS,

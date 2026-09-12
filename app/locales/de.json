@@ -78,5 +78,8 @@
   "review_edit": "Bearbeiten",
   "wizard_step8_title": "Passende Stellen werden gesucht...",
   "wizard_step8_subtitle": "Wir durchsuchen die Bundesagentur für Arbeit und berechnen die Passgenauigkeit.",
-  "wizard_step8_redirecting": "Fertig! Sie werden zum Job-Feed weitergeleitet..."
+  "wizard_step8_redirecting": "Fertig! Sie werden zum Job-Feed weitergeleitet...",
+  "sort_by": "Sortieren nach",
+  "sort_matching": "Beste Übereinstimmung",
+  "sort_date": "Datum"
 }
