@@ -117,6 +117,7 @@
       text-decoration: none;
       display: flex;
       align-items: center;
+      min-height: 44px;
       transition: transform 0.2s ease;
     }
     .nav-brand:hover {
@@ -125,6 +126,57 @@
     .nav-brand span {
       color: var(--strawberry-400);
       text-shadow: 0 0 12px rgba(249, 87, 127, 0.45);
+    }
+    .nav-toggle {
+      display: none;
+      background: transparent;
+      border: 1px solid var(--border-card);
+      border-radius: 8px;
+      width: 44px;
+      height: 44px;
+      min-width: 44px;
+      min-height: 44px;
+      padding: 0;
+      cursor: pointer;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 5px;
+      box-sizing: border-box;
+      transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+      color: var(--strawberry-100);
+      -webkit-tap-highlight-color: transparent;
+    }
+    .nav-toggle:hover {
+      background: rgba(255, 122, 156, 0.1);
+      border-color: var(--strawberry-400);
+    }
+    .nav-toggle:focus-visible {
+      outline: none;
+      border-color: var(--strawberry-400);
+      box-shadow: 0 0 0 2px rgba(249, 87, 127, 0.35);
+    }
+    .hamburger-bar {
+      display: block;
+      width: 22px;
+      height: 2px;
+      background-color: var(--strawberry-50);
+      border-radius: 2px;
+      transition: transform 0.25s ease, opacity 0.25s ease;
+    }
+    .nav-toggle.active .hamburger-bar:nth-child(1),
+    .nav-toggle[aria-expanded="true"] .hamburger-bar:nth-child(1) {
+      transform: translateY(7px) rotate(45deg);
+      background-color: var(--strawberry-400);
+    }
+    .nav-toggle.active .hamburger-bar:nth-child(2),
+    .nav-toggle[aria-expanded="true"] .hamburger-bar:nth-child(2) {
+      opacity: 0;
+    }
+    .nav-toggle.active .hamburger-bar:nth-child(3),
+    .nav-toggle[aria-expanded="true"] .hamburger-bar:nth-child(3) {
+      transform: translateY(-7px) rotate(-45deg);
+      background-color: var(--strawberry-400);
     }
     .nav-links {
       display: flex;
@@ -136,26 +188,47 @@
       text-decoration: none;
       font-size: 0.95rem;
       font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      min-height: 44px;
+      padding: 0.5rem 0.85rem;
+      border-radius: 8px;
+      box-sizing: border-box;
       transition: all 0.2s ease;
     }
-    .nav-links a:hover, .nav-links a.active {
+    .nav-links a:hover,
+    .nav-links a.active {
       color: var(--strawberry-50);
       text-shadow: 0 0 10px rgba(249, 87, 127, 0.35);
     }
-    .lang-switcher select {
+    .nav-links .btn {
+      min-height: 44px;
+      font-size: 0.875rem;
+    }
+    .nav-links .btn-primary {
+      color: #ffffff;
+    }
+    .nav-links .btn-outline {
+      color: var(--strawberry-100);
+    }
+    .lang-switcher select,
+    #globalLangSelect {
       background: rgba(42, 14, 27, 0.7);
       border: 1px solid var(--border-card);
       color: var(--strawberry-100);
-      padding: 0.45rem 0.85rem;
+      min-height: 44px;
+      padding: 0.5rem 0.85rem;
       border-radius: 8px;
-      font-size: 0.85rem;
+      box-sizing: border-box;
+      font-size: 0.875rem;
       font-family: var(--font-sans);
       font-weight: 500;
       cursor: pointer;
       outline: none;
       transition: border-color 0.2s ease, box-shadow 0.2s ease;
     }
-    .lang-switcher select:focus {
+    .lang-switcher select:focus,
+    #globalLangSelect:focus {
       border-color: var(--strawberry-400);
       box-shadow: 0 0 0 2px rgba(249, 87, 127, 0.25);
     }
@@ -180,6 +253,9 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      min-height: 44px;
+      min-width: 44px;
+      box-sizing: border-box;
       gap: 0.5rem;
       padding: 0.65rem 1.35rem;
       border-radius: 10px;
@@ -190,6 +266,121 @@
       cursor: pointer;
       border: none;
       transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .form-control {
+      min-height: 44px;
+      box-sizing: border-box;
+    }
+
+    /* Desktop Parity (> 768px) */
+    @media (min-width: 769px) {
+      .nav-toggle {
+        display: none;
+      }
+      .nav-links {
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+      }
+      .navbar {
+        padding: 1.15rem 2.25rem;
+      }
+    }
+
+    /* Mobile Breakpoint (<= 768px) */
+    @media (max-width: 768px) {
+      .navbar {
+        padding: 0.85rem 1.15rem;
+      }
+      .nav-toggle {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        gap: 5px;
+        width: 44px;
+        height: 44px;
+        padding: 9px;
+        background: transparent;
+        border: 1px solid var(--border-card);
+        border-radius: 8px;
+        cursor: pointer;
+        box-sizing: border-box;
+      }
+      .hamburger-bar {
+        width: 22px;
+        height: 2px;
+        background-color: var(--strawberry-50);
+        border-radius: 2px;
+        transition: transform 0.25s ease, opacity 0.25s ease;
+      }
+      .nav-toggle.active .hamburger-bar:nth-child(1),
+      .nav-toggle[aria-expanded="true"] .hamburger-bar:nth-child(1) {
+        transform: translateY(7px) rotate(45deg);
+        background-color: var(--strawberry-400);
+      }
+      .nav-toggle.active .hamburger-bar:nth-child(2),
+      .nav-toggle[aria-expanded="true"] .hamburger-bar:nth-child(2) {
+        opacity: 0;
+      }
+      .nav-toggle.active .hamburger-bar:nth-child(3),
+      .nav-toggle[aria-expanded="true"] .hamburger-bar:nth-child(3) {
+        transform: translateY(-7px) rotate(-45deg);
+        background-color: var(--strawberry-400);
+      }
+      .nav-links {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: rgba(13, 4, 7, 0.96);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border-bottom: 1px solid var(--border-color);
+        box-shadow: 0 16px 32px rgba(0, 0, 0, 0.6);
+        flex-direction: column;
+        align-items: stretch;
+        padding: 1.5rem;
+        gap: 1rem;
+        z-index: 99;
+      }
+      .nav-links.open {
+        display: flex;
+      }
+      .nav-links a,
+      .nav-links .btn {
+        width: 100%;
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.75rem 1rem;
+        font-size: 1rem;
+        box-sizing: border-box;
+      }
+      .lang-switcher {
+        width: 100%;
+        margin-top: 0.5rem;
+      }
+      .lang-switcher select,
+      #globalLangSelect {
+        width: 100%;
+        min-height: 44px;
+        font-size: 0.95rem;
+        text-align: center;
+      }
+    }
+
+    /* Container and Footer Responsive Padding (<= 600px) */
+    @media (max-width: 600px) {
+      .main-container {
+        padding: 1.5rem 1rem;
+      }
+      .footer {
+        padding: 1.5rem 1rem;
+        text-align: center;
+      }
     }
     .btn-primary {
       background: var(--primary-gradient);
@@ -241,23 +432,29 @@
 
   <!-- Navigation -->
   {% block navbar %}
-  <nav class="navbar">
+  <nav class="navbar" id="mainNavbar">
     <a href="/" class="nav-brand">JOB<span>VIS</span></a>
 
-    <div class="nav-links">
+    <button type="button" class="nav-toggle" id="navToggle" aria-label="Toggle navigation" aria-expanded="false" aria-controls="navLinks" onclick="toggleMobileNav()">
+      <span class="hamburger-bar"></span>
+      <span class="hamburger-bar"></span>
+      <span class="hamburger-bar"></span>
+    </button>
+
+    <div class="nav-links" id="navLinks">
       {% if current_user %}
         <a href="/feed">{{ t.get('nav_feed', 'Feed') }}</a>
         <a href="/profile">{{ t.get('nav_profile', 'Profile') }}</a>
         <a href="/settings">{{ t.get('nav_settings', 'Settings') }}</a>
-        <a href="/auth/logout" class="btn btn-outline" style="padding: 0.4rem 0.85rem; font-size: 0.85rem;">{{ t.get('nav_logout', 'Logout') }}</a>
+        <a href="/auth/logout" class="btn btn-outline" style="min-height: 44px; padding: 0.5rem 1rem; font-size: 0.875rem;">{{ t.get('nav_logout', 'Logout') }}</a>
       {% else %}
         <a href="/">{{ t.get('nav_home', 'Home') }}</a>
-        <a href="/login" class="btn btn-primary" style="padding: 0.45rem 1.15rem; font-size: 0.875rem;">{{ t.get('nav_login', 'Sign In') }}</a>
+        <a href="/login" class="btn btn-primary" style="min-height: 44px; padding: 0.5rem 1.25rem; font-size: 0.9rem;">{{ t.get('nav_login', 'Sign In') }}</a>
       {% endif %}
 
       <!-- Language Selector -->
       <div class="lang-switcher">
-        <select id="globalLangSelect" onchange="switchLanguage(this.value)">
+        <select id="globalLangSelect" onchange="switchLanguage(this.value)" style="min-height: 44px; padding: 0.5rem 0.85rem;" aria-label="Select Language">
           <option value="de" {% if lang == 'de' %}selected{% endif %}>Deutsch (DE)</option>
           <option value="en" {% if lang == 'en' %}selected{% endif %}>English (EN)</option>
           <option value="uk" {% if lang == 'uk' %}selected{% endif %}>Українська (UK)</option>
@@ -279,6 +476,60 @@
   {% endblock %}
 
   <script>
+    function toggleMobileNav() {
+      const forceState = arguments.length > 0 ? arguments[0] : undefined;
+      const navToggle = document.getElementById('navToggle');
+      const navLinks = document.getElementById('navLinks');
+      if (!navToggle || !navLinks) return;
+
+      const isOpen = typeof forceState === 'boolean'
+        ? navLinks.classList.toggle('open', forceState)
+        : navLinks.classList.toggle('open');
+
+      if (isOpen) {
+        navToggle.classList.add('active');
+        navToggle.setAttribute('aria-expanded', 'true');
+      } else {
+        navToggle.classList.remove('active');
+        navToggle.setAttribute('aria-expanded', 'false');
+      }
+    }
+
+    function closeMobileNav() {
+      toggleMobileNav(false);
+    }
+
+    document.addEventListener('click', function(event) {
+      const navToggle = document.getElementById('navToggle');
+      const navLinks = document.getElementById('navLinks');
+      if (!navToggle || !navLinks) return;
+
+      if (navLinks.classList.contains('open')) {
+        if (!navLinks.contains(event.target) && !navToggle.contains(event.target)) {
+          closeMobileNav();
+        }
+      }
+    });
+
+    document.addEventListener('keydown', function(event) {
+      if (event.key === 'Escape' || event.key === 'Esc') {
+        const navLinks = document.getElementById('navLinks');
+        if (navLinks && navLinks.classList.contains('open')) {
+          closeMobileNav();
+          const navToggle = document.getElementById('navToggle');
+          if (navToggle) {
+            navToggle.focus();
+          }
+        }
+      }
+    });
+
+    window.addEventListener('resize', function() {
+      if (window.innerWidth > 768) {
+        closeMobileNav();
+      }
+    });
+
     async function switchLanguage(newLang) {
       try {
         const resp = await fetch('/api/settings/language', {
