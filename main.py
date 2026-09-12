@@ -24,9 +24,8 @@ if os.getenv("ENVIRONMENT") != "test":
         dsn=settings.SENTRY_DSN,
         send_default_pii=True,
         enable_logs=True,
-        traces_sample_rate=1.0,
-        profile_session_sample_rate=1.0,
-        profile_lifecycle="trace",
+        traces_sample_rate=0.1,
+        profile_session_sample_rate=0.0,
     )
 
 # Setup application logging
