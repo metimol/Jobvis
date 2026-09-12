@@ -311,22 +311,29 @@
   }
   .nav-spacer { flex: 1; }
 
-  /* Language mini-switcher */
+  /* Language switcher */
   .wizard-lang {
     position: absolute;
     top: 1rem;
     right: 1.5rem;
+    z-index: 10;
   }
   .wizard-lang select {
-    background: rgba(42,14,27,0.7);
+    background: rgba(42, 14, 27, 0.7);
     border: 1px solid var(--border-card);
     color: var(--strawberry-100);
-    padding: 0.4rem 0.7rem;
+    padding: 0.45rem 0.85rem;
     border-radius: 8px;
-    font-size: 0.8rem;
+    font-size: 0.85rem;
     font-family: var(--font-sans);
+    font-weight: 500;
     cursor: pointer;
     outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  .wizard-lang select:focus {
+    border-color: var(--strawberry-400);
+    box-shadow: 0 0 0 2px rgba(249, 87, 127, 0.25);
   }
 
   /* CV analysis results */
@@ -397,12 +404,12 @@
 {% block content %}
 <div class="wizard-container" id="onboardingWizard">
   <!-- Language switcher -->
-  <div class="wizard-lang">
-    <select onchange="window.saveStepProgress ? window.saveStepProgress(true).finally(() => switchLanguage(this.value)) : switchLanguage(this.value)">
-      <option value="de" {% if lang == 'de' %}selected{% endif %}>DE</option>
-      <option value="en" {% if lang == 'en' %}selected{% endif %}>EN</option>
-      <option value="uk" {% if lang == 'uk' %}selected{% endif %}>UK</option>
-      <option value="ru" {% if lang == 'ru' %}selected{% endif %}>RU</option>
+  <div class="wizard-lang lang-switcher">
+    <select id="onboardingLangSelect" onchange="window.saveStepProgress ? window.saveStepProgress(true).finally(() => switchLanguage(this.value)) : switchLanguage(this.value)">
+      <option value="de" {% if lang == 'de' %}selected{% endif %}>Deutsch</option>
+      <option value="en" {% if lang == 'en' %}selected{% endif %}>English</option>
+      <option value="uk" {% if lang == 'uk' %}selected{% endif %}>Українська</option>
+      <option value="ru" {% if lang == 'ru' %}selected{% endif %}>Русский</option>
     </select>
   </div>
 
