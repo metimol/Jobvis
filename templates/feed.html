@@ -55,6 +55,8 @@
     cursor: pointer;
     outline: none;
     transition: all 0.25s ease;
+    min-height: 44px;
+    box-sizing: border-box;
   }
   .sort-select:hover, .sort-select:focus {
     border-color: var(--strawberry-400);
@@ -68,8 +70,11 @@
     background: rgba(255, 245, 247, 0.04);
     border: 1px solid var(--border-card);
     color: var(--strawberry-300);
-    width: 34px;
-    height: 34px;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    box-sizing: border-box;
     border-radius: 10px;
     display: inline-flex;
     align-items: center;
@@ -95,6 +100,8 @@
     font-weight: 600;
     cursor: pointer;
     transition: all 0.25s ease;
+    min-height: 44px;
+    box-sizing: border-box;
   }
   .filter-btn.active {
     background: var(--primary-gradient);
@@ -167,6 +174,11 @@
     flex-wrap: wrap;
     gap: 0.75rem;
   }
+  .job-actions-btn-group {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+  }
   .empty-state {
     text-align: center;
     padding: 5rem 2rem;
@@ -175,6 +187,58 @@
     border: 1px solid var(--border-card);
     backdrop-filter: blur(14px);
     box-shadow: 0 12px 36px -10px rgba(0, 0, 0, 0.5);
+  }
+  @media (max-width: 600px) {
+    .feed-controls {
+      width: 100%;
+      display: flex;
+      gap: 0.5rem;
+    }
+    .filter-btn {
+      flex: 1;
+      padding: 0.65rem 0.5rem;
+      text-align: center;
+    }
+    .feed-toolbar {
+      width: 100%;
+    }
+    .sort-control {
+      width: 100%;
+      justify-content: space-between;
+      margin-left: 0;
+    }
+    .job-card {
+      padding: 1.25rem 1rem;
+    }
+    .job-card-top {
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+    .job-actions {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.75rem;
+    }
+    .job-actions-btn-group {
+      width: 100%;
+      display: flex;
+      gap: 0.75rem;
+    }
+    .job-actions-btn-group .btn,
+    .job-actions-btn-group button {
+      flex: 1;
+      min-height: 44px;
+      text-align: center;
+      justify-content: center;
+    }
+    .job-view-btn,
+    .job-actions .btn-primary {
+      width: 100%;
+      min-height: 44px;
+      text-align: center;
+      justify-content: center;
+      display: inline-flex;
+    }
   }
 </style>
 {% endblock %}
@@ -309,16 +373,16 @@
           </div>
 
           <div class="job-actions">
-            <div style="display: flex; gap: 0.65rem;">
-              <button class="btn btn-outline" style="padding: 0.45rem 0.95rem; font-size: 0.875rem;" onclick="updateStatus('${item.id}', '${item.status === 'saved' ? 'new' : 'saved'}')">
+            <div class="job-actions-btn-group" style="display: flex; gap: 0.75rem;">
+              <button class="btn btn-outline" style="min-height: 44px; padding: 0.5rem 1rem; box-sizing: border-box; font-size: 0.875rem;" onclick="updateStatus('${item.id}', '${item.status === 'saved' ? 'new' : 'saved'}')">
                 ${item.status === 'saved' ? '★ Saved' : '☆ {{ t.get("mark_saved", "Save") }}'}
               </button>
-              <button class="btn btn-outline" style="padding: 0.45rem 0.95rem; font-size: 0.875rem; color: var(--strawberry-300);" onclick="updateStatus('${item.id}', 'dismissed')">
+              <button class="btn btn-outline" style="min-height: 44px; padding: 0.5rem 1rem; box-sizing: border-box; font-size: 0.875rem; color: var(--strawberry-300);" onclick="updateStatus('${item.id}', 'dismissed')">
                 ✕ {{ t.get("mark_dismissed", "Dismiss") }}
               </button>
             </div>
             ${item.external_url ? `
-              <a href="${escapeHtml(item.external_url)}" target="_blank" rel="noopener noreferrer" class="btn btn-primary" style="padding: 0.45rem 1.15rem; font-size: 0.875rem;">
+              <a href="${escapeHtml(item.external_url)}" target="_blank" rel="noopener noreferrer" class="btn btn-primary job-view-btn" style="min-height: 44px; padding: 0.5rem 1rem; box-sizing: border-box; font-size: 0.875rem;">
                 {{ t.get("view_on_jobboerse", "View on Arbeitsagentur") }} ↗
               </a>
             ` : ''}
@@ -327,7 +391,6 @@
       `;
     }).join('');
   }
-
   async function loadFeed(statusFilter, btnElem) {
     if (btnElem) {
       document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));

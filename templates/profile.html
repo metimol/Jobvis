@@ -50,8 +50,9 @@
     border: 1px solid var(--border-card);
     border-radius: 10px;
     color: var(--strawberry-50);
-    font-size: 0.95rem;
+    font-size: 1rem;
     font-family: var(--font-sans);
+    min-height: 44px;
     box-sizing: border-box;
     transition: all 0.2s ease;
   }
@@ -97,6 +98,29 @@
   input[type="range"] {
     accent-color: var(--strawberry-500);
     cursor: pointer;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--strawberry-500);
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--strawberry-500);
+    cursor: pointer;
+    border: none;
+  }
+
+  @media (max-width: 600px) {
+    .card {
+      padding: 1.25rem 1rem;
+    }
   }
 </style>
 {% endblock %}

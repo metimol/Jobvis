@@ -34,8 +34,9 @@
     border: 1px solid var(--border-card);
     border-radius: 10px;
     color: var(--strawberry-50);
-    font-size: 0.95rem;
+    font-size: 1rem;
     font-family: var(--font-sans);
+    min-height: 44px;
     box-sizing: border-box;
     transition: all 0.2s ease;
   }
@@ -66,6 +67,20 @@
     background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%);
     box-shadow: 0 6px 20px rgba(225, 29, 72, 0.55);
     transform: translateY(-2px);
+  }
+
+  @media (max-width: 600px) {
+    .card {
+      padding: 1.25rem 1rem;
+    }
+    #settingsLangSelect {
+      max-width: 100% !important;
+      min-height: 44px;
+    }
+    .btn {
+      width: 100%;
+      min-height: 44px;
+    }
   }
 </style>
 {% endblock %}

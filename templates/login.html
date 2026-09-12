@@ -65,6 +65,9 @@
     font-family: var(--font-sans);
     text-decoration: none;
     transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    width: 100%;
+    min-height: 48px;
+    box-sizing: border-box;
   }
   .oauth-btn-google {
     background: #ffffff;
@@ -87,6 +90,12 @@
     border-color: var(--strawberry-400);
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(249, 87, 127, 0.2);
+  }
+  @media (max-width: 480px) {
+    .auth-card {
+      padding: 2rem 1.25rem;
+      border-radius: 16px;
+    }
   }
 </style>
 {% endblock %}
