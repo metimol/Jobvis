@@ -140,38 +140,55 @@ class MatchingSchedulerService:
             # Generate optimal BA search parameters from natural language goals and CV profile
             from app.services.query_generator import generate_search_query
 
-            search_params = await generate_search_query(
+            search_queries = await generate_search_query(
                 goals=profile.goals if profile else None, cv_profile=cv_analysis, user_prefs=profile
             )
 
-            query = search_params.was or ""
-            location = search_params.wo or (
-                profile.location if profile and profile.location else ""
-            )
-            radius = profile.radius_km if profile and profile.radius_km else 25
-            arbeitszeit = search_params.arbeitszeit or (
-                profile.desired_job_type
-                if profile and profile.desired_job_type in ["vz", "tz", "mj", "ho"]
-                else None
-            )
-            angebotsart = search_params.angebotsart or 1
-
-            # Query Arbeitsagentur
+            # Query Arbeitsagentur across all generated targeted queries
             own_client = False
             client = ba_client
             if client is None:
                 client = ArbeitsagenturClient()
                 own_client = True
 
+            raw_listings = []
+            last_error: Exception | None = None
             try:
-                raw_listings = await client.search_jobs(
-                    query=query,
-                    location=location,
-                    radius_km=radius,
-                    arbeitszeit=arbeitszeit,
-                    angebotsart=angebotsart,
-                    size=25,
-                )
+                queries_to_run = list(search_queries) if search_queries else [None]
+                successful_queries = 0
+                for params in queries_to_run:
+                    query = (params.was if params else None) or ""
+                    location = (params.wo if params else None) or (
+                        profile.location if profile and profile.location else ""
+                    )
+                    radius = profile.radius_km if profile and profile.radius_km else 25
+                    arbeitszeit = (params.arbeitszeit if params else None) or (
+                        profile.desired_job_type
+                        if profile and profile.desired_job_type in ["vz", "tz", "mj", "ho"]
+                        else None
+                    )
+                    angebotsart = (params.angebotsart if params else None) or 1
+
+                    try:
+                        batch_listings = await client.search_jobs(
+                            query=query,
+                            location=location,
+                            radius_km=radius,
+                            arbeitszeit=arbeitszeit,
+                            angebotsart=angebotsart,
+                            size=25,
+                        )
+                        raw_listings.extend(batch_listings)
+                        successful_queries += 1
+                    except Exception as q_err:
+                        last_error = q_err
+                        logger.warning(
+                            "Failed querying jobs for '%s' for user %s: %s", query, user_id, q_err
+                        )
+
+                # If all queries failed, raise the error so scheduler registers sync failure
+                if successful_queries == 0 and last_error is not None:
+                    raise last_error
             finally:
                 if own_client and hasattr(client, "aclose"):
                     await client.aclose()

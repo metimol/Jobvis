@@ -7,16 +7,24 @@ from app.services.oauth import (
     verify_session_token,
 )
 from app.services.query_generator import (
+    BAQueryBatch,
+    BAQueryList,
     BAQueryParams,
+    generate_ba_queries,
     generate_ba_query,
+    generate_search_queries,
     generate_search_query,
 )
 
 __all__ = [
+    "BAQueryBatch",
+    "BAQueryList",
     "BAQueryParams",
     "OAuthService",
     "create_session_token",
+    "generate_ba_queries",
     "generate_ba_query",
+    "generate_search_queries",
     "generate_search_query",
     "oauth_service",
     "verify_session_token",

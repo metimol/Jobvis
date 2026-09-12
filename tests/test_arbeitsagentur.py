@@ -1176,38 +1176,46 @@ async def test_llm_query_markdown_code_block_and_none_string_sanitization():
 @pytest.mark.asyncio
 async def test_seamless_empty_and_missing_goals():
     """Verify empty or None goals seamlessly fall back to CV skills and preferences without invoking LLM."""
-    # Subtest 1: None goals
+    # Subtest 1: None goals -> generates 2 targeted queries from CV skills
     res_none = await generate_search_query(
         goals=None,
         cv_profile={"skills": ["Elektriker", "SPS-Programmierung"], "experience_years": 4.0},
         user_prefs={"location": "Hamburg", "desired_job_type": "vz"},
         llm=None,
     )
-    assert res_none.was == "Elektriker SPS-Programmierung"
+    assert len(res_none) == 2
+    assert res_none[0].was == "Elektriker"
+    assert res_none[1].was == "SPS-Programmierung"
     assert res_none.wo == "Hamburg"
     assert res_none.arbeitszeit == "vz"
     assert res_none.angebotsart == 1
 
-    # Subtest 2: Empty string goals
+    # Subtest 2: Empty string goals -> generates 2 targeted queries from CV skills
     res_empty = await generate_search_query(
         goals="   ",
         cv_profile={"skills": ["Koch", "Gastronomie"]},
         user_prefs={"location": "Dresden", "desired_job_type": "tz"},
         llm=None,
     )
+    assert len(res_empty) == 2
     assert "Koch" in res_empty.was
+    assert res_empty[0].was == "Koch"
+    assert res_empty[1].was == "Gastronomie"
     assert res_empty.wo == "Dresden"
     assert res_empty.arbeitszeit == "tz"
     assert res_empty.angebotsart == 1
 
-    # Subtest 3: No CV skills, only keywords
+    # Subtest 3: No CV skills, only keywords -> generates 2 targeted queries from keywords
     res_kw = await generate_search_query(
         goals="",
         cv_profile={"skills": [], "keywords": ["Pflegefachkraft", "Geriatrie"]},
         user_prefs={"location": "Bremen", "desired_job_type": "mj"},
         llm=None,
     )
+    assert len(res_kw) == 2
     assert "Pflegefachkraft" in res_kw.was
+    assert res_kw[0].was == "Pflegefachkraft"
+    assert res_kw[1].was == "Geriatrie"
     assert res_kw.wo == "Bremen"
     assert res_kw.arbeitszeit == "mj"
     assert res_kw.angebotsart == 1
@@ -1344,3 +1352,196 @@ async def test_convenience_helpers_and_alias():
     assert params.get("arbeitszeit") == "vz"
     assert params.get("nonexistent", "fallback") == "fallback"
     assert generate_ba_query is generate_search_query
+    from app.services.query_generator import (
+        BAQueryList,
+        generate_ba_queries,
+        generate_search_queries,
+    )
+
+    assert generate_search_queries is generate_search_query
+    assert generate_ba_queries is generate_search_query
+
+    q_list = BAQueryList(
+        [params, BAQueryParams(was="Developer", wo="Hamburg", arbeitszeit="tz", angebotsart=1)]
+    )
+    assert len(q_list) == 2
+    assert q_list.was == "Tester"
+    assert q_list.wo == "Berlin"
+    assert q_list["was"] == "Tester"
+    assert "was" in q_list
+    assert len(q_list.to_dict_list()) == 2
+    assert q_list.to_dict_list()[1]["was"] == "Developer"
+
+
+@pytest.mark.asyncio
+async def test_llm_query_batch_multiple_queries():
+    """Verify LLM generating a batch of 2-5 distinct targeted queries."""
+    mock_response = json.dumps(
+        {
+            "queries": [
+                {
+                    "was": "Python Entwickler",
+                    "wo": "Berlin",
+                    "arbeitszeit": "vz",
+                    "angebotsart": 1,
+                },
+                {
+                    "was": "Backend Developer",
+                    "wo": "Berlin",
+                    "arbeitszeit": "vz",
+                    "angebotsart": 1,
+                },
+                {
+                    "was": "Data Engineer",
+                    "wo": "Berlin",
+                    "arbeitszeit": "vz",
+                    "angebotsart": 1,
+                },
+            ]
+        }
+    )
+    mock_llm = FakeListLLM(responses=[mock_response])
+
+    res = await generate_search_query(
+        goals="I want to work as a backend python or data engineer",
+        cv_profile={"skills": ["Python", "FastAPI", "SQL", "Docker"], "experience_years": 4.0},
+        user_prefs={"location": "Berlin", "desired_job_type": "vz"},
+        llm=mock_llm,
+    )
+
+    assert len(res) == 3
+    assert res[0].was == "Python Entwickler"
+    assert res[1].was == "Backend Developer"
+    assert res[2].was == "Data Engineer"
+    # Backward compatible attributes refer to primary query
+    assert res.was == "Python Entwickler"
+    assert res.wo == "Berlin"
+    assert res.arbeitszeit == "vz"
+    assert res.angebotsart == 1
+    # Check to_dict_list helper
+    dict_list = res.to_dict_list()
+    assert len(dict_list) == 3
+    assert [d["was"] for d in dict_list] == [
+        "Python Entwickler",
+        "Backend Developer",
+        "Data Engineer",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_heuristic_generates_2_to_5_queries():
+    """Verify heuristic extractor produces 2 to 5 targeted queries covering goals and CV skills."""
+    res = await generate_search_query(
+        goals="I want a minijob in retail and marketing",
+        cv_profile={"skills": ["Kundenservice", "Verkauf", "Kasse"], "keywords": ["Social Media"]},
+        user_prefs={"location": "Frankfurt", "desired_job_type": "mj"},
+        llm=None,
+    )
+
+    assert len(res) >= 2
+    assert len(res) <= 5
+    was_list = [q.was for q in res]
+    # Primary queries from goals
+    assert "Einzelhandel" in was_list
+    assert "Marketing" in was_list
+    # Additional queries from skills
+    assert any(s in was_list for s in ["Kundenservice", "Verkauf", "Kasse"])
+    assert all(q.wo == "Frankfurt" for q in res)
+    assert all(q.arbeitszeit == "mj" for q in res)
+
+
+@pytest.mark.asyncio
+async def test_scheduler_integration_with_multi_query():
+    """Verify scheduler queries BA API for each generated targeted query and deduplicates jobs."""
+    from unittest.mock import MagicMock
+
+    mock_db = AsyncMock()
+    mock_db.add = MagicMock()
+    mock_db.commit = AsyncMock()
+    mock_db.flush = AsyncMock()
+    mock_db.rollback = AsyncMock()
+
+    user_id = "test-user-multi-query"
+    user = User(id=user_id, email="test-user-multi@example.com")
+    profile = Profile(
+        user_id=user_id,
+        goals="Software Entwickler oder DevOps",
+        location="Berlin",
+        radius_km=25,
+        desired_job_type="vz",
+        german_level="B2",
+        onboarding_completed=True,
+        onboarding_step=8,
+    )
+    cv = CVAnalysis(
+        user_id=user_id,
+        raw_text="Python DevOps engineer",
+        skills=["Python", "Docker", "DevOps"],
+        experience_years=3.0,
+    )
+
+    mock_result = MagicMock()
+    mock_scalars = MagicMock()
+    mock_result.scalars.return_value = mock_scalars
+    lookup_queue = [user, profile, cv]
+    mock_scalars.first.side_effect = lambda: lookup_queue.pop(0) if lookup_queue else None
+    mock_scalars.all.return_value = []
+    mock_db.execute.return_value = mock_result
+
+    # Mock BA client returns different listings for each query call
+    job1 = BAJobListing(
+        ref_nr="REF-PYTHON-01",
+        title="Python Developer",
+        employer="Tech Corp",
+        location="Berlin",
+        working_time="vz",
+    )
+    job2 = BAJobListing(
+        ref_nr="REF-DEVOPS-02",
+        title="DevOps Engineer",
+        employer="Cloud Systems",
+        location="Berlin",
+        working_time="vz",
+    )
+    # Overlapping job returned in another query batch
+    job1_dup = BAJobListing(
+        ref_nr="REF-PYTHON-01",
+        title="Python Developer",
+        employer="Tech Corp",
+        location="Berlin",
+        working_time="vz",
+    )
+
+    mock_ba = AsyncMock()
+    mock_ba.search_jobs.side_effect = [
+        [job1],
+        [job2],
+        [job1_dup],
+    ]
+
+    mock_llm_response = json.dumps(
+        {
+            "queries": [
+                {"was": "Python Entwickler", "wo": "Berlin", "arbeitszeit": "vz", "angebotsart": 1},
+                {"was": "DevOps Engineer", "wo": "Berlin", "arbeitszeit": "vz", "angebotsart": 1},
+                {"was": "Backend Developer", "wo": "Berlin", "arbeitszeit": "vz", "angebotsart": 1},
+            ]
+        }
+    )
+    mock_llm = FakeListLLM(responses=[mock_llm_response])
+
+    async def mock_gen(*args, **kwargs):
+        kwargs["llm"] = mock_llm
+        return await generate_search_query(**kwargs)
+
+    with patch("app.services.query_generator.generate_search_query", side_effect=mock_gen):
+        scheduler = MatchingSchedulerService()
+        result = await scheduler.run_sync_for_user(user_id, mock_db, ba_client=mock_ba)
+
+        assert result["status"] == "success"
+        # 3 calls made (one per query)
+        assert mock_ba.search_jobs.await_count == 3
+        # 3 raw jobs scraped across all batches
+        assert result["scraped"] == 3
+        # Deduplicated to 2 unique jobs
+        assert result["deduped"] == 2

@@ -8,19 +8,21 @@ with resilient heuristic fallback.
 
 import asyncio
 import hashlib
+import json
 import logging
 import re
 import time
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
+from pydantic._internal._model_construction import ModelMetaclass
 
 from app.config import settings
 
 logger = logging.getLogger(__name__)
 
 # In-memory TTL cache for LLM query results (avoids redundant Gemini calls)
-_query_cache: dict[str, tuple["BAQueryParams", float]] = {}
+_query_cache: dict[str, tuple["BAQueryList", float]] = {}
 _QUERY_CACHE_TTL = 300.0  # 5 minutes
 
 # Valid BA API working time options
@@ -137,6 +139,8 @@ STOPWORDS = {
     "stellen",
     "arbeit",
     "beruf",
+    "gesucht",
+    "sucht",
     "möchte",
     "gern",
     "gerne",
@@ -201,14 +205,21 @@ def _clean_arbeitszeit(val: Any) -> str | None:
     )
 
 
-class BAQueryParams(BaseModel):
+class BAQueryParamsMeta(ModelMetaclass):
+    """Metaclass allowing BAQueryList instances to satisfy isinstance(..., BAQueryParams) for backward compatibility."""
+
+    def __instancecheck__(self, instance: Any) -> bool:
+        return isinstance(instance, BAQueryList) or super().__instancecheck__(instance)
+
+
+class BAQueryParams(BaseModel, metaclass=BAQueryParamsMeta):
     """Targeted search parameters for the Bundesagentur für Arbeit Jobsuche API."""
 
     model_config = ConfigDict(extra="ignore")
 
     was: str | None = Field(
         default=None,
-        description="Search term, job title, or German keywords for BA Jobsuche (e.g. 'Einzelhandel Marketing', 'Python Entwickler')",
+        description="Search term, job title, or German keywords for BA Jobsuche (e.g. 'Einzelhandel', 'Python Entwickler')",
     )
     wo: str | None = Field(
         default=None,
@@ -240,6 +251,58 @@ class BAQueryParams(BaseModel):
 
     def get(self, item: str, default: Any = None) -> Any:
         return getattr(self, item, default)
+
+
+class BAQueryBatch(BaseModel):
+    """Batch of 2 to 5 targeted search queries for the Bundesagentur für Arbeit Jobsuche API."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    queries: list[BAQueryParams] = Field(
+        default_factory=list,
+        description="List of 2 to 5 distinct, targeted search queries for the candidate.",
+    )
+
+
+class BAQueryList(list):
+    """List of BAQueryParams with backward-compatible single-query attribute access."""
+
+    @property
+    def was(self) -> str | None:
+        return self[0].was if self else None
+
+    @property
+    def wo(self) -> str | None:
+        return self[0].wo if self else None
+
+    @property
+    def arbeitszeit(self) -> str | None:
+        return self[0].arbeitszeit if self else None
+
+    @property
+    def angebotsart(self) -> int | None:
+        return self[0].angebotsart if self else 1
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert primary query to dictionary suitable for ArbeitsagenturClient search_jobs parameters."""
+        return self[0].to_dict() if self else {}
+
+    def to_dict_list(self) -> list[dict[str, Any]]:
+        """Convert all queries to a list of parameter dictionaries."""
+        return [q.to_dict() for q in self]
+
+    def get(self, item: str, default: Any = None) -> Any:
+        return getattr(self[0], item, default) if self else default
+
+    def __getitem__(self, item: Any) -> Any:
+        if isinstance(item, str):
+            return getattr(self[0], item) if self else None
+        return super().__getitem__(item)
+
+    def __contains__(self, item: Any) -> bool:
+        if isinstance(item, str):
+            return hasattr(self[0], item) if self else False
+        return super().__contains__(item)
 
 
 def _normalize_cv_profile(cv: Any) -> dict[str, Any]:
@@ -284,8 +347,8 @@ def extract_heuristic_query(
     goals: str | None,
     cv_dict: dict[str, Any],
     prefs_dict: dict[str, Any],
-) -> BAQueryParams:
-    """Robust heuristic extraction for BA API search parameters when goals are missing or LLM is offline."""
+) -> BAQueryList:
+    """Robust heuristic extraction for 2 to 5 targeted BA API search parameters."""
     goals_text = (goals or prefs_dict.get("goals") or "").strip()
     goals_lower = goals_text.lower()
 
@@ -370,54 +433,121 @@ def extract_heuristic_query(
     if not wo and arbeitszeit != "ho":
         wo = prefs_dict.get("location") or cv_dict.get("city") or None
 
-    # 4. Search keywords (was)
-    was: str | None = None
+    # 4. Search keywords (was) - collect targeted candidates across goals and CV profile
+    candidates: list[str] = []
+    seen: set[str] = set()
+
+    def _add_candidate(term: str | None) -> None:
+        if not term:
+            return
+        t_clean = term.strip()
+        if t_clean and t_clean.lower() not in seen:
+            seen.add(t_clean.lower())
+            candidates.append(t_clean)
+
+    # Check domain translations first
     if goals_text:
-        # Check domain translations first
-        translated_tokens = []
+        translated_tokens: list[str] = []
         for term, de_term in TERM_TRANSLATIONS.items():
             if re.search(r"\b" + re.escape(term) + r"\b", goals_lower):
-                translated_tokens.append(de_term)
+                if de_term not in translated_tokens:
+                    translated_tokens.append(de_term)
 
-        if translated_tokens:
-            was = " ".join(dict.fromkeys(translated_tokens))
-        else:
+        for t in translated_tokens:
+            _add_candidate(t)
+
+        if not candidates:
             # Tokenize and filter stopwords (supports unicode/Cyrillic words)
             tokens = re.findall(r"[\w\-]+", goals_text)
             filtered = [t for t in tokens if t.lower() not in STOPWORDS and len(t) > 2]
-            if filtered:
-                was = " ".join(filtered[:3])
+            for t in filtered:
+                _add_candidate(t)
 
-    # Fallback to CV skills or keywords if was could not be determined from goals
-    if not was:
-        skills = cv_dict.get("skills", [])
-        keywords = cv_dict.get("keywords", [])
-        if skills:
-            was = " ".join(skills[:2])
-        elif keywords:
-            was = " ".join(keywords[:2])
+    # Incorporate CV skills
+    for s in cv_dict.get("skills", []):
+        if isinstance(s, str):
+            _add_candidate(s)
 
-    return BAQueryParams(
-        was=was,
-        wo=wo,
-        arbeitszeit=arbeitszeit,
-        angebotsart=angebotsart,
-    )
+    # Incorporate CV keywords
+    for kw in cv_dict.get("keywords", []):
+        if isinstance(kw, str):
+            _add_candidate(kw)
+
+    # Build targeted queries: between 2 and 5 queries when candidates exist
+    selected_candidates = candidates[:5] if candidates else [None]
+    queries = [
+        BAQueryParams(
+            was=cand,
+            wo=wo,
+            arbeitszeit=arbeitszeit,
+            angebotsart=angebotsart,
+        )
+        for cand in selected_candidates
+    ]
+    return BAQueryList(queries)
+
+
+def _parse_llm_output(raw_output: Any) -> list[BAQueryParams]:
+    """Robustly parse LLM output across dicts, batches, raw JSON strings, and lists."""
+    if isinstance(raw_output, BAQueryBatch):
+        return raw_output.queries
+    if isinstance(raw_output, BAQueryParams):
+        return [raw_output]
+
+    raw_text = str(raw_output.content) if hasattr(raw_output, "content") else str(raw_output)
+
+    # Strip markdown fences if present
+    cleaned_text = re.sub(r"^```(?:json)?\s*", "", raw_text.strip(), flags=re.IGNORECASE)
+    cleaned_text = re.sub(r"\s*```$", "", cleaned_text.strip())
+
+    queries: list[BAQueryParams] = []
+    try:
+        data = json.loads(cleaned_text)
+        if isinstance(data, dict):
+            raw_items = (
+                data.get("queries")
+                if "queries" in data and isinstance(data["queries"], list)
+                else [data]
+            )
+            queries = [BAQueryParams(**q) for q in raw_items if isinstance(q, dict)]
+        elif isinstance(data, list):
+            queries = [BAQueryParams(**q) for q in data if isinstance(q, dict)]
+    except Exception:
+        from langchain_core.output_parsers import PydanticOutputParser
+
+        try:
+            batch = PydanticOutputParser(pydantic_object=BAQueryBatch).parse(raw_text)
+            queries = batch.queries
+        except Exception:
+            try:
+                single = PydanticOutputParser(pydantic_object=BAQueryParams).parse(raw_text)
+                queries = [single]
+            except Exception:
+                queries = []
+
+    return queries
 
 
 QUERY_GEN_PROMPT = (
     "You are an expert recruitment and job search query optimization specialist for the German "
     "Bundesagentur für Arbeit (BA) Jobsuche platform.\n"
-    "Given the candidate's natural language career goals and CV profile, generate optimal, targeted search "
-    "parameters ('was', 'wo', 'arbeitszeit', 'angebotsart') for the BA Jobsuche API.\n\n"
+    "Given the candidate's natural language career goals and CV profile, generate 2 to 5 distinct, optimal, "
+    "targeted search queries for the BA Jobsuche API. Each query must have targeted parameters "
+    "('was', 'wo', 'arbeitszeit', 'angebotsart').\n\n"
+    "Why multiple queries:\n"
+    "The BA Jobsuche API uses rigid keyword matching for 'was'. Do NOT combine multiple different roles or skills "
+    "into one query (e.g. avoid 'Einzelhandel Marketing' in a single query). Instead, produce separate queries: "
+    "one for 'Einzelhandel' and one for 'Marketing'. Generate between 2 and 5 targeted queries covering the candidate's "
+    "primary goals, secondary interests, and core CV skills.\n\n"
     "BA API Parameter Rules:\n"
-    "1. 'was' (Beruf / Suchbegriff): Concise German job title or targeted keywords (e.g. 'Einzelhandel Marketing', "
-    "'Python Entwickler', 'Buchhalter'). Translate multilingual goals into German standard professional terms. "
+    "1. 'was' (Beruf / Suchbegriff): Concise German job title or targeted keyword (e.g. 'Python Entwickler', "
+    "'Backend Developer', 'Einzelhandelskaufmann', 'Buchhalter'). Translate multilingual goals into German standard professional terms. "
     "Exclude filler words like 'job', 'suche', 'looking for'.\n"
     "2. 'wo' (Arbeitsort): City or region name if specified in candidate goals or profile, otherwise null.\n"
     "3. 'arbeitszeit': Working time filter: 'vz' (Vollzeit), 'tz' (Teilzeit), 'mj' (Minijob), 'ho' (Homeoffice), "
     "or null if flexible/unspecified.\n"
-    "4. 'angebotsart': Integer 1 for regular employment (standard), 4 for apprenticeship / training (Ausbildung / duales Studium).\n\n"
+    "4. 'angebotsart': Integer 1 for regular employment (standard), 4 for apprenticeship / training (Ausbildung / duales Studium), "
+    "2 for self-employment / freelance.\n\n"
     "Candidate Goals:\n"
     "{goals}\n\n"
     "Candidate Profile Summary:\n"
@@ -436,8 +566,8 @@ async def generate_search_query(
     llm: Any | None = None,
     api_key: Any = _QUERY_GEN_SENTINEL,
     timeout_seconds: float = 100.0,
-) -> BAQueryParams:
-    """Generate optimal Arbeitsagentur API search parameters from natural language goals and CV profile.
+) -> BAQueryList:
+    """Generate 2 to 5 optimal Arbeitsagentur API search queries from natural language goals and CV profile.
 
     Uses LangChain Gemini LLM structured output when available, and gracefully falls back to
     resilient heuristic parameter extraction if LLM is unavailable, offline, or times out.
@@ -452,7 +582,7 @@ async def generate_search_query(
         timeout_seconds: Maximum seconds to wait for LLM invocation before falling back to heuristics.
 
     Returns:
-        BAQueryParams with 'was', 'wo', 'arbeitszeit', and 'angebotsart'.
+        BAQueryList of 2 to 5 BAQueryParams, also supporting direct attribute access for primary query.
     """
     cv_dict = _normalize_cv_profile(cv_profile)
     prefs_dict = _normalize_user_prefs(user_prefs)
@@ -506,14 +636,14 @@ async def generate_search_query(
         from langchain_core.output_parsers import PydanticOutputParser
         from langchain_core.prompts import PromptTemplate
 
-        parser = PydanticOutputParser(pydantic_object=BAQueryParams)
+        parser = PydanticOutputParser(pydantic_object=BAQueryBatch)
         prompt = PromptTemplate(
             template=QUERY_GEN_PROMPT,
             input_variables=["goals", "skills", "experience_years", "location", "job_type"],
             partial_variables={"format_instructions": parser.get_format_instructions()},
         )
 
-        chain = prompt | active_llm | parser
+        chain = prompt | active_llm
 
         prompt_input = {
             "goals": goals_text,
@@ -523,40 +653,54 @@ async def generate_search_query(
             "job_type": prefs_dict.get("desired_job_type") or "Not specified",
         }
 
-        res: BAQueryParams = await asyncio.wait_for(
+        raw_res = await asyncio.wait_for(
             asyncio.shield(chain.ainvoke(prompt_input)),
             timeout=timeout_seconds,
         )
 
-        # Normalize outputs and merge with fallbacks for missing/malformed fields
-        raw_was = _clean_str(res.was)
-        raw_wo = _clean_str(res.wo)
-        clean_arbeitszeit = _clean_arbeitszeit(res.arbeitszeit) or heuristic_params.arbeitszeit
-        clean_angebotsart = (
-            res.angebotsart if res.angebotsart in {1, 2, 4} else heuristic_params.angebotsart
-        )
+        parsed_queries = _parse_llm_output(raw_res)
+        if not parsed_queries:
+            return heuristic_params
 
-        was_val = raw_was or heuristic_params.was
+        heuristic_base = heuristic_params[0] if heuristic_params else None
+        cleaned_list: list[BAQueryParams] = []
 
-        # Intelligent location fallback:
-        # If candidate requested remote / homeoffice and gave no location, respect None across Germany
-        if raw_wo:
-            wo_val = raw_wo
-        elif clean_arbeitszeit == "ho":
-            # For remote, only set location if user explicitly stated a location in goals
-            loc_in_goals = bool(
-                re.search(r"\b(?:in|im\s+raum|around|near)\s+([A-ZÄÖÜ][a-zäöüß]+)", goals_text)
+        for q in parsed_queries:
+            raw_was = _clean_str(q.was)
+            raw_wo = _clean_str(q.wo)
+            clean_arbeitszeit = _clean_arbeitszeit(q.arbeitszeit) or (
+                heuristic_base.arbeitszeit if heuristic_base else None
             )
-            wo_val = heuristic_params.wo if loc_in_goals else None
-        else:
-            wo_val = heuristic_params.wo
+            clean_angebotsart = (
+                q.angebotsart
+                if q.angebotsart in {1, 2, 4}
+                else (heuristic_base.angebotsart if heuristic_base else 1)
+            )
 
-        result = BAQueryParams(
-            was=was_val,
-            wo=wo_val,
-            arbeitszeit=clean_arbeitszeit,
-            angebotsart=clean_angebotsart or 1,
-        )
+            was_val = raw_was or (heuristic_base.was if heuristic_base else None)
+
+            # Intelligent location fallback:
+            # If candidate requested remote / homeoffice and gave no location, respect None across Germany
+            if raw_wo:
+                wo_val = raw_wo
+            elif clean_arbeitszeit == "ho":
+                loc_in_goals = bool(
+                    re.search(r"\b(?:in|im\s+raum|around|near)\s+([A-ZÄÖÜ][a-zäöüß]+)", goals_text)
+                )
+                wo_val = (heuristic_base.wo if heuristic_base else None) if loc_in_goals else None
+            else:
+                wo_val = heuristic_base.wo if heuristic_base else None
+
+            cleaned_list.append(
+                BAQueryParams(
+                    was=was_val,
+                    wo=wo_val,
+                    arbeitszeit=clean_arbeitszeit,
+                    angebotsart=clean_angebotsart or 1,
+                )
+            )
+
+        result = BAQueryList(cleaned_list)
         _query_cache[cache_key] = (result, time.monotonic())
     except (Exception, asyncio.CancelledError) as exc:
         # LLM call is shielded from client disconnects; results are cached to avoid redundant invocations.
@@ -569,5 +713,7 @@ async def generate_search_query(
         return result
 
 
-# Convenience alias
+# Convenience aliases
 generate_ba_query = generate_search_query
+generate_search_queries = generate_search_query
+generate_ba_queries = generate_search_query

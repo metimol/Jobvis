@@ -12,6 +12,9 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     DEBUG: bool = False
 
+    # Error tracking
+    SENTRY_DSN: str = ""
+
     # Database
     DATABASE_URL: str = "sqlite+aiosqlite:///./jobvis.db"
     DB_ECHO: bool = False
