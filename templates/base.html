@@ -8,6 +8,19 @@
   <meta name="color-scheme" content="dark">
   <link rel="icon" type="image/svg+xml" href="/assets/img/favicon.svg">
 
+  <!-- Sentry Configuration & Loader Script -->
+  <script>
+    window.sentryOnLoad = function () {
+      Sentry.init({
+        // 0.0 = DO NOT record normal, healthy browsing sessions
+        replaysSessionSampleRate: 0.0,
+        // 1.0 = ALWAYS record a replay IF an error happens
+        replaysOnErrorSampleRate: 1.0,
+      });
+    };
+  </script>
+  <script src="https://js-de.sentry-cdn.com/be99010965e418e6998f0db02e0f8260.min.js" crossorigin="anonymous"></script>
+
   <!-- Google Fonts: Fraunces (Headings/Display) & Inter (UI/Body) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
