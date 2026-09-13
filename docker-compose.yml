@@ -12,7 +12,7 @@ services:
       - DEBUG=false
       - DATABASE_URL=mysql+aiomysql://jobvis:jobvis_secure_pass@db:3306/jobvis
       - SECRET_KEY=${PROD_SECRET_KEY:-}
-      - SENTRY_DSN=${SENTRY_DSN:-}
+      - SENTRY_KEY=${SENTRY_KEY:-}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
       - GOOGLE_REDIRECT_URI=http://localhost:8000/auth/google/callback

@@ -1,6 +1,8 @@
 """Application configuration module using Pydantic Settings."""
 
+from contextlib import suppress
 from functools import lru_cache
+from urllib.parse import urlparse
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -13,7 +15,7 @@ class Settings(BaseSettings):
     DEBUG: bool = False
 
     # Error tracking
-    SENTRY_DSN: str = ""
+    SENTRY_KEY: str = ""
 
     # Database
     DATABASE_URL: str = "sqlite+aiosqlite:///./jobvis.db"
@@ -66,6 +68,18 @@ class Settings(BaseSettings):
         if self.is_production:
             return True
         return self.SESSION_COOKIE_SECURE
+
+    @property
+    def effective_sentry_key(self) -> str:
+        """Return SENTRY_KEY, extracting the public key if a full URL/DSN is provided."""
+        if not self.SENTRY_KEY:
+            return ""
+        if "://" in self.SENTRY_KEY:
+            with suppress(Exception):
+                parsed = urlparse(self.SENTRY_KEY)
+                if parsed.username:
+                    return parsed.username
+        return self.SENTRY_KEY
 
 
 @lru_cache

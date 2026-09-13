@@ -1111,3 +1111,95 @@ async def test_static_assets_http_resolution():
             assert (
                 resp_dead.status_code == 404
             ), f"Dead asset {dead_url} should return 404 but returned {resp_dead.status_code}"
+
+
+class TestSentryConfigurationAndTemplate:
+    """Audit for dynamic Sentry key integration and zero hardcoded keys in templates."""
+
+    def test_base_html_has_no_hardcoded_sentry_key(self):
+        """Ensure the hardcoded Sentry key is completely absent from base.html."""
+        base_content = (TEMPLATES_DIR / "base.html").read_text(encoding="utf-8")
+        assert "be99010965e418e6998f0db02e0f8260" not in base_content
+        assert "{{ current_sentry_key }}" in base_content or "{{ sentry_key }}" in base_content
+
+    def test_base_html_renders_sentry_script_when_key_provided(self, jinja_env):
+        """Ensure base.html includes Sentry loader script with custom key when sentry_key is given."""
+        template = jinja_env.get_template("base.html")
+        rendered = template.render(
+            sentry_key="custom_test_sentry_key_123",
+            t=I18nService.get_dictionary("de"),
+            lang="de",
+        )
+        assert "https://js-de.sentry-cdn.com/custom_test_sentry_key_123.min.js" in rendered
+        assert "window.sentryOnLoad" in rendered
+
+    def test_base_html_renders_sentry_script_with_callable_key(self, jinja_env):
+        """Ensure base.html evaluates callable sentry_key correctly."""
+        template = jinja_env.get_template("base.html")
+        rendered = template.render(
+            sentry_key=lambda: "callable_key_xyz",
+            t=I18nService.get_dictionary("de"),
+            lang="de",
+        )
+        assert "https://js-de.sentry-cdn.com/callable_key_xyz.min.js" in rendered
+
+    def test_base_html_renders_sentry_script_with_uppercase_env_key(self, jinja_env):
+        """Ensure base.html falls back to SENTRY_KEY if provided."""
+        template = jinja_env.get_template("base.html")
+        rendered = template.render(
+            SENTRY_KEY="uppercase_key_789",
+            t=I18nService.get_dictionary("de"),
+            lang="de",
+        )
+        assert "https://js-de.sentry-cdn.com/uppercase_key_789.min.js" in rendered
+
+    def test_base_html_omits_sentry_script_when_key_absent_or_empty(self, jinja_env):
+        """Ensure base.html does not render Sentry loader if sentry_key is missing or empty."""
+        template = jinja_env.get_template("base.html")
+        # 1. Completely absent
+        rendered_absent = template.render(t=I18nService.get_dictionary("de"), lang="de")
+        assert "js-de.sentry-cdn.com" not in rendered_absent
+        assert "window.sentryOnLoad" not in rendered_absent
+
+        # 2. Empty string
+        rendered_empty = template.render(
+            sentry_key="", t=I18nService.get_dictionary("de"), lang="de"
+        )
+        assert "js-de.sentry-cdn.com" not in rendered_empty
+
+        # 3. None
+        rendered_none = template.render(
+            sentry_key=None, t=I18nService.get_dictionary("de"), lang="de"
+        )
+        assert "js-de.sentry-cdn.com" not in rendered_none
+
+    def test_settings_sentry_key_and_effective_property(self):
+        """Ensure Settings supports SENTRY_KEY, effective_sentry_key, and no SENTRY_DSN exists."""
+        from app.config import Settings
+
+        # Ensure SENTRY_DSN is completely removed from Settings fields
+        assert "SENTRY_DSN" not in Settings.model_fields
+
+        # Plain key
+        s1 = Settings(SENTRY_KEY="explicit_key")
+        assert s1.SENTRY_KEY == "explicit_key"
+        assert s1.effective_sentry_key == "explicit_key"
+        assert not hasattr(s1, "SENTRY_DSN")
+
+        # URL / DSN format extracts public key for effective_sentry_key
+        s2 = Settings(SENTRY_KEY="https://extracted_user@o123.sentry.io/456")
+        assert s2.effective_sentry_key == "extracted_user"
+
+        # Empty when not provided
+        s3 = Settings(SENTRY_KEY="")
+        assert s3.effective_sentry_key == ""
+
+    def test_docker_compose_and_env_example_contain_sentry_key(self):
+        """Verify docker-compose.yml and .env.example expose SENTRY_KEY and zero SENTRY_DSN."""
+        docker_compose_content = (REPO_ROOT / "docker-compose.yml").read_text(encoding="utf-8")
+        assert "SENTRY_KEY=${SENTRY_KEY:-}" in docker_compose_content
+        assert "SENTRY_DSN" not in docker_compose_content
+
+        env_example_content = (REPO_ROOT / ".env.example").read_text(encoding="utf-8")
+        assert "SENTRY_KEY=" in env_example_content
+        assert "SENTRY_DSN" not in env_example_content

@@ -15,25 +15,29 @@ from app.routers import auth, feed, pages, profile
 from app.routers import settings as settings_router
 from app.services.scheduler import scheduler_service
 
-# Load environment variables
-if os.getenv("ENVIRONMENT") != "test":
-    load_dotenv()
-
-    # Initialize Sentry SDK
-    sentry_sdk.init(
-        dsn=settings.SENTRY_DSN,
-        send_default_pii=True,
-        enable_logs=True,
-        traces_sample_rate=0.1,
-        profile_session_sample_rate=0.0,
-    )
-
 # Setup application logging
 logging.basicConfig(
     level=logging.INFO if not settings.DEBUG else logging.DEBUG,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
 logger = logging.getLogger(__name__)
+
+# Load environment variables
+if os.getenv("ENVIRONMENT") != "test":
+    load_dotenv()
+
+    # Initialize Sentry SDK
+    if settings.SENTRY_KEY:
+        try:
+            sentry_sdk.init(
+                dsn=settings.SENTRY_KEY,
+                send_default_pii=True,
+                enable_logs=True,
+                traces_sample_rate=0.1,
+                profile_session_sample_rate=0.0,
+            )
+        except Exception as e:
+            logger.warning("Sentry SDK initialization skipped: %s", e)
 
 
 @asynccontextmanager

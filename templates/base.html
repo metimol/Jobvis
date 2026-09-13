@@ -9,6 +9,9 @@
   <link rel="icon" type="image/svg+xml" href="/assets/img/favicon.svg">
 
   <!-- Sentry Configuration & Loader Script -->
+  {% set raw_sentry_key = sentry_key if sentry_key is defined else (SENTRY_KEY if SENTRY_KEY is defined else "") %}
+  {% set current_sentry_key = (raw_sentry_key() if raw_sentry_key is callable else raw_sentry_key) if raw_sentry_key else "" %}
+  {% if current_sentry_key %}
   <script>
     window.sentryOnLoad = function () {
       Sentry.init({
@@ -19,7 +22,8 @@
       });
     };
   </script>
-  <script src="https://js-de.sentry-cdn.com/be99010965e418e6998f0db02e0f8260.min.js" crossorigin="anonymous"></script>
+  <script src="https://js-de.sentry-cdn.com/{{ current_sentry_key }}.min.js" crossorigin="anonymous"></script>
+  {% endif %}
 
   <!-- Google Fonts: Fraunces (Headings/Display) & Inter (UI/Body) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">

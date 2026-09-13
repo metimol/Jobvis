@@ -28,6 +28,8 @@ def translate_filter(key: str, lang: str = "de") -> str:
 
 
 templates.env.filters["t"] = translate_filter
+templates.env.globals["sentry_key"] = lambda: app_settings.effective_sentry_key
+templates.env.globals["SENTRY_KEY"] = lambda: app_settings.effective_sentry_key
 
 
 async def _check_onboarded(user: User | None, db: AsyncSession) -> bool:
