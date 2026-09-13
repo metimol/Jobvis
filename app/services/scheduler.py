@@ -10,6 +10,7 @@ from apscheduler.triggers.cron import CronTrigger
 from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.database import async_session_maker
 from app.models.job import Job, MatchedJob
 from app.models.profile import CVAnalysis, Profile
@@ -166,6 +167,9 @@ class MatchingSchedulerService:
             try:
                 queries_to_run = list(search_queries) if search_queries else [None]
                 successful_queries = 0
+                max_pages = getattr(settings, "MAX_SCRAPE_PAGES", 5)
+                page_size = getattr(settings, "SCRAPE_PAGE_SIZE", 25)
+
                 for params in queries_to_run:
                     query = (params.was if params else None) or ""
                     location = (params.wo if params else None) or (
@@ -179,22 +183,46 @@ class MatchingSchedulerService:
                     )
                     angebotsart = (params.angebotsart if params else None) or 1
 
-                    try:
-                        batch_listings = await client.search_jobs(
-                            query=query,
-                            location=location,
-                            radius_km=radius,
-                            arbeitszeit=arbeitszeit,
-                            angebotsart=angebotsart,
-                            size=25,
-                        )
-                        raw_listings.extend(batch_listings)
+                    query_succeeded = False
+                    for page_num in range(1, max_pages + 1):
+                        try:
+                            batch_listings = await client.search_jobs(
+                                query=query,
+                                location=location,
+                                radius_km=radius,
+                                arbeitszeit=arbeitszeit,
+                                angebotsart=angebotsart,
+                                page=page_num,
+                                size=page_size,
+                            )
+                            query_succeeded = True
+                            if not batch_listings:
+                                break
+                            raw_listings.extend(batch_listings)
+                            if len(batch_listings) < page_size:
+                                break
+                        except Exception as q_err:
+                            if page_num == 1:
+                                last_error = q_err
+                                logger.warning(
+                                    "Failed querying jobs for '%s' (page %d) for user %s: %s",
+                                    query,
+                                    page_num,
+                                    user_id,
+                                    q_err,
+                                )
+                            else:
+                                logger.warning(
+                                    "Failed querying page %d for '%s' for user %s: %s",
+                                    page_num,
+                                    query,
+                                    user_id,
+                                    q_err,
+                                )
+                            break
+
+                    if query_succeeded:
                         successful_queries += 1
-                    except Exception as q_err:
-                        last_error = q_err
-                        logger.warning(
-                            "Failed querying jobs for '%s' for user %s: %s", query, user_id, q_err
-                        )
 
                 # If all queries failed, raise the error so scheduler registers sync failure
                 if successful_queries == 0 and last_error is not None:

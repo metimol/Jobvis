@@ -773,8 +773,8 @@ class AIJobMatcher:
 
         # Extract user preferences
         if isinstance(user_prefs, dict):
-            user_german = user_prefs.get("german_level", "B1")
-            user_goals = user_prefs.get("goals", "")
+            user_german = user_prefs.get("german_level") or "B1"
+            user_goals = user_prefs.get("goals", "") or ""
         else:
             user_german = getattr(user_prefs, "german_level", "B1") or "B1"
             user_goals = getattr(user_prefs, "goals", "") or ""
@@ -826,7 +826,7 @@ class AIJobMatcher:
             exp_score = 0.85 if candidate_exp >= 2.0 else 0.7
 
         # 3. German Language CEFR factor (20%)
-        user_rank = CEFR_LEVELS.get(user_german.upper(), 3)
+        user_rank = CEFR_LEVELS.get((user_german or "B1").upper(), 3)
         german_score = 0.9
 
         # Check if job requires specific CEFR level

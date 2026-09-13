@@ -2,7 +2,8 @@
 
 import json
 import urllib.parse
-from unittest.mock import AsyncMock, patch
+import uuid
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
@@ -1545,3 +1546,174 @@ async def test_scheduler_integration_with_multi_query():
         assert result["scraped"] == 3
         # Deduplicated to 2 unique jobs
         assert result["deduped"] == 2
+
+
+async def test_scheduler_pagination_up_to_five_pages():
+    """Verify scheduler paginates through results up to 5 pages and stops on the 5th page."""
+    user_id = str(uuid.uuid4())
+    mock_db = AsyncMock()
+    mock_db.add = MagicMock()
+    mock_result = MagicMock()
+    mock_scalars = MagicMock()
+    mock_result.scalars.return_value = mock_scalars
+
+    user = User(id=user_id, email="test_page@example.com")
+    profile = Profile(
+        user_id=user_id,
+        onboarding_completed=True,
+        german_level="B1",
+        search_queries=[{"was": "Software Developer", "wo": "Berlin"}],
+    )
+    call_idx = 0
+
+    def mock_first():
+        nonlocal call_idx
+        call_idx += 1
+        if call_idx == 1:
+            return user
+        if call_idx == 2:
+            return profile
+        return None
+
+    mock_scalars.first.side_effect = mock_first
+    mock_scalars.all.return_value = []
+    mock_db.execute.return_value = mock_result
+
+    def make_page_jobs(page: int) -> list[BAJobListing]:
+        return [
+            BAJobListing(
+                ref_nr=f"PAGE-{page}-JOB-{i}",
+                title=f"Developer Page {page} Job {i}",
+                employer="Tech Co",
+                location="Berlin",
+                working_time="vz",
+                description=f"Job description {page}-{i}",
+            )
+            for i in range(25)
+        ]
+
+    mock_ba = AsyncMock()
+    # Provide 6 pages of 25 jobs each; scheduler should only fetch up to page 5
+    mock_ba.search_jobs.side_effect = [
+        make_page_jobs(1),
+        make_page_jobs(2),
+        make_page_jobs(3),
+        make_page_jobs(4),
+        make_page_jobs(5),
+        make_page_jobs(6),
+    ]
+
+    scheduler = MatchingSchedulerService()
+    result = await scheduler.run_sync_for_user(user_id, mock_db, ba_client=mock_ba)
+
+    assert result["status"] == "success"
+    # Exactly 5 pages requested, capped at 5th page
+    assert mock_ba.search_jobs.await_count == 5
+    # 5 pages * 25 jobs = 125 scraped
+    assert result["scraped"] == 125
+
+    # Check that pages 1 to 5 were requested sequentially
+    calls = mock_ba.search_jobs.call_args_list
+    assert [c.kwargs["page"] for c in calls] == [1, 2, 3, 4, 5]
+
+
+async def test_scheduler_pagination_stops_early_on_partial_page():
+    """Verify scheduler stops paginating when a page returns fewer than 25 items."""
+    user_id = str(uuid.uuid4())
+    mock_db = AsyncMock()
+    mock_db.add = MagicMock()
+    mock_result = MagicMock()
+    mock_scalars = MagicMock()
+    mock_result.scalars.return_value = mock_scalars
+
+    user = User(id=user_id, email="test_partial@example.com")
+    profile = Profile(
+        user_id=user_id,
+        onboarding_completed=True,
+        german_level="B1",
+        search_queries=[{"was": "Data Analyst", "wo": "Hamburg"}],
+    )
+    mock_scalars.first.side_effect = [user, profile, None, None, None, None]
+    mock_scalars.all.return_value = []
+    mock_db.execute.return_value = mock_result
+
+    page1_jobs = [
+        BAJobListing(
+            ref_nr=f"P1-JOB-{i}",
+            title="Analyst",
+            employer="Data AG",
+            location="Hamburg",
+            working_time="vz",
+            description="Analysis",
+        )
+        for i in range(25)
+    ]
+    page2_jobs = [
+        BAJobListing(
+            ref_nr=f"P2-JOB-{i}",
+            title="Analyst",
+            employer="Data AG",
+            location="Hamburg",
+            working_time="vz",
+            description="Analysis",
+        )
+        for i in range(7)  # Partial page: 7 items < 25
+    ]
+
+    mock_ba = AsyncMock()
+    mock_ba.search_jobs.side_effect = [page1_jobs, page2_jobs]
+
+    scheduler = MatchingSchedulerService()
+    result = await scheduler.run_sync_for_user(user_id, mock_db, ba_client=mock_ba)
+
+    assert result["status"] == "success"
+    # Should stop after page 2 because page 2 has 7 < 25 items
+    assert mock_ba.search_jobs.await_count == 2
+    assert result["scraped"] == 32
+
+
+async def test_scheduler_pagination_partial_failure_preserves_results():
+    """Verify scheduler preserves page 1 results if page 2 query encounters an error."""
+    user_id = str(uuid.uuid4())
+    mock_db = AsyncMock()
+    mock_db.add = MagicMock()
+    mock_result = MagicMock()
+    mock_scalars = MagicMock()
+    mock_result.scalars.return_value = mock_scalars
+
+    user = User(id=user_id, email="test_fail@example.com")
+    profile = Profile(
+        user_id=user_id,
+        onboarding_completed=True,
+        german_level="B1",
+        search_queries=[{"was": "DevOps", "wo": "Munich"}],
+    )
+    mock_scalars.first.side_effect = [user, profile, None, None, None, None]
+    mock_scalars.all.return_value = []
+    mock_db.execute.return_value = mock_result
+
+    page1_jobs = [
+        BAJobListing(
+            ref_nr=f"P1-DEVOPS-{i}",
+            title="DevOps",
+            employer="Cloud Inc",
+            location="Munich",
+            working_time="vz",
+            description="DevOps engineering",
+        )
+        for i in range(25)
+    ]
+
+    mock_ba = AsyncMock()
+    mock_ba.search_jobs.side_effect = [
+        page1_jobs,
+        RuntimeError("Transient error on page 2"),
+    ]
+
+    scheduler = MatchingSchedulerService()
+    result = await scheduler.run_sync_for_user(user_id, mock_db, ba_client=mock_ba)
+
+    assert result["status"] == "success"
+    assert mock_ba.search_jobs.await_count == 2
+    # The 25 jobs from page 1 are preserved
+    assert result["scraped"] == 25

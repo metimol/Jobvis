@@ -45,6 +45,10 @@ class Settings(BaseSettings):
     DEFAULT_UI_LANGUAGE: str = "de"
     SUPPORTED_LANGUAGES: list[str] = ["en", "de", "uk", "ru"]
 
+    # Scraping & Matching Settings
+    MAX_SCRAPE_PAGES: int = 5
+    SCRAPE_PAGE_SIZE: int = 25
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
