@@ -89,6 +89,8 @@
   "feed_subtitle": "KI-analysierte Stellenangebote der Bundesagentur für Arbeit, abgestimmt auf Ihren Lebenslauf.",
   "sort_direction_title": "Sortierreihenfolge umkehren",
   "feed_loading": "Passende Stellenangebote werden geladen...",
+  "feed_loading_more": "Weitere Stellenangebote werden geladen...",
+  "feed_end_of_results": "Sie haben das Ende Ihrer Empfehlungen erreicht",
   "feed_empty_title": "Noch keine Treffer gefunden",
   "employer_fallback": "Bundesagentur-Ausschreibung",
   "germany_location": "Deutschland",

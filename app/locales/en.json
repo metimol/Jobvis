@@ -89,6 +89,8 @@
   "feed_subtitle": "AI-analyzed positions from Bundesagentur für Arbeit tailored to your CV.",
   "sort_direction_title": "Toggle sort direction",
   "feed_loading": "Loading matched opportunities...",
+  "feed_loading_more": "Loading more opportunities...",
+  "feed_end_of_results": "You've reached the end of your recommendations",
   "feed_empty_title": "No matches found yet",
   "employer_fallback": "Bundesagentur Listing",
   "germany_location": "Germany",

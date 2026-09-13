@@ -89,6 +89,8 @@
   "feed_subtitle": "Вакансии от Bundesagentur für Arbeit, проанализированные ИИ специально под ваше резюме.",
   "sort_direction_title": "Изменить порядок сортировки",
   "feed_loading": "Загрузка подходящих вакансий...",
+  "feed_loading_more": "Загрузка дополнительных вакансий...",
+  "feed_end_of_results": "Вы просмотрели все подходящие вакансии",
   "feed_empty_title": "Подходящих вакансий пока не найдено",
   "employer_fallback": "Вакансия Bundesagentur",
   "germany_location": "Германия",
