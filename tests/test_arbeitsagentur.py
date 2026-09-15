@@ -1226,7 +1226,7 @@ async def test_seamless_empty_and_missing_goals():
 async def test_heuristic_fallback_when_llm_raises_error():
     """Verify that if LLM raises a network or runtime exception, the service seamlessly falls back to heuristics."""
     error_llm = RunnableLambda(
-        lambda _x: (_ for _ in ()).throw(RuntimeError("Google GenAI 503 Service Unavailable"))
+        lambda _x: (_ for _ in ()).throw(RuntimeError("Groq 503 Service Unavailable"))
     )
 
     res = await generate_search_query(

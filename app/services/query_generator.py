@@ -2,7 +2,7 @@
 
 Translates natural language user goals and CV profile into optimal,
 targeted search parameters ('was', 'wo', 'arbeitszeit', 'angebotsart')
-for the Bundesagentur für Arbeit Jobsuche API using LangChain Gemini LLM
+for the Bundesagentur für Arbeit Jobsuche API using LangChain Groq LLM
 with resilient heuristic fallback.
 """
 
@@ -24,22 +24,22 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-# In-memory TTL cache for LLM query results (avoids redundant Gemini calls)
+# In-memory TTL cache for LLM query results (avoids redundant Groq calls)
 _query_cache: dict[str, tuple["BAQueryList", float]] = {}
 _QUERY_CACHE_TTL = 300.0  # 5 minutes
 
 
 @lru_cache(maxsize=1)
 def _get_configured_model() -> Any:
-    """Safely obtain configured Gemini model singleton from ai.config."""
+    """Safely obtain configured Groq model singleton from ai.config."""
     import os
 
-    if not os.environ.get("GOOGLE_API_KEY"):
+    if not os.environ.get("GROQ_API_KEY"):
         return None
     try:
         from ai.config import model as configured_model
     except Exception as e:
-        logger.warning("Failed to load Gemini model from ai.config: %s", e)
+        logger.warning("Failed to load Groq model from ai.config: %s", e)
         return None
     else:
         return configured_model
@@ -589,7 +589,7 @@ async def generate_search_query(
 ) -> BAQueryList:
     """Generate 2 to 5 optimal Arbeitsagentur API search queries from natural language goals and CV profile.
 
-    Uses LangChain Gemini LLM structured output when available, and gracefully falls back to
+    Uses LangChain Groq LLM structured output when available, and gracefully falls back to
     resilient heuristic parameter extraction if LLM is unavailable, offline, or times out.
 
     Args:
@@ -597,7 +597,7 @@ async def generate_search_query(
         cv_profile: CV analysis data (dict, CVAnalysis model, or None).
         user_prefs: User profile preferences (dict, Profile model, or None).
         llm: Optional LangChain ChatModel or Runnable. If provided, used directly without network lookup.
-        api_key: Optional Google GenAI API key. If not provided, reads from settings.GOOGLE_API_KEY.
+        api_key: Optional Groq API key. If not provided, reads from settings.GROQ_API_KEY.
                  Explicitly passing None disables API key lookup and uses heuristics.
         timeout_seconds: Maximum seconds to wait for LLM invocation before falling back to heuristics.
 
@@ -633,7 +633,7 @@ async def generate_search_query(
     # Determine active LLM
     active_llm = llm
     if api_key is _QUERY_GEN_SENTINEL:
-        effective_api_key = settings.GOOGLE_API_KEY
+        effective_api_key = settings.GROQ_API_KEY
     else:
         effective_api_key = api_key
 
@@ -719,7 +719,7 @@ async def generate_search_query(
     except (Exception, asyncio.CancelledError) as exc:
         # LLM call is shielded from client disconnects; results are cached to avoid redundant invocations.
         logger.warning(
-            "LangChain Gemini query generation failed or timed out (%s); using heuristic fallback.",
+            "LangChain Groq query generation failed or timed out (%s); using heuristic fallback.",
             exc,
         )
         return heuristic_params

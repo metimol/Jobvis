@@ -2,7 +2,7 @@
 
 [![Python](https://img.shields.io/badge/Python-3.12%20%7C%203.13-blue?logo=python&logoColor=white)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
-[![Google Gemini](https://img.shields.io/badge/Google%20GenAI-Gemini%20%2F%20LangChain-4285F4?logo=google&logoColor=white)](https://ai.google.dev/)
+[![Groq](https://img.shields.io/badge/Groq-openai%2Fgpt--oss--120b%20%2F%20LangChain-F55036?logo=fastapi&logoColor=white)](https://groq.com/)
 [![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0%20Async-d71f00?logo=sqlalchemy&logoColor=white)](https://www.sqlalchemy.org/)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 [![Tests](https://img.shields.io/badge/Tests-851%20Passing-success?logo=pytest&logoColor=white)](https://docs.pytest.org/)
@@ -16,7 +16,7 @@ Jobvis bridges the gap between complex bureaucratic job systems and internationa
 
 ## 🚀 Key Highlights & Engineering Features
 
-- **🧠 Intelligent Query Synthesis & Match Scoring**: Uses Google Gemini via LangChain to translate free-form career goals and multilingual CVs into optimal German job keywords (`was`, `wo`, `arbeitszeit`), evaluating match affinity against CEFR German levels (A1–C2) with explainable rationales.
+- **🧠 Intelligent Query Synthesis & Match Scoring**: Uses Groq (`openai/gpt-oss-120b`) via LangChain to translate free-form career goals and multilingual CVs into optimal German job keywords (`was`, `wo`, `arbeitszeit`), evaluating match affinity against CEFR German levels (A1–C2) with explainable rationales.
 - **📄 Resilient Multi-Format CV Parser**: Streams and sanitizes content from PDF, DOCX, and TXT documents with control character filtering, size validation, and multi-language skill taxonomy extraction.
 - **🛡️ 3-Tier Job Deduplication Engine**: Normalizes German gender markers (e.g., `(m/w/d)`, `[gn]`), strips umlauts, computes canonical hashes, and executes fuzzy similarity comparisons to discard duplicate listings across external postings.
 - **⚡ Async Bundesagentur für Arbeit Client**: Non-blocking REST client with connection pooling, exponential backoff, rate-limit protection (HTTP 429), and automatic multi-page scraping.
@@ -32,7 +32,7 @@ Jobvis bridges the gap between complex bureaucratic job systems and internationa
 ```mermaid
 flowchart LR
     A[Candidate CV<br/>PDF / DOCX / TXT] --> B[CV Parser &<br/>Skills Extractor]
-    B --> C[Gemini LLM<br/>Query Synthesizer]
+    B --> C[Groq LLM<br/>Query Synthesizer]
     C --> D[Bundesagentur für Arbeit<br/>Jobsuche API]
     D --> E[3-Tier Deduplication<br/>& Canonical Hashing]
     E --> F[AI Semantic Matcher<br/>Skills + CEFR Level]
@@ -47,7 +47,7 @@ flowchart LR
 | Layer | Technologies |
 |---|---|
 | **Core Framework** | Python 3.12+, FastAPI, Pydantic V2 / Settings, Uvicorn |
-| **Artificial Intelligence** | Google Gemini (`gemma-4-31b-it`), LangChain Google GenAI |
+| **Artificial Intelligence** | Groq (`openai/gpt-oss-120b`), LangChain Groq |
 | **Persistence & ORM** | SQLAlchemy 2.0 (Async), MySQL 8.4 (`aiomysql`), SQLite (`aiosqlite`) |
 | **Document Processing** | `pypdf`, `python-docx` |
 | **Background Tasks** | APScheduler (AsyncIOScheduler with Cron triggers) |
@@ -71,7 +71,7 @@ Edit `.env` and provide your credentials:
 
 ```ini
 # AI Model
-GOOGLE_API_KEY=your_google_genai_key_here
+GROQ_API_KEY=your_groq_api_key_here
 
 # OAuth 2.0 (Optional for local testing if mocked)
 GOOGLE_CLIENT_ID=your_google_client_id

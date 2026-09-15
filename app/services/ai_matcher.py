@@ -1,4 +1,4 @@
-"""AI Job Matching and CV Analysis Service using LangChain Google GenAI and Heuristics."""
+"""AI Job Matching and CV Analysis Service using LangChain Groq and Heuristics."""
 
 import asyncio
 import json
@@ -379,12 +379,12 @@ class AICVAnalyzer:
 
     def __init__(self, api_key: Any = _API_KEY_SENTINEL):
         if api_key is _API_KEY_SENTINEL:
-            self.api_key = settings.GOOGLE_API_KEY
+            self.api_key = settings.GROQ_API_KEY
         else:
             self.api_key = api_key
 
     async def analyze_cv(self, cv_text: str) -> dict[str, Any]:
-        """Analyze CV text using Google GenAI or robust heuristic fallback."""
+        """Analyze CV text using Groq or robust heuristic fallback."""
         if not cv_text or not cv_text.strip():
             return {
                 "skills": [],
@@ -400,7 +400,7 @@ class AICVAnalyzer:
                 "goals": None,
             }
 
-        # If API key configured, attempt LangChain Google GenAI structured extraction
+        # If API key configured, attempt LangChain Groq structured extraction
         if self.api_key and not self.api_key.startswith("mock-") and len(self.api_key) > 10:
             try:
                 from langchain_core.output_parsers import PydanticOutputParser
@@ -453,7 +453,7 @@ class AICVAnalyzer:
                 res.radius_km = max(5, min(res.radius_km, 200))
 
                 logger.info(
-                    "Google GenAI CV extraction succeeded: %d skills, %.1f exp yrs, %s languages, city=%s, radius=%d, german_level=%s",
+                    "Groq CV extraction succeeded: %d skills, %.1f exp yrs, %s languages, city=%s, radius=%d, german_level=%s",
                     len(res.skills),
                     res.experience_years,
                     list(res.detected_languages.keys()),
@@ -464,9 +464,7 @@ class AICVAnalyzer:
                 logger.debug("Extracted CV Profile details: %s", res.model_dump())
                 return res.model_dump()
             except Exception as e:
-                logger.warning(
-                    "Google GenAI extraction failed (%s), falling back to heuristics.", e
-                )
+                logger.warning("Groq CV extraction failed (%s), falling back to heuristics.", e)
 
         # Robust Heuristic Fallback Analysis
         result = self._heuristic_analyze(cv_text)
@@ -747,7 +745,7 @@ class AIJobMatcher:
 
     def __init__(self, api_key: Any = _API_KEY_SENTINEL):
         if api_key is _API_KEY_SENTINEL:
-            self.api_key = settings.GOOGLE_API_KEY
+            self.api_key = settings.GROQ_API_KEY
         else:
             self.api_key = api_key
 
@@ -885,7 +883,7 @@ class AIJobMatcher:
         user_prefs: dict[str, Any] | Any | None = None,
         timeout_seconds: float = 200.0,
     ) -> list[JobMatchResult]:
-        """Score candidate profile against vacancies using Google GenAI (LLM)."""
+        """Score candidate profile against vacancies using Groq (LLM)."""
         if not jobs:
             return []
 
@@ -899,7 +897,7 @@ class AIJobMatcher:
         try:
             from ai.config import model as llm
         except Exception as err:
-            logger.warning("Failed to initialize Google GenAI model for job scoring: %s", err)
+            logger.warning("Failed to initialize Groq model for job scoring: %s", err)
             return []
 
         from langchain_core.output_parsers import PydanticOutputParser
@@ -1105,9 +1103,7 @@ class AIJobMatcher:
 
                 return sorted(results, key=lambda x: x["score"], reverse=True)
             except Exception as e:
-                logger.warning(
-                    "Google GenAI job scoring failed (%s), falling back to heuristics.", e
-                )
+                logger.warning("Groq job scoring failed (%s), falling back to heuristics.", e)
                 results.clear()
 
         for job in jobs:

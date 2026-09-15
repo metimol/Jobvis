@@ -41,7 +41,7 @@ class Settings(BaseSettings):
 
     # External APIs
     ARBEITSAGENTUR_API_KEY: str = "jobboerse-jobsuche"
-    GOOGLE_API_KEY: str | None = None
+    GROQ_API_KEY: str | None = None
 
     # Application Defaults
     DEFAULT_UI_LANGUAGE: str = "de"

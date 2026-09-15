@@ -5,7 +5,7 @@ import os
 # Explicitly mark test environment and protect against external live calls
 os.environ["ENVIRONMENT"] = "test"
 os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
-os.environ.pop("GOOGLE_API_KEY", None)
+os.environ.pop("GROQ_API_KEY", None)
 
 import asyncio
 import json

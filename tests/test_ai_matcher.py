@@ -497,7 +497,7 @@ async def test_match_jobs_llm_exception_falls_back_to_heuristics():
     matcher = AIJobMatcher(api_key="valid-test-secret-key-12345")
 
     with patch.object(matcher, "calculate_score_with_llm", new_callable=AsyncMock) as mock_calc:
-        mock_calc.side_effect = RuntimeError("Google GenAI Rate Limit / Timeout")
+        mock_calc.side_effect = RuntimeError("Groq Rate Limit / Timeout")
 
         jobs = [{"id": "j1", "title": "Software Developer", "description": "Python"}]
         results = await matcher.match_jobs({"skills": ["Python"]}, {}, jobs)
