@@ -1,0 +1,378 @@
+{% extends "base.html" %}
+
+{% block title %}{{ t.get('job_details_title', 'Job Details') }} — Jobvis{% endblock %}
+
+{% block head_extra %}
+<style>
+  .job-detail-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--strawberry-300);
+    text-decoration: none;
+    font-size: 0.925rem;
+    font-weight: 600;
+    min-height: 44px;
+    margin-bottom: 1.25rem;
+    transition: color 0.2s ease;
+  }
+  .job-detail-back:hover {
+    color: var(--strawberry-50);
+  }
+  .job-detail-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 1.75rem;
+    align-items: start;
+  }
+  .job-detail-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-card);
+    border-radius: 18px;
+    padding: 2.25rem 2.5rem;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    box-shadow: 0 10px 32px -8px rgba(0, 0, 0, 0.5);
+  }
+  .job-detail-title {
+    font-family: var(--font-display);
+    font-size: 2rem;
+    font-weight: 800;
+    margin: 0 0 0.85rem 0;
+    color: var(--strawberry-50);
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+  .job-detail-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem 1.35rem;
+    color: var(--strawberry-300);
+    font-size: 0.95rem;
+    align-items: center;
+  }
+  .job-detail-meta span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+  .job-detail-section-title {
+    font-family: var(--font-display);
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--strawberry-50);
+    margin: 2rem 0 0.85rem 0;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border-color);
+  }
+  .job-detail-description {
+    color: var(--strawberry-100);
+    line-height: 1.7;
+    font-size: 0.975rem;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  .job-detail-description.empty {
+    color: var(--text-dim);
+    font-style: italic;
+  }
+  .job-detail-sidebar {
+    position: sticky;
+    top: 6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+  .job-detail-score-card {
+    text-align: center;
+    padding: 1.75rem 1.5rem;
+  }
+  .job-detail-score-label {
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--strawberry-300);
+    margin-bottom: 0.85rem;
+  }
+  .job-detail-score-ring {
+    width: 132px;
+    height: 132px;
+    margin: 0 auto;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--glow-strawberry);
+  }
+  .job-detail-score-value {
+    font-family: var(--font-display);
+    font-size: 2.1rem;
+    font-weight: 800;
+    color: var(--strawberry-50);
+  }
+  .job-detail-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1.5rem;
+  }
+  .job-detail-actions .btn {
+    width: 100%;
+  }
+  .job-detail-dates {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    padding: 1.35rem 1.5rem;
+    font-size: 0.9rem;
+    color: var(--strawberry-300);
+  }
+  .job-detail-dates div {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+  .job-detail-dates strong {
+    color: var(--strawberry-100);
+    font-weight: 600;
+  }
+  .job-detail-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--strawberry-300);
+    font-size: 1.05rem;
+  }
+  .job-detail-state.error {
+    color: var(--danger);
+  }
+  .job-loading {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .job-loading-spinner {
+    width: 24px;
+    height: 24px;
+    border: 2.5px solid rgba(255, 122, 156, 0.2);
+    border-top-color: var(--strawberry-400);
+    border-radius: 50%;
+    animation: job-spin 0.8s linear infinite;
+  }
+  @keyframes job-spin {
+    to { transform: rotate(360deg); }
+  }
+  @media (max-width: 900px) {
+    .job-detail-layout {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .job-detail-sidebar {
+      position: static;
+      order: -1;
+    }
+  }
+  @media (max-width: 600px) {
+    .job-detail-card {
+      padding: 1.35rem 1.1rem;
+    }
+    .job-detail-title {
+      font-size: 1.5rem;
+    }
+    .job-detail-score-ring {
+      width: 108px;
+      height: 108px;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="main-container">
+  <a href="/feed" class="job-detail-back">← {{ t.get('back_to_feed', 'Back to feed') }}</a>
+
+  <div id="jobDetailContainer">
+    <div class="job-detail-state">
+      <div class="job-loading">
+        <div class="job-loading-spinner"></div>
+        <span>{{ t.get('job_loading', 'Loading job details...') }}</span>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+  const JOB_ID = {{ job_id | default('') | tojson }};
+
+  const TEXT_EMPLOYER_FALLBACK = {{ t.get("employer_fallback", "Bundesagentur Listing") | tojson }};
+  const TEXT_GERMANY_LOCATION = {{ t.get("germany_location", "Deutschland") | tojson }};
+  const TEXT_STATUS_SAVED = {{ t.get("status_saved", "Saved") | tojson }};
+  const TEXT_MARK_SAVED = {{ t.get("mark_saved", "Save") | tojson }};
+  const TEXT_MARK_DISMISSED = {{ t.get("mark_dismissed", "Dismiss") | tojson }};
+  const TEXT_VIEW_ON_JOBBOERSE = {{ t.get("view_on_jobboerse", "View on Arbeitsagentur") | tojson }};
+  const TEXT_MATCH_SCORE = {{ t.get("match_score", "Match Score") | tojson }};
+  const TEXT_JOB_DESCRIPTION = {{ t.get("job_description", "Job Description") | tojson }};
+  const TEXT_JOB_NO_DESCRIPTION = {{ t.get("job_no_description", "No description available for this position.") | tojson }};
+  const TEXT_JOB_NOT_FOUND = {{ t.get("job_not_found", "This job could not be found.") | tojson }};
+  const TEXT_JOB_LOAD_ERROR = {{ t.get("job_load_error", "Error loading job details") | tojson }};
+  const TEXT_JOB_PUBLISHED = {{ t.get("job_published", "Published") | tojson }};
+  const TEXT_JOB_MATCHED = {{ t.get("job_matched", "Matched") | tojson }};
+
+  let currentJob = null;
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function formatDate(dateStr) {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+  }
+
+  function isSafeUrl(url) {
+    try {
+      const parsed = new URL(url, window.location.origin);
+      return parsed.protocol === 'https:' || parsed.protocol === 'http:';
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function renderState(message, isError) {
+    const container = document.getElementById('jobDetailContainer');
+    container.innerHTML = `<div class="job-detail-state${isError ? ' error' : ''}">${escapeHtml(message)}</div>`;
+  }
+
+  function renderJob(job) {
+    const container = document.getElementById('jobDetailContainer');
+    const score = Math.max(0, Math.min(100, Math.round(Number(job.score) || 0)));
+    const publishedText = formatDate(job.published_date);
+    const matchedText = formatDate(job.created_at);
+    const isSaved = job.status === 'saved';
+    const showExternal = job.external_url && isSafeUrl(job.external_url);
+
+    container.innerHTML = `
+      <div class="job-detail-layout">
+        <article class="job-detail-card">
+          <h1 class="job-detail-title">${escapeHtml(job.title)}</h1>
+          <div class="job-detail-meta">
+            <span>🏢 ${escapeHtml(job.employer || TEXT_EMPLOYER_FALLBACK)}</span>
+            <span>📍 ${escapeHtml(job.location || TEXT_GERMANY_LOCATION)}</span>
+            ${publishedText ? `<span>📅 ${escapeHtml(publishedText)}</span>` : ''}
+            ${job.working_time ? `<span class="badge badge-cefr">${escapeHtml(job.working_time)}</span>` : ''}
+          </div>
+
+          <h2 class="job-detail-section-title">${escapeHtml(TEXT_JOB_DESCRIPTION)}</h2>
+          <div id="jobDescription" class="job-detail-description"></div>
+        </article>
+
+        <aside class="job-detail-sidebar">
+          <div class="job-detail-card job-detail-score-card">
+            <div class="job-detail-score-label">${escapeHtml(TEXT_MATCH_SCORE)}</div>
+            <div class="job-detail-score-ring" style="background: radial-gradient(closest-side, var(--bg-surface) 82%, transparent 83% 100%), conic-gradient(var(--strawberry-500) ${score}%, rgba(255, 122, 156, 0.12) 0);">
+              <span class="job-detail-score-value">${score}%</span>
+            </div>
+          </div>
+
+          <div class="job-detail-card job-detail-actions">
+            ${showExternal ? `
+              <a href="${escapeHtml(job.external_url)}" target="_blank" rel="noopener noreferrer" class="btn btn-primary">
+                ${escapeHtml(TEXT_VIEW_ON_JOBBOERSE)} ↗
+              </a>
+            ` : ''}
+            <button id="saveBtn" class="btn btn-outline" onclick="updateStatus('${isSaved ? 'new' : 'saved'}')">
+              ${isSaved ? '★ ' + escapeHtml(TEXT_STATUS_SAVED) : '☆ ' + escapeHtml(TEXT_MARK_SAVED)}
+            </button>
+            <button class="btn btn-outline" style="color: var(--strawberry-300);" onclick="updateStatus('dismissed')">
+              ✕ ${escapeHtml(TEXT_MARK_DISMISSED)}
+            </button>
+          </div>
+
+          ${(publishedText || matchedText) ? `
+            <div class="job-detail-card job-detail-dates">
+              ${publishedText ? `<div><span>${escapeHtml(TEXT_JOB_PUBLISHED)}</span><strong>${escapeHtml(publishedText)}</strong></div>` : ''}
+              ${matchedText ? `<div><span>${escapeHtml(TEXT_JOB_MATCHED)}</span><strong>${escapeHtml(matchedText)}</strong></div>` : ''}
+            </div>
+          ` : ''}
+        </aside>
+      </div>
+    `;
+
+    // textContent keeps the raw BA formatting (line breaks) without any HTML injection risk
+    const descEl = document.getElementById('jobDescription');
+    if (job.description && job.description.trim()) {
+      descEl.textContent = job.description.trim();
+    } else {
+      descEl.textContent = TEXT_JOB_NO_DESCRIPTION;
+      descEl.classList.add('empty');
+    }
+
+    if (job.title) {
+      document.title = `${job.title} — Jobvis`;
+    }
+  }
+
+  async function patchStatus(newStatus) {
+    const resp = await fetch(`/api/feed/${encodeURIComponent(currentJob.id)}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: newStatus })
+    });
+    if (!resp.ok) throw new Error('Failed to update status');
+    return resp.json();
+  }
+
+  async function updateStatus(newStatus) {
+    if (!currentJob) return;
+    try {
+      const updated = await patchStatus(newStatus);
+      if (newStatus === 'dismissed') {
+        window.location.href = '/feed';
+        return;
+      }
+      currentJob = updated;
+      renderJob(currentJob);
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  async function loadJob() {
+    if (!JOB_ID) {
+      renderState(TEXT_JOB_NOT_FOUND, true);
+      return;
+    }
+    try {
+      const resp = await fetch(`/api/feed/job/${encodeURIComponent(JOB_ID)}`);
+      if (resp.status === 404) {
+        renderState(TEXT_JOB_NOT_FOUND, true);
+        return;
+      }
+      if (!resp.ok) throw new Error('Failed to load job');
+      currentJob = await resp.json();
+      renderJob(currentJob);
+
+      // Opening the detail page counts as viewing it
+      if (currentJob.status === 'new') {
+        patchStatus('viewed')
+          .then(updated => { currentJob = updated; })
+          .catch(err => console.warn('Failed to mark job as viewed', err));
+      }
+    } catch (err) {
+      console.error(err);
+      renderState(TEXT_JOB_LOAD_ERROR, true);
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', loadJob);
+</script>
+{% endblock %}

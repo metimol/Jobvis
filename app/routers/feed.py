@@ -161,20 +161,34 @@ async def get_job(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> MatchedJobResponse:
+    """Retrieve full details of a single matched job for the current user."""
     query = (
-        select(MatchedJob)
+        select(MatchedJob, Job)
+        .join(Job, MatchedJob.job_id == Job.id)
         .where(MatchedJob.job_id == job_id)
         .where(MatchedJob.user_id == current_user.id)
     )
 
-    results = await db.execute(query)
-    fetched_jobs = results.scalars().all()
+    result = (await db.execute(query)).first()
 
-    if len(fetched_jobs) == 0:
-        raise HTTPException(status_code=404, detail="Job not found")
+    if not result:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
 
-    job_match = fetched_jobs[0]
+    matched_job, job = result
 
-    logger.debug(job_match)
+    logger.debug(matched_job)
 
-    return job_match
+    return MatchedJobResponse(
+        id=matched_job.id,
+        job_id=job.id,
+        title=job.title,
+        employer=job.employer,
+        location=job.location,
+        working_time=job.working_time,
+        description=job.description,
+        external_url=job.external_url,
+        score=matched_job.score,
+        status=matched_job.status,
+        created_at=matched_job.created_at.isoformat() if matched_job.created_at else "",
+        published_date=job.published_date.isoformat() if job.published_date else None,
+    )

@@ -146,5 +146,15 @@
   "network_error": "Fehler bei der Verbindung zum Server.",
   "upload_error": "Upload-Fehler",
   "cv_process_error": "Lebenslauf konnte nicht verarbeitet werden",
-  "network_error_prefix": "Netzwerkfehler"
+  "network_error_prefix": "Netzwerkfehler",
+  "view_details": "Ansehen",
+  "job_details_title": "Stellendetails",
+  "back_to_feed": "Zurück zum Feed",
+  "job_loading": "Stellendetails werden geladen...",
+  "job_description": "Stellenbeschreibung",
+  "job_no_description": "Für diese Stelle ist keine Beschreibung verfügbar.",
+  "job_not_found": "Diese Stelle wurde nicht gefunden.",
+  "job_load_error": "Fehler beim Laden der Stellendetails",
+  "job_published": "Veröffentlicht",
+  "job_matched": "Zugeordnet"
 }

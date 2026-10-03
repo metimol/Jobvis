@@ -146,5 +146,15 @@
   "network_error": "Error connecting to server.",
   "upload_error": "Upload error",
   "cv_process_error": "Failed to process CV",
-  "network_error_prefix": "Network error"
+  "network_error_prefix": "Network error",
+  "view_details": "View",
+  "job_details_title": "Job Details",
+  "back_to_feed": "Back to feed",
+  "job_loading": "Loading job details...",
+  "job_description": "Job Description",
+  "job_no_description": "No description available for this position.",
+  "job_not_found": "This job could not be found.",
+  "job_load_error": "Error loading job details",
+  "job_published": "Published",
+  "job_matched": "Matched"
 }
