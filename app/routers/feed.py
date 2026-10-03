@@ -153,3 +153,28 @@ async def update_match_status(
         created_at=matched_job.created_at.isoformat() if matched_job.created_at else "",
         published_date=job.published_date.isoformat() if job.published_date else None,
     )
+
+
+@router.get("/job/{job_id}", response_model=MatchedJobResponse, summary="Get Job Details")
+async def get_job(
+    job_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> MatchedJobResponse:
+    query = (
+        select(MatchedJob)
+        .where(MatchedJob.job_id == job_id)
+        .where(MatchedJob.user_id == current_user.id)
+    )
+
+    results = await db.execute(query)
+    fetched_jobs = results.scalars().all()
+
+    if len(fetched_jobs) == 0:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    job_match = fetched_jobs[0]
+
+    logger.debug(job_match)
+
+    return job_match
