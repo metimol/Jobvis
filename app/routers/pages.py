@@ -268,6 +268,8 @@ async def get_job_page(
     db: AsyncSession = Depends(get_db),
 ):
     """Render detailed view of a single matched job opportunity."""
+
+    # TODO: Add tests for job info
     if not current_user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
