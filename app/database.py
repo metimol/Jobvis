@@ -33,6 +33,13 @@ if "sqlite" in db_url:
         from sqlalchemy.pool import StaticPool
 
         engine_kwargs["poolclass"] = StaticPool
+else:
+    # Server-side DBs (MySQL) close idle connections after `wait_timeout`.
+    # Scheduler jobs run hours apart, so pooled connections go stale and fail
+    # with "Lost connection to MySQL server during query". Ping on checkout and
+    # recycle connections well before the server-side timeout.
+    engine_kwargs["pool_pre_ping"] = True
+    engine_kwargs["pool_recycle"] = 1800
 
 engine = create_async_engine(
     db_url,
