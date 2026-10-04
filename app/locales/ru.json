@@ -146,5 +146,15 @@
   "network_error": "Ошибка подключения к серверу.",
   "upload_error": "Ошибка загрузки",
   "cv_process_error": "Не удалось обработать резюме",
-  "network_error_prefix": "Сетевая ошибка"
+  "network_error_prefix": "Сетевая ошибка",
+  "view_details": "Смотреть",
+  "job_details_title": "Детали вакансии",
+  "back_to_feed": "Назад к ленте",
+  "job_loading": "Загрузка деталей вакансии...",
+  "job_description": "Описание вакансии",
+  "job_no_description": "Описание для этой вакансии отсутствует.",
+  "job_not_found": "Эта вакансия не найдена.",
+  "job_load_error": "Ошибка загрузки деталей вакансии",
+  "job_published": "Опубликовано",
+  "job_matched": "Подобрано"
 }

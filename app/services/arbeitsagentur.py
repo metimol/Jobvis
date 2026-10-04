@@ -1,6 +1,7 @@
 """Bundesagentur für Arbeit (Arbeitsagentur) REST API client."""
 
 import asyncio
+import base64
 import logging
 import urllib.parse
 from typing import Any
@@ -13,6 +14,7 @@ from app.schemas.job import (
     BASearchResponse,
     JobSearchParams,
 )
+from app.utils.text_sanitizer import sanitize_ref_nr
 
 logger = logging.getLogger(__name__)
 
@@ -279,6 +281,7 @@ class ArbeitsagenturClient:
         response = await self._request("GET", url, params=query_dict)
         try:
             data = response.json()
+            logger.debug(f"Raw Jobs response from API: {data}")
         except Exception as e:
             logger.error(f"Failed to decode JSON response from {url}: {e}")
             raise ArbeitsagenturAPIError(
@@ -315,14 +318,22 @@ class ArbeitsagenturClient:
         if not ref_nr or not ref_nr.strip():
             return None
 
-        # Clean and encode ref_nr for URL path safety
-        safe_code = urllib.parse.quote(ref_nr.strip(), safe="")
+        safe_ref_nr = sanitize_ref_nr(ref_nr)
+        if not safe_ref_nr:
+            logger.warning(f"Refusing to fetch job details for invalid ref_nr: {ref_nr!r}")
+            return None
+
+        # BA expects the reference number base64-encoded in the path:
+        # /pc/v4/jobdetails/{base64(refnr)}
+        encoded = base64.b64encode(safe_ref_nr.encode("utf-8")).decode("ascii")
+        safe_code = urllib.parse.quote(encoded, safe="=")
         path = self.details_path.format(code=safe_code)
         url = f"{self.base_url}{path}"
 
         try:
             response = await self._request("GET", url)
             data = response.json()
+            logger.debug(f"Raw job details from API: {data}")
             return BADetailedJob.from_api_dict(data)
         except ArbeitsagenturNotFoundError:
             logger.info(f"Job posting {ref_nr} not found (404).")

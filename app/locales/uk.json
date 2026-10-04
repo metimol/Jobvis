@@ -146,5 +146,15 @@
   "network_error": "Помилка підключення до сервера.",
   "upload_error": "Помилка завантаження",
   "cv_process_error": "Не вдалося обробити резюме",
-  "network_error_prefix": "Мережева помилка"
+  "network_error_prefix": "Мережева помилка",
+  "view_details": "Переглянути",
+  "job_details_title": "Деталі вакансії",
+  "back_to_feed": "Назад до стрічки",
+  "job_loading": "Завантаження деталей вакансії...",
+  "job_description": "Опис вакансії",
+  "job_no_description": "Опис для цієї вакансії відсутній.",
+  "job_not_found": "Цю вакансію не знайдено.",
+  "job_load_error": "Помилка завантаження деталей вакансії",
+  "job_published": "Опубліковано",
+  "job_matched": "Підібрано"
 }

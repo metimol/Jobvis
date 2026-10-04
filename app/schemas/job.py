@@ -6,6 +6,14 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.utils.text_sanitizer import (
+    DEFAULT_MAX_LENGTH,
+    sanitize_ref_nr,
+    sanitize_structure,
+    sanitize_text,
+    sanitize_url,
+)
+
 JobStatusLiteral = Literal["new", "viewed", "saved", "dismissed"]
 
 
@@ -118,8 +126,16 @@ class JobSearchParams(BaseModel):
         return params
 
 
-def _extract_text(val: Any) -> str | None:
-    """Safely extract plain text from strings, primitives, or nested dicts/lists."""
+def _extract_text(
+    val: Any,
+    *,
+    multiline: bool = False,
+    max_length: int | None = DEFAULT_MAX_LENGTH,
+) -> str | None:
+    """Safely extract sanitized plain text from strings, primitives, or nested dicts/lists.
+
+    All output is passed through `sanitize_text`, since BA API data is untrusted.
+    """
     if val is None:
         return None
     if isinstance(val, int | float):
@@ -136,17 +152,31 @@ def _extract_text(val: Any) -> str | None:
             "beschreibung",
         ):
             if k in val and val[k] and not isinstance(val[k], dict | list):
-                s = str(val[k]).strip()
+                s = sanitize_text(val[k], multiline=multiline, max_length=max_length)
                 if s:
                     return s
-        parts = [_extract_text(v) for v in val.values()]
+        parts = [_extract_text(v, multiline=multiline, max_length=None) for v in val.values()]
         parts = [p for p in parts if p]
-        return " ".join(parts) if parts else None
+        return (
+            sanitize_text(" ".join(parts), multiline=multiline, max_length=max_length)
+            if parts
+            else None
+        )
     if isinstance(val, list):
-        parts = [_extract_text(v) for v in val]
+        parts = [_extract_text(v, multiline=multiline, max_length=None) for v in val]
         parts = [p for p in parts if p]
-        return ", ".join(parts) if parts else None
-    return str(val).strip() or None
+        return (
+            sanitize_text(", ".join(parts), multiline=multiline, max_length=max_length)
+            if parts
+            else None
+        )
+    return sanitize_text(val, multiline=multiline, max_length=max_length)
+
+
+def _clean_lines(items: list[str]) -> list[str]:
+    """Sanitize a list of single-line entries (tasks, requirements) and drop empties."""
+    cleaned = (sanitize_text(item, max_length=2_000) for item in items)
+    return [item for item in cleaned if item]
 
 
 class BAJobListing(BaseModel):
@@ -183,8 +213,8 @@ class BAJobListing(BaseModel):
     @classmethod
     def from_api_dict(cls, data: dict[str, Any]) -> "BAJobListing":
         """Factory method to parse heterogeneous BA API response structures."""
-        # 1. Reference number
-        ref_nr = (
+        # 1. Reference number (restricted charset: it is used in URLs and API paths)
+        ref_nr = sanitize_ref_nr(
             data.get("referenznummer")
             or data.get("refnr")
             or data.get("hashId")
@@ -200,11 +230,12 @@ class BAJobListing(BaseModel):
             or data.get("beruf")
             or data.get("title")
         )
-        title = _extract_text(title_raw) or "Unbenanntes Stellenangebot"
+        title = _extract_text(title_raw, max_length=500) or "Unbenanntes Stellenangebot"
 
         # 3. Employer
         employer = _extract_text(
-            data.get("arbeitgeber") or data.get("employer") or data.get("firma")
+            data.get("arbeitgeber") or data.get("employer") or data.get("firma"),
+            max_length=255,
         )
 
         # 4. Location parsing
@@ -245,19 +276,22 @@ class BAJobListing(BaseModel):
 
         # 5. Working time
         working_time = _extract_text(
-            data.get("arbeitszeitmodell") or data.get("arbeitszeit") or data.get("working_time")
+            data.get("arbeitszeitmodell") or data.get("arbeitszeit") or data.get("working_time"),
+            max_length=100,
         )
 
         # 6. Description / Teaser
         description = _extract_text(
-            data.get("stellenbeschreibung")
+            data.get("stellenangebotsBeschreibung")
+            or data.get("stellenbeschreibung")
             or data.get("beschreibung")
             or data.get("description")
-            or data.get("kurzbeschreibung")
+            or data.get("kurzbeschreibung"),
+            multiline=True,
         )
 
-        # 7. External URL
-        external_url = _extract_text(
+        # 7. External URL (only http/https URLs are accepted)
+        external_url = sanitize_url(
             data.get("externeUrl") or data.get("external_url") or data.get("url")
         )
         if not external_url and ref_nr:
@@ -271,20 +305,22 @@ class BAJobListing(BaseModel):
             or data.get("modifikationsTimestamp")
             or data.get("published_date")
         )
+        if isinstance(published_date, str):
+            published_date = sanitize_text(published_date, max_length=64)
 
         # 9. Canonical hash (if already present)
-        canonical_hash = data.get("canonical_hash")
+        canonical_hash = sanitize_text(data.get("canonical_hash"), max_length=64)
 
         return cls(
-            ref_nr=str(ref_nr),
+            ref_nr=ref_nr,
             title=title,
             employer=employer,
-            location=location_str,
+            location=sanitize_text(location_str, max_length=255),
             working_time=working_time,
             description=description,
             external_url=external_url,
             published_date=published_date,
-            canonical_hash=str(canonical_hash) if canonical_hash else None,
+            canonical_hash=canonical_hash,
             raw_data=data,
         )
 
@@ -321,7 +357,7 @@ class BADetailedJob(BaseModel):
     @classmethod
     def from_api_dict(cls, data: dict[str, Any]) -> "BADetailedJob":
         """Factory method to parse BA detailed job payload."""
-        ref_nr = str(
+        ref_nr = sanitize_ref_nr(
             data.get("refnr")
             or data.get("referenznummer")
             or data.get("ref_nr")
@@ -335,12 +371,17 @@ class BADetailedJob(BaseModel):
             or data.get("beruf")
             or data.get("stellenangebotsTitel")
         )
-        title = _extract_text(title_raw) or "Unbekannt"
+        title = _extract_text(title_raw, max_length=500) or "Unbekannt"
         employer = _extract_text(
-            data.get("arbeitgeber") or data.get("employer") or data.get("firma")
+            data.get("arbeitgeber") or data.get("employer") or data.get("firma"),
+            max_length=255,
         )
         description = _extract_text(
-            data.get("stellenbeschreibung") or data.get("beschreibung") or data.get("description")
+            data.get("stellenangebotsBeschreibung")
+            or data.get("stellenbeschreibung")
+            or data.get("beschreibung")
+            or data.get("description"),
+            multiline=True,
         )
 
         # Tasks / Activities
@@ -465,31 +506,38 @@ class BADetailedJob(BaseModel):
         contact_raw = data.get("kontakt") or data.get("contact")
         contact: dict[str, Any] | None = None
         if isinstance(contact_raw, dict):
-            contact = contact_raw
+            contact = sanitize_structure(contact_raw)
         elif isinstance(contact_raw, list) and contact_raw and isinstance(contact_raw[0], dict):
-            contact = contact_raw[0]
+            contact = sanitize_structure(contact_raw[0])
 
         return cls(
             ref_nr=ref_nr,
             title=title,
             employer=employer,
             description=description,
-            tasks=tasks,
-            requirements=requirements,
-            locations=locations,
-            location_str=location_str,
+            tasks=_clean_lines(tasks),
+            requirements=_clean_lines(requirements),
+            locations=[sanitize_structure(loc) for loc in locations],
+            location_str=sanitize_text(location_str, max_length=255),
             working_time=_extract_text(
-                data.get("arbeitszeit") or data.get("arbeitszeitmodell") or data.get("working_time")
+                data.get("arbeitszeit")
+                or data.get("arbeitszeitmodell")
+                or data.get("working_time"),
+                max_length=100,
             ),
             remuneration=_extract_text(
-                data.get("verguetung") or data.get("gehalt") or data.get("remuneration")
+                data.get("verguetung") or data.get("gehalt") or data.get("remuneration"),
+                max_length=500,
             ),
             contract_duration=_extract_text(
-                data.get("befristung") or data.get("contract_duration")
+                data.get("befristung") or data.get("contract_duration"),
+                max_length=255,
             ),
-            entry_date=_extract_text(data.get("eintrittsdatum") or data.get("entry_date")),
+            entry_date=_extract_text(
+                data.get("eintrittsdatum") or data.get("entry_date"), max_length=64
+            ),
             contact=contact,
-            external_url=_extract_text(
+            external_url=sanitize_url(
                 data.get("externeUrl") or data.get("external_url") or data.get("url")
             ),
             raw_data=data,

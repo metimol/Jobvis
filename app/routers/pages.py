@@ -260,6 +260,40 @@ async def get_feed_page(
     )
 
 
+@router.get("/job/{job_id}", response_class=HTMLResponse, summary="Job Details Page")
+async def get_job_page(
+    job_id: str,
+    request: Request,
+    current_user: User | None = Depends(get_current_user_optional),
+    db: AsyncSession = Depends(get_db),
+):
+    """Render detailed view of a single matched job opportunity."""
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+
+    onboarded = await _check_onboarded(current_user, db)
+    if not onboarded:
+        return RedirectResponse(url="/onboarding", status_code=status.HTTP_302_FOUND)
+
+    s_stmt = select(Settings).where(Settings.user_id == current_user.id)
+    user_settings = (await db.execute(s_stmt)).scalars().first()
+    ui_lang = user_settings.ui_language if user_settings else app_settings.DEFAULT_UI_LANGUAGE
+
+    translations = I18nService.get_dictionary(ui_lang)
+    return templates.TemplateResponse(
+        request=request,
+        name="job.html",
+        context={
+            "request": request,
+            "current_user": current_user,
+            "job_id": job_id,
+            "lang": ui_lang,
+            "t": translations,
+            "supported_langs": I18nService.SUPPORTED_LANGS,
+        },
+    )
+
+
 @router.get("/settings", response_class=HTMLResponse, summary="User Settings Page")
 async def get_settings_page(
     request: Request,
