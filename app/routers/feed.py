@@ -185,8 +185,6 @@ async def get_job(
     ba_client: ArbeitsagenturClient = Depends(get_ba_client),
 ) -> MatchedJobResponse:
     """Retrieve full details of a single matched job for the current user."""
-
-    # TODO: Add tests for job info
     query = (
         select(MatchedJob, Job)
         .join(Job, MatchedJob.job_id == Job.id)
