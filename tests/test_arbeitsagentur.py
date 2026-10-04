@@ -1,5 +1,6 @@
 """Tests for Arbeitsagentur REST API integration, authentication, and job search client."""
 
+import base64
 import json
 import urllib.parse
 import uuid
@@ -38,6 +39,12 @@ from app.services.query_generator import (
 from app.services.scheduler import MatchingSchedulerService
 
 pytestmark = pytest.mark.asyncio
+
+
+def _details_url(ref_nr: str) -> str:
+    """BA job details endpoint expects base64(refnr) in the path."""
+    encoded = base64.b64encode(ref_nr.encode("utf-8")).decode("ascii")
+    return f"{DEFAULT_BASE_URL}/pc/v4/jobdetails/{urllib.parse.quote(encoded, safe='=')}"
 
 
 # --- Core Arbeitsagentur Client Tests ---
@@ -215,7 +222,7 @@ async def test_search_jobs_handles_missing_fields_gracefully():
 async def test_get_job_details_success():
     """Verify get_job_details parses full BADetailedJob payload."""
     code = "10000-1198765432-S"
-    respx.get(f"{DEFAULT_BASE_URL}/pc/v4/jobdetails/{code}").mock(
+    respx.get(_details_url(code)).mock(
         return_value=httpx.Response(
             200,
             json={
@@ -268,9 +275,7 @@ async def test_get_job_details_success():
 async def test_get_job_details_not_found_returns_none():
     """Verify get_job_details returns None when 404 is encountered."""
     code = "NON-EXISTENT-JOB"
-    respx.get(f"{DEFAULT_BASE_URL}/pc/v4/jobdetails/{code}").mock(
-        return_value=httpx.Response(404, text="Job not found")
-    )
+    respx.get(_details_url(code)).mock(return_value=httpx.Response(404, text="Job not found"))
 
     async with ArbeitsagenturClient() as client:
         detail = await client.get_job_details(code)
@@ -462,8 +467,7 @@ async def test_http_404_search_jobs_raises_not_found_no_retries():
 async def test_http_404_get_job_details_returns_none_gracefully():
     """Verify HTTP 404 in get_job_details catches 404 and returns None."""
     code = "10000-NONEXISTENT-S"
-    safe_code = urllib.parse.quote(code, safe="")
-    route = respx.get(f"{DEFAULT_BASE_URL}/pc/v4/jobdetails/{safe_code}").mock(
+    route = respx.get(_details_url(code)).mock(
         return_value=httpx.Response(404, text="Job Not Found")
     )
 
@@ -957,26 +961,17 @@ async def test_badetailedjob_from_api_dict_edge_cases():
 
 @respx.mock
 async def test_get_job_details_encodes_special_characters_in_ref_nr():
-    """Verify get_job_details properly URL-encodes special characters in ref_nr (e.g. slashes, spaces)."""
+    """Verify get_job_details refuses ref_nr values with unsafe characters without calling the API."""
     raw_code = "10000/MÜNCHEN SPEC#1"
-    safe_code = urllib.parse.quote(raw_code, safe="")
-
-    route = respx.get(f"{DEFAULT_BASE_URL}/pc/v4/jobdetails/{safe_code}").mock(
-        return_value=httpx.Response(
-            200,
-            json={
-                "refnr": raw_code,
-                "titel": "Special Ref Engineer",
-            },
-        )
+    route = respx.get(url__startswith=f"{DEFAULT_BASE_URL}/pc/v4/jobdetails/").mock(
+        return_value=httpx.Response(200, json={"refnr": raw_code, "titel": "Special"})
     )
 
     async with ArbeitsagenturClient() as client:
         detail = await client.get_job_details(raw_code)
 
-        assert detail is not None
-        assert detail.ref_nr == raw_code
-        assert route.called
+        assert detail is None
+        assert not route.called
 
 
 # ============================================================================

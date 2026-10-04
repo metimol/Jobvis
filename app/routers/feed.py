@@ -1,6 +1,7 @@
 """Feed router delivering AI-matched job opportunities to the candidate."""
 
 import logging
+from collections.abc import AsyncIterator
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field
@@ -11,6 +12,9 @@ from app.database import get_db
 from app.dependencies import get_current_user
 from app.models.job import Job, MatchedJob
 from app.models.user import User
+from app.schemas.job import BADetailedJob
+from app.services.arbeitsagentur import ArbeitsagenturClient
+from app.utils.text_sanitizer import sanitize_text
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +53,24 @@ class MatchStatusUpdate(BaseModel):
     """Payload to update match status."""
 
     status: str = Field(..., pattern="^(new|viewed|saved|dismissed)$")
+
+
+async def get_ba_client() -> AsyncIterator[ArbeitsagenturClient]:
+    """Provide a short-lived BA client; fail fast since a user is waiting on the response."""
+    async with ArbeitsagenturClient(timeout=8.0, max_retries=1) as client:
+        yield client
+
+
+def _compose_description(details: BADetailedJob) -> str | None:
+    """Build a plain-text description from BA job details (fields are already sanitized)."""
+    sections: list[str] = []
+    if details.description:
+        sections.append(details.description)
+    if details.tasks:
+        sections.append("\n".join(f"- {task}" for task in details.tasks))
+    if details.requirements:
+        sections.append("\n".join(f"- {req}" for req in details.requirements))
+    return sanitize_text("\n\n".join(sections), multiline=True) if sections else None
 
 
 @router.get("", response_model=FeedListResponse, summary="Get User Matched Jobs Feed")
@@ -160,6 +182,7 @@ async def get_job(
     job_id: str,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    ba_client: ArbeitsagenturClient = Depends(get_ba_client),
 ) -> MatchedJobResponse:
     """Retrieve full details of a single matched job for the current user."""
 
@@ -178,7 +201,25 @@ async def get_job(
 
     matched_job, job = result
 
-    logger.debug(matched_job)
+    logger.debug(f"Matched Job: {matched_job}")
+    logger.debug(f"Job Description: {job.description}")
+
+    # Search results carry no description; lazily fetch it from BA job details and cache it.
+    if not job.description:
+        description: str | None = None
+        try:
+            # BA identifies postings by reference number, not by our internal UUID.
+            job_details = await ba_client.get_job_details(job.ref_nr)
+            if job_details:
+                description = _compose_description(job_details)
+        except Exception as e:
+            logger.error(f"Cannot retrieve job details for ref_nr={job.ref_nr}: {e}")
+
+        if description:
+            job.description = description
+            await db.commit()
+            await db.refresh(job)
+            await db.refresh(matched_job)
 
     return MatchedJobResponse(
         id=matched_job.id,
