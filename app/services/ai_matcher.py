@@ -3,14 +3,56 @@
 import asyncio
 import json
 import logging
+import math
 import re
+from functools import lru_cache
 from typing import Any
 
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 
 from app.config import settings
 
 logger = logging.getLogger(__name__)
+
+MAX_INPUT_TOKENS_PER_REQUEST: int = 5500
+
+
+@lru_cache(maxsize=1)
+def _get_tiktoken_encoding() -> Any:
+    try:
+        import tiktoken
+    except Exception:
+        return None
+
+    try:
+        return tiktoken.get_encoding("cl100k_base")
+    except Exception:
+        try:
+            return tiktoken.encoding_for_model("gpt-4o")
+        except Exception:
+            return None
+
+
+def count_tokens(text: str) -> int:
+    """Count tokens using tiktoken (cl100k_base) with safe character fallback."""
+    if not text:
+        return 0
+    if not isinstance(text, str):
+        text = str(text)
+    enc = _get_tiktoken_encoding()
+    if enc is not None:
+        try:
+            return len(enc.encode(text, disallowed_special=()))
+        except TypeError:
+            try:
+                return len(enc.encode(text))
+            except Exception as err:
+                logger.debug("Tiktoken encoding error, using character fallback: %s", err)
+        except Exception as err:
+            logger.debug("Tiktoken encoding error, using character fallback: %s", err)
+    # Safe character-based fallback (approx. 4 characters per token)
+    return max(1, len(text) // 4)
+
 
 # CEFR Language Ranking for comparison
 CEFR_LEVELS = {
@@ -360,6 +402,31 @@ class JobMatchResult(BaseModel):
     job: Any = None
     factors: dict[str, float] = Field(default_factory=dict)
     reasoning: str | None = Field(default=None, description="Brief justification for the score")
+
+    @field_validator("job_id", mode="before")
+    @classmethod
+    def _validate_job_id(cls, v: Any) -> str:
+        if v is None:
+            return ""
+        return str(v).strip().strip("\"'`*").strip()
+
+    @field_validator("score", mode="before")
+    @classmethod
+    def _validate_score(cls, v: Any) -> float:
+        if v is None or v == "" or v == "null":
+            return 50.0
+        if isinstance(v, bool):
+            return 50.0
+        if isinstance(v, str):
+            v = v.strip().rstrip("%").strip()
+        try:
+            val = float(v)
+        except (ValueError, TypeError):
+            return 50.0
+        else:
+            if math.isnan(val) or math.isinf(val):
+                return 50.0
+            return val
 
 
 class JobMatchResultLLM(BaseModel):
@@ -741,6 +808,8 @@ class AICVAnalyzer:
 class AIJobMatcher:
     """Multi-factor AI job matching scoring and multilingual rationale generator."""
 
+    MAX_INPUT_TOKENS_PER_REQUEST: int = MAX_INPUT_TOKENS_PER_REQUEST
+
     # Real-time job match analyzer combining semantic heuristics and batch AI
 
     def __init__(self, api_key: Any = _API_KEY_SENTINEL):
@@ -766,6 +835,11 @@ class AIJobMatcher:
             profile_dict = cv_profile.model_dump()
         elif isinstance(cv_profile, dict):
             profile_dict = cv_profile
+        elif hasattr(cv_profile, "model_dump") and callable(cv_profile.model_dump):
+            try:
+                profile_dict = cv_profile.model_dump()
+            except Exception:
+                profile_dict = {}
         else:
             profile_dict = {}
 
@@ -773,19 +847,77 @@ class AIJobMatcher:
         if isinstance(user_prefs, dict):
             user_german = user_prefs.get("german_level") or "B1"
             user_goals = user_prefs.get("goals", "") or ""
+        elif hasattr(user_prefs, "model_dump") and callable(user_prefs.model_dump):
+            try:
+                up_dict = user_prefs.model_dump()
+            except Exception:
+                up_dict = {}
+            user_german = up_dict.get("german_level") or "B1"
+            user_goals = up_dict.get("goals", "") or ""
         else:
             user_german = getattr(user_prefs, "german_level", "B1") or "B1"
             user_goals = getattr(user_prefs, "goals", "") or ""
 
         # Extract job text
         if isinstance(job, dict):
-            job_title = job.get("title") or job.get("titel") or ""
-            job_desc = job.get("description") or job.get("beschreibung") or ""
-            job_emp = job.get("employer") or job.get("firma") or ""
+            job_title = str(
+                job.get("title")
+                or job.get("stellenangebotsTitel")
+                or job.get("titel")
+                or job.get("beruf")
+                or ""
+            )
+            job_desc = str(job.get("description") or job.get("beschreibung") or "")
+            job_emp = str(job.get("employer") or job.get("arbeitgeber") or job.get("firma") or "")
+        elif hasattr(job, "model_dump") and callable(job.model_dump):
+            try:
+                d = job.model_dump()
+            except Exception:
+                d = {}
+            job_title = str(
+                d.get("title")
+                or d.get("stellenangebotsTitel")
+                or d.get("titel")
+                or d.get("beruf")
+                or getattr(job, "title", None)
+                or getattr(job, "stellenangebotsTitel", None)
+                or getattr(job, "titel", None)
+                or getattr(job, "beruf", None)
+                or ""
+            )
+            job_desc = str(
+                d.get("description")
+                or d.get("beschreibung")
+                or getattr(job, "description", None)
+                or getattr(job, "beschreibung", None)
+                or ""
+            )
+            job_emp = str(
+                d.get("employer")
+                or d.get("arbeitgeber")
+                or d.get("firma")
+                or getattr(job, "employer", None)
+                or getattr(job, "arbeitgeber", None)
+                or getattr(job, "firma", None)
+                or ""
+            )
         else:
-            job_title = getattr(job, "title", "") or ""
-            job_desc = getattr(job, "description", "") or ""
-            job_emp = getattr(job, "employer", "") or ""
+            job_title = str(
+                getattr(job, "title", None)
+                or getattr(job, "stellenangebotsTitel", None)
+                or getattr(job, "titel", None)
+                or getattr(job, "beruf", None)
+                or ""
+            )
+            job_desc = str(
+                getattr(job, "description", None) or getattr(job, "beschreibung", None) or ""
+            )
+            job_emp = str(
+                getattr(job, "employer", None)
+                or getattr(job, "arbeitgeber", None)
+                or getattr(job, "firma", None)
+                or ""
+            )
 
         full_job_text = f"{job_title} {job_emp} {job_desc}".lower()
 
@@ -904,6 +1036,7 @@ class AIJobMatcher:
         from langchain_core.prompts import PromptTemplate
 
         parser = PydanticOutputParser(pydantic_object=JobMatchResultLLM)
+        format_instructions = parser.get_format_instructions()
         prompt = PromptTemplate(
             template=(
                 "You are an expert technical recruiter and career advisor for Jobvis and the German Jobcenter.\n"
@@ -918,7 +1051,7 @@ class AIJobMatcher:
                 "Jobs to Evaluate:\n{jobs_batch}\n"
             ),
             input_variables=["cv_profile", "jobs_batch"],
-            partial_variables={"format_instructions": parser.get_format_instructions()},
+            partial_variables={"format_instructions": format_instructions},
         )
         chain = prompt | llm | parser
 
@@ -926,14 +1059,22 @@ class AIJobMatcher:
             profile_data = cv_profile.model_dump()
         elif isinstance(cv_profile, dict):
             profile_data = dict(cv_profile)
+        elif hasattr(cv_profile, "model_dump") and callable(cv_profile.model_dump):
+            try:
+                profile_data = cv_profile.model_dump()
+            except Exception:
+                profile_data = {}
         else:
             profile_data = {}
 
         if user_prefs:
             if isinstance(user_prefs, dict):
                 p_dict = user_prefs
-            elif hasattr(user_prefs, "model_dump"):
-                p_dict = user_prefs.model_dump()
+            elif hasattr(user_prefs, "model_dump") and callable(user_prefs.model_dump):
+                try:
+                    p_dict = user_prefs.model_dump()
+                except Exception:
+                    p_dict = {}
             else:
                 p_dict = {
                     "german_level": getattr(user_prefs, "german_level", "B1"),
@@ -945,67 +1086,242 @@ class AIJobMatcher:
                 if val and not profile_data.get(k):
                     profile_data[k] = val
 
+        profile_str = json.dumps(profile_data, default=str)
+        base_tokens = (
+            count_tokens(prompt.template)
+            + count_tokens(format_instructions)
+            + count_tokens(profile_str)
+        )
+
+        id_keys = ("id", "ref_nr", "referenznummer", "refnr", "hashId")
+        title_keys = ("title", "stellenangebotsTitel", "titel", "beruf")
+        emp_keys = ("employer", "arbeitgeber", "firma")
+        desc_keys = ("description", "beschreibung")
+
         lightweight_jobs = []
         for idx, j in enumerate(jobs):
             if isinstance(j, dict):
-                jid = str(
-                    j.get("id")
-                    or j.get("ref_nr")
-                    or j.get("referenznummer")
-                    or j.get("hashId")
-                    or f"job_{idx}"
+                jid = next(
+                    (
+                        str(j[k]).strip()
+                        for k in id_keys
+                        if j.get(k) is not None and str(j.get(k)).strip()
+                    ),
+                    f"job_{idx}",
                 )
-                title = str(j.get("title") or j.get("stellenangebotsTitel") or j.get("beruf") or "")
-                employer = str(j.get("employer") or j.get("firma") or "")
-                desc = str(j.get("description") or j.get("beschreibung") or "")
-            elif hasattr(j, "model_dump"):
-                d = j.model_dump()
-                jid = str(
-                    d.get("id")
-                    or d.get("ref_nr")
-                    or d.get("hashId")
-                    or getattr(j, "ref_nr", f"job_{idx}")
+                title = next(
+                    (
+                        str(j[k]).strip()
+                        for k in title_keys
+                        if j.get(k) is not None and str(j.get(k)).strip()
+                    ),
+                    "",
                 )
-                title = str(d.get("title") or getattr(j, "title", ""))
-                employer = str(d.get("employer") or getattr(j, "employer", ""))
-                desc = str(d.get("description") or getattr(j, "description", ""))
+                employer = next(
+                    (
+                        str(j[k]).strip()
+                        for k in emp_keys
+                        if j.get(k) is not None and str(j.get(k)).strip()
+                    ),
+                    "",
+                )
+                desc = next((str(j[k]) for k in desc_keys if j.get(k) is not None), "")
+            elif hasattr(j, "model_dump") and callable(j.model_dump):
+                try:
+                    d = j.model_dump()
+                except Exception:
+                    d = {}
+                jid = next(
+                    (
+                        str(d.get(k) if d.get(k) is not None else getattr(j, k, None)).strip()
+                        for k in id_keys
+                        if (d.get(k) is not None and str(d.get(k)).strip())
+                        or (getattr(j, k, None) is not None and str(getattr(j, k, None)).strip())
+                    ),
+                    f"job_{idx}",
+                )
+                title = next(
+                    (
+                        str(d.get(k) if d.get(k) is not None else getattr(j, k, None)).strip()
+                        for k in title_keys
+                        if (d.get(k) is not None and str(d.get(k)).strip())
+                        or (getattr(j, k, None) is not None and str(getattr(j, k, None)).strip())
+                    ),
+                    "",
+                )
+                employer = next(
+                    (
+                        str(d.get(k) if d.get(k) is not None else getattr(j, k, None)).strip()
+                        for k in emp_keys
+                        if (d.get(k) is not None and str(d.get(k)).strip())
+                        or (getattr(j, k, None) is not None and str(getattr(j, k, None)).strip())
+                    ),
+                    "",
+                )
+                desc = next(
+                    (
+                        str(d.get(k) if d.get(k) is not None else getattr(j, k, None))
+                        for k in desc_keys
+                        if d.get(k) is not None or getattr(j, k, None) is not None
+                    ),
+                    "",
+                )
             else:
-                jid = str(getattr(j, "id", None) or getattr(j, "ref_nr", None) or f"job_{idx}")
-                title = str(getattr(j, "title", "") or "")
-                employer = str(getattr(j, "employer", "") or "")
-                desc = str(getattr(j, "description", "") or "")
+                jid = next(
+                    (
+                        str(getattr(j, k, None)).strip()
+                        for k in id_keys
+                        if getattr(j, k, None) is not None and str(getattr(j, k, None)).strip()
+                    ),
+                    f"job_{idx}",
+                )
+                title = next(
+                    (
+                        str(getattr(j, k, None)).strip()
+                        for k in title_keys
+                        if getattr(j, k, None) is not None and str(getattr(j, k, None)).strip()
+                    ),
+                    "",
+                )
+                employer = next(
+                    (
+                        str(getattr(j, k, None)).strip()
+                        for k in emp_keys
+                        if getattr(j, k, None) is not None and str(getattr(j, k, None)).strip()
+                    ),
+                    "",
+                )
+                desc = next(
+                    (
+                        str(getattr(j, k, None))
+                        for k in desc_keys
+                        if getattr(j, k, None) is not None
+                    ),
+                    "",
+                )
 
             lightweight_jobs.append(
                 {
                     "job_id": jid,
                     "title": title,
                     "employer": employer,
-                    "description": desc[:1500],
+                    "description": desc[:200],
                 }
             )
 
-        res: JobMatchResultLLM = await asyncio.wait_for(
-            asyncio.shield(
-                chain.ainvoke(
-                    {
-                        "cv_profile": json.dumps(profile_data, default=str),
-                        "jobs_batch": json.dumps(lightweight_jobs, default=str),
-                    }
-                )
-            ),
-            timeout=timeout_seconds,
+        max_tokens_limit = (
+            getattr(self, "max_input_tokens_per_request", None)
+            or getattr(self, "MAX_INPUT_TOKENS_PER_REQUEST", None)
+            or MAX_INPUT_TOKENS_PER_REQUEST
         )
 
-        for item in res.results:
-            try:
-                raw_s = float(item.score)
-                if 0.0 < raw_s <= 1.0:
-                    raw_s *= 100.0
-                item.score = round(max(0.0, min(100.0, raw_s)), 1)
-            except (ValueError, TypeError):
-                item.score = 50.0
+        bundles: list[list[dict[str, Any]]] = []
+        current_bundle: list[dict[str, Any]] = []
 
-        return res.results
+        for job in lightweight_jobs:
+            job_tokens = count_tokens(json.dumps(job, default=str))
+            logger.debug(
+                "Job %s: token count %d (candidate batch bundling)",
+                job.get("job_id"),
+                job_tokens,
+            )
+            if current_bundle:
+                candidate_batch_tokens = count_tokens(
+                    json.dumps([*current_bundle, job], default=str)
+                )
+                if base_tokens + candidate_batch_tokens > max_tokens_limit:
+                    bundles.append(current_bundle)
+                    current_bundle = [job]
+                    continue
+            current_bundle.append(job)
+
+        if current_bundle:
+            bundles.append(current_bundle)
+
+        all_results: list[JobMatchResult] = []
+        last_error: Exception | None = None
+
+        for bundle_idx, bundle in enumerate(bundles):
+            try:
+                res: JobMatchResultLLM = await asyncio.wait_for(
+                    asyncio.shield(
+                        chain.ainvoke(
+                            {
+                                "cv_profile": profile_str,
+                                "jobs_batch": json.dumps(bundle, default=str),
+                            }
+                        )
+                    ),
+                    timeout=timeout_seconds,
+                )
+                if res is None:
+                    raise RuntimeError("Model invocation returned None")
+                if isinstance(res, str):
+                    try:
+                        res = json.loads(res)
+                    except Exception as json_err:
+                        logger.debug("Failed to decode model string output as JSON: %s", json_err)
+
+                if isinstance(res, list):
+                    items = res
+                else:
+                    items = (
+                        getattr(res, "results", None)
+                        or (res.get("results", []) if isinstance(res, dict) else [])
+                        or []
+                    )
+                for raw_item in items:
+                    if isinstance(raw_item, JobMatchResult):
+                        item = raw_item
+                    elif isinstance(raw_item, dict):
+                        try:
+                            item = JobMatchResult(**raw_item)
+                        except Exception as parse_err:
+                            logger.debug("Skipping unparseable raw result item: %s", parse_err)
+                            continue
+                    elif hasattr(raw_item, "model_dump") and callable(raw_item.model_dump):
+                        try:
+                            item = JobMatchResult(**raw_item.model_dump())
+                        except Exception as parse_err:
+                            logger.debug("Skipping unparseable raw result item: %s", parse_err)
+                            continue
+                    elif hasattr(raw_item, "job_id") and hasattr(raw_item, "score"):
+                        try:
+                            item = JobMatchResult(
+                                job_id=raw_item.job_id,
+                                score=raw_item.score,
+                                reasoning=getattr(raw_item, "reasoning", None),
+                            )
+                        except Exception as parse_err:
+                            logger.debug("Skipping unparseable raw result item: %s", parse_err)
+                            continue
+                    else:
+                        continue
+                    try:
+                        raw_s = float(item.score)
+                        if math.isnan(raw_s) or math.isinf(raw_s):
+                            item.score = 50.0
+                        else:
+                            if 0.0 < raw_s <= 1.0:
+                                raw_s *= 100.0
+                            item.score = round(max(0.0, min(100.0, raw_s)), 1)
+                    except (ValueError, TypeError):
+                        item.score = 50.0
+                    all_results.append(item)
+            except Exception as err:
+                logger.warning(
+                    "Groq scoring failed for bundle %d/%d (%d jobs): %s",
+                    bundle_idx + 1,
+                    len(bundles),
+                    len(bundle),
+                    err,
+                )
+                last_error = err
+
+        if not all_results and last_error is not None:
+            raise last_error
+
+        return all_results
 
     async def match_jobs(
         self,
@@ -1030,45 +1346,91 @@ class AIJobMatcher:
         )
         results: list[dict[str, Any]] = []
 
-        if self.api_key and not self.api_key.startswith("mock-") and len(self.api_key) > 10:
+        if (
+            self.api_key
+            and not str(self.api_key).startswith("mock-")
+            and len(str(self.api_key)) > 10
+        ):
             try:
-                # Map jobs by all possible identifiers and by index
-                id_to_job: dict[str, Any] = {}
+                # Map jobs by all possible identifiers, case-insensitive, and by index
+                id_to_indices: dict[str, list[int]] = {}
+
+                def _add_id_mapping(key: Any, index: int) -> None:
+                    if key is None:
+                        return
+                    k_str = str(key).strip().strip("\"'`*").strip()
+                    if not k_str:
+                        return
+                    for variant in (k_str, k_str.lower()):
+                        if variant not in id_to_indices:
+                            id_to_indices[variant] = []
+                        if index not in id_to_indices[variant]:
+                            id_to_indices[variant].append(index)
+
+                keys = ("id", "ref_nr", "referenznummer", "refnr", "hashId")
                 for idx, j in enumerate(jobs):
-                    id_to_job[f"job_{idx}"] = j
+                    _add_id_mapping(f"job_{idx}", idx)
+                    _add_id_mapping(str(idx), idx)
+                    _add_id_mapping(f"job-{idx}", idx)
+                    _add_id_mapping(f"job {idx}", idx)
+                    _add_id_mapping(f"job #{idx}", idx)
+                    _add_id_mapping(f"#{idx}", idx)
+
                     if isinstance(j, dict):
-                        for k in ("id", "ref_nr", "referenznummer", "hashId"):
+                        for k in keys:
                             val = j.get(k)
-                            if val:
-                                id_to_job[str(val)] = j
-                    elif hasattr(j, "model_dump"):
-                        d = j.model_dump()
-                        for k in ("id", "ref_nr", "hashId"):
-                            val = d.get(k)
-                            if val:
-                                id_to_job[str(val)] = j
-                        if getattr(j, "ref_nr", None):
-                            id_to_job[str(j.ref_nr)] = j
+                            if val is not None:
+                                _add_id_mapping(val, idx)
+                    elif hasattr(j, "model_dump") and callable(j.model_dump):
+                        try:
+                            d = j.model_dump()
+                        except Exception:
+                            d = {}
+                        for k in keys:
+                            val = d.get(k) if d.get(k) is not None else getattr(j, k, None)
+                            if val is not None:
+                                _add_id_mapping(val, idx)
                     else:
-                        for k in ("id", "ref_nr", "hashId"):
+                        for k in keys:
                             val = getattr(j, k, None)
-                            if val:
-                                id_to_job[str(val)] = j
+                            if val is not None:
+                                _add_id_mapping(val, idx)
 
                 ai_results = await self.calculate_score_with_llm(
                     cv_profile, jobs, user_prefs=user_prefs
                 )
 
-                scored_job_refs = set()
+                scored_indices: set[int] = set()
                 for ai_res in ai_results:
-                    jid_str = str(getattr(ai_res, "job_id", "") or "")
-                    matched_job = id_to_job.get(jid_str)
-                    if matched_job is not None and id(matched_job) not in scored_job_refs:
-                        scored_job_refs.add(id(matched_job))
+                    raw_jid = getattr(ai_res, "job_id", "") or ""
+                    jid_str = str(raw_jid).strip().strip("\"'`*").strip()
+                    if not jid_str:
+                        continue
+
+                    candidate_indices = (
+                        id_to_indices.get(jid_str)
+                        or id_to_indices.get(jid_str.lower())
+                        or id_to_indices.get(jid_str.lstrip("#").strip())
+                        or id_to_indices.get(
+                            re.sub(
+                                r"^(?:job\s*[:#\-]?\s*)+", "", jid_str, flags=re.IGNORECASE
+                            ).strip()
+                        )
+                        or []
+                    )
+
+                    matched_idx = next(
+                        (i for i in candidate_indices if i not in scored_indices),
+                        None,
+                    )
+                    if matched_idx is not None:
+                        scored_indices.add(matched_idx)
+                        matched_job = jobs[matched_idx]
                         score = float(ai_res.score)
                         logger.debug(
-                            "AI Job Match scoring [%s]: score=%.1f",
+                            "AI Job Match scoring [%s -> job %d]: score=%.1f",
                             jid_str,
+                            matched_idx,
                             score,
                         )
                         results.append(
@@ -1085,8 +1447,8 @@ class AIJobMatcher:
                         )
 
                 # If some jobs were not returned by LLM, score them with heuristic fallback
-                for j in jobs:
-                    if id(j) not in scored_job_refs:
+                for idx, j in enumerate(jobs):
+                    if idx not in scored_indices:
                         score = self.calculate_score(cv_profile, user_prefs, j)
                         results.append(
                             {

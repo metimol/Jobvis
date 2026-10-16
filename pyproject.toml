@@ -30,7 +30,8 @@ dependencies = [
     "python-docx>=1.1.0",
     "pypdf>=5.0.0",
     "python-dotenv>=1.2.3",
-    "sentry-sdk>=2.69.1"
+    "sentry-sdk>=2.69.1",
+    "tiktoken>=0.7.0"
 ]
 
 [project.optional-dependencies]
