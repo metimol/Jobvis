@@ -1,7 +1,6 @@
 """Main FastAPI application factory and lifespan manager for Jobvis."""
 
 import logging
-import os
 from contextlib import asynccontextmanager
 
 import sentry_sdk
@@ -23,9 +22,9 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Load environment variables
-if os.getenv("ENVIRONMENT") != "test":
-    load_dotenv()
+load_dotenv()
 
+if not settings.DEBUG:
     # Initialize Sentry SDK
     if settings.SENTRY_KEY:
         try:

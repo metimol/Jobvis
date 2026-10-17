@@ -139,7 +139,7 @@ async def upload_cv(
     db: AsyncSession = Depends(get_db),
 ) -> CVAnalysisResponse:
     """Upload a candidate CV document (PDF, DOCX, TXT), extract text, run AI analysis, and save."""
-    from app.services.ai_matcher import cv_analyzer
+    from app.services.cv_analyzer import cv_analyzer
     from app.services.cv_parser import CVParserService
 
     if not file.filename:

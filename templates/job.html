@@ -83,34 +83,6 @@
     flex-direction: column;
     gap: 1.25rem;
   }
-  .job-detail-score-card {
-    text-align: center;
-    padding: 1.75rem 1.5rem;
-  }
-  .job-detail-score-label {
-    font-size: 0.8rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--strawberry-300);
-    margin-bottom: 0.85rem;
-  }
-  .job-detail-score-ring {
-    width: 132px;
-    height: 132px;
-    margin: 0 auto;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: var(--glow-strawberry);
-  }
-  .job-detail-score-value {
-    font-family: var(--font-display);
-    font-size: 2.1rem;
-    font-weight: 800;
-    color: var(--strawberry-50);
-  }
   .job-detail-actions {
     display: flex;
     flex-direction: column;
@@ -178,10 +150,6 @@
     .job-detail-title {
       font-size: 1.5rem;
     }
-    .job-detail-score-ring {
-      width: 108px;
-      height: 108px;
-    }
   }
 </style>
 {% endblock %}
@@ -211,7 +179,6 @@
   const TEXT_MARK_SAVED = {{ t.get("mark_saved", "Save") | tojson }};
   const TEXT_MARK_DISMISSED = {{ t.get("mark_dismissed", "Dismiss") | tojson }};
   const TEXT_VIEW_ON_JOBBOERSE = {{ t.get("view_on_jobboerse", "View on Arbeitsagentur") | tojson }};
-  const TEXT_MATCH_SCORE = {{ t.get("match_score", "Match Score") | tojson }};
   const TEXT_JOB_DESCRIPTION = {{ t.get("job_description", "Job Description") | tojson }};
   const TEXT_JOB_NO_DESCRIPTION = {{ t.get("job_no_description", "No description available for this position.") | tojson }};
   const TEXT_JOB_NOT_FOUND = {{ t.get("job_not_found", "This job could not be found.") | tojson }};
@@ -254,7 +221,6 @@
 
   function renderJob(job) {
     const container = document.getElementById('jobDetailContainer');
-    const score = Math.max(0, Math.min(100, Math.round(Number(job.score) || 0)));
     const publishedText = formatDate(job.published_date);
     const matchedText = formatDate(job.created_at);
     const isSaved = job.status === 'saved';
@@ -276,13 +242,6 @@
         </article>
 
         <aside class="job-detail-sidebar">
-          <div class="job-detail-card job-detail-score-card">
-            <div class="job-detail-score-label">${escapeHtml(TEXT_MATCH_SCORE)}</div>
-            <div class="job-detail-score-ring" style="background: radial-gradient(closest-side, var(--bg-surface) 82%, transparent 83% 100%), conic-gradient(var(--strawberry-500) ${score}%, rgba(255, 122, 156, 0.12) 0);">
-              <span class="job-detail-score-value">${score}%</span>
-            </div>
-          </div>
-
           <div class="job-detail-card job-detail-actions">
             ${showExternal ? `
               <a href="${escapeHtml(job.external_url)}" target="_blank" rel="noopener noreferrer" class="btn btn-primary">

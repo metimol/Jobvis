@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, Float, ForeignKey, String, Text, func
+from sqlalchemy import DateTime, ForeignKey, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -65,7 +65,7 @@ class Job(Base):
 
 
 class MatchedJob(Base):
-    """Association between a User and a Job with AI match scoring and rationales."""
+    """Association between a User and a Job."""
 
     __tablename__ = "matched_jobs"
 
@@ -87,7 +87,6 @@ class MatchedJob(Base):
         index=True,
     )
 
-    score: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
     status: Mapped[str] = mapped_column(
         String(20),
         default="new",
@@ -104,4 +103,4 @@ class MatchedJob(Base):
     job: Mapped["Job"] = relationship("Job", back_populates="matched_jobs")
 
     def __repr__(self) -> str:
-        return f"<MatchedJob(id={self.id}, user_id={self.user_id}, score={self.score})>"
+        return f"<MatchedJob(id={self.id}, user_id={self.user_id})>"
