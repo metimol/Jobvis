@@ -7,7 +7,6 @@ with resilient heuristic fallback.
 """
 
 import asyncio
-import contextlib
 import hashlib
 import json
 import logging
@@ -885,24 +884,6 @@ async def safe_background_refresh_user_search_queries(
 
     if db is not None:
         return await _execute_with_session(db)
-
-    # Check for test dependency overrides on get_db
-    with contextlib.suppress(Exception):
-        from app.database import get_db
-        from main import app
-
-        override = app.dependency_overrides.get(get_db)
-        if override is not None:
-            gen = override()
-            if hasattr(gen, "__anext__"):
-                override_session = await gen.__anext__()
-                try:
-                    return await _execute_with_session(override_session)
-                finally:
-                    with contextlib.suppress(Exception):
-                        await gen.aclose()
-            elif hasattr(gen, "execute"):
-                return await _execute_with_session(gen)
 
     async with async_session_maker() as isolated_session:
         return await _execute_with_session(isolated_session)

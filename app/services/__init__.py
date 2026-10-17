@@ -1,5 +1,6 @@
 """Business logic services package."""
 
+from app.services.cv_analyzer import AICVAnalyzer, cv_analyzer
 from app.services.oauth import (
     OAuthService,
     create_session_token,
@@ -19,11 +20,13 @@ from app.services.query_generator import (
 )
 
 __all__ = [
+    "AICVAnalyzer",
     "BAQueryBatch",
     "BAQueryList",
     "BAQueryParams",
     "OAuthService",
     "create_session_token",
+    "cv_analyzer",
     "generate_ba_queries",
     "generate_ba_query",
     "generate_search_queries",

@@ -17,7 +17,6 @@ from app.models.profile import CVAnalysis, Profile
 from app.models.sync_log import SyncLog
 from app.models.user import User
 from app.services import query_generator
-from app.services.ai_matcher import ai_matcher
 from app.services.arbeitsagentur import ArbeitsagenturClient
 from app.services.deduplicator import JobDeduplicator
 from app.services.query_generator import BAQueryList, BAQueryParams
@@ -293,14 +292,7 @@ class MatchingSchedulerService:
                 if not job_rec:
                     job_rec = Job(**job_values)
                     try:
-                        from unittest.mock import AsyncMock as _AsyncMock
-
-                        is_mock = isinstance(db, _AsyncMock)
-                    except Exception:
-                        is_mock = False
-
-                    try:
-                        if not is_mock and hasattr(db, "begin_nested"):
+                        if hasattr(db, "begin_nested"):
                             async with db.begin_nested():
                                 db.add(job_rec)
                                 await db.flush()
@@ -320,58 +312,13 @@ class MatchingSchedulerService:
                 if job_rec:
                     persisted_job_records.append((job_rec, ba_job))
 
-            # 4. AI Match Scoring
-            cv_profile_dict = {
-                "skills": (cv_analysis.skills if cv_analysis else None) or [],
-                "experience_years": (cv_analysis.experience_years if cv_analysis else None) or 0.0,
-                "education": (cv_analysis.education if cv_analysis else None) or [],
-                "detected_languages": (cv_analysis.detected_languages if cv_analysis else None)
-                or {},
-                "keywords": (cv_analysis.keywords if cv_analysis else None) or [],
-            }
-            user_pref_dict = {
-                "german_level": profile.german_level if profile else "B1",
-                "desired_job_type": profile.desired_job_type if profile else "all",
-                "goals": profile.goals if profile else "",
-            }
-
-            job_rec_by_id = {}
-            jobs_to_match = []
-            for job_rec, ba_job in persisted_job_records:
-                job_rec_by_id[job_rec.id] = job_rec
-                jobs_to_match.append(
-                    {
-                        "id": job_rec.id,
-                        "ref_nr": job_rec.ref_nr,
-                        "title": job_rec.title,
-                        "employer": job_rec.employer
-                        or (getattr(ba_job, "employer", None) if ba_job else None)
-                        or (ba_job.get("employer") if isinstance(ba_job, dict) else None),
-                        "location": job_rec.location
-                        or (getattr(ba_job, "location", None) if ba_job else None)
-                        or (ba_job.get("location") if isinstance(ba_job, dict) else None),
-                        "description": job_rec.description
-                        or (getattr(ba_job, "description", None) if ba_job else None)
-                        or (ba_job.get("description") if isinstance(ba_job, dict) else None),
-                    }
-                )
-
-            match_results = await ai_matcher.match_jobs(
-                cv_profile_dict, user_pref_dict, jobs_to_match
-            )
-
             matched_jobs_to_save = []
-            for item in match_results:
-                matched_job_data = item.get("job", {})
-                job_id = (
-                    matched_job_data.get("id")
-                    if isinstance(matched_job_data, dict)
-                    else getattr(matched_job_data, "id", None)
-                )
-                score = float(item.get("score", 0.0))
-
-                if not job_id or job_id not in job_rec_by_id:
+            seen_job_ids: set[str] = set()
+            for job_rec, _ in persisted_job_records:
+                job_id = job_rec.id
+                if not job_id or job_id in seen_job_ids:
                     continue
+                seen_job_ids.add(job_id)
 
                 # Check if matched job already exists for this user and job
                 m_stmt = select(MatchedJob).where(
@@ -383,7 +330,6 @@ class MatchingSchedulerService:
                     match_rec = MatchedJob(
                         user_id=user_id,
                         job_id=job_id,
-                        score=score,
                         status="new",
                     )
                     db.add(match_rec)

@@ -64,14 +64,13 @@ class JobResponse(BaseModel):
 
 
 class MatchedJobResponse(BaseModel):
-    """Job vacancy matched to a user profile with score and rationales."""
+    """Job vacancy matched to a user profile."""
 
     model_config = ConfigDict(from_attributes=True)
 
     id: str
     user_id: str
     job_id: str
-    score: float
     status: JobStatusLiteral
     created_at: datetime | None = None
     job: JobResponse | None = None
@@ -202,9 +201,6 @@ class BAJobListing(BaseModel):
     )
     canonical_hash: str | None = Field(
         default=None, description="Computed SHA-256 deduplication fingerprint"
-    )
-    score: float | None = Field(
-        default=None, description="AI matching score (0.0 to 1.0 or 0 to 100)"
     )
     raw_data: dict[str, Any] | None = Field(
         default=None, description="Original raw payload from API"

@@ -119,6 +119,10 @@ async def init_db() -> None:
                         WHERE user_id IN (SELECT DISTINCT user_id FROM cv_analyses);
                         """
                     )
+            if "matched_jobs" in table_names:
+                matched_columns = [c["name"] for c in inspector.get_columns("matched_jobs")]
+                if "score" in matched_columns:
+                    connection.exec_driver_sql("ALTER TABLE matched_jobs DROP COLUMN score;")
 
         await conn.run_sync(_migrate)
 

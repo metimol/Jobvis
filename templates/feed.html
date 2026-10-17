@@ -310,7 +310,6 @@
     <div class="sort-control">
       <label for="sortSelect" class="sort-label">{{ t.get('sort_by', 'Sort by') }}:</label>
       <select id="sortSelect" class="sort-select" onchange="changeSort(this.value)">
-        <option value="matching">{{ t.get('sort_matching', 'Best Match') }}</option>
         <option value="date">{{ t.get('sort_date', 'Date') }}</option>
       </select>
       <button id="sortDirBtn" class="sort-dir-btn" onclick="toggleSortDirection()" title="{{ t.get('sort_direction_title', 'Toggle sort direction') }}">
@@ -328,7 +327,7 @@
 {% block scripts_extra %}
 <script>
   let currentStatusFilter = null;
-  let currentSort = 'matching';
+  let currentSort = 'date';
   let sortInverted = false;
   let currentItems = [];
   let currentPage = 1;
@@ -349,25 +348,9 @@
   }
 
   function compareItems(a, b, sortCriterion, inverted) {
-    let res = 0;
-    if (sortCriterion === 'matching') {
-      const scoreA = Number(a.score) || 0;
-      const scoreB = Number(b.score) || 0;
-      res = scoreB - scoreA;
-      if (res === 0) {
-        const dateA = new Date(a.published_date || a.created_at || 0).getTime() || 0;
-        const dateB = new Date(b.published_date || b.created_at || 0).getTime() || 0;
-        res = dateB - dateA;
-      }
-    } else if (sortCriterion === 'date') {
-      const dateA = new Date(a.published_date || a.created_at || 0).getTime() || 0;
-      const dateB = new Date(b.published_date || b.created_at || 0).getTime() || 0;
-      res = dateB - dateA;
-      if (res === 0) {
-        res = (Number(b.score) || 0) - (Number(a.score) || 0);
-      }
-    }
-
+    const dateA = new Date(a.published_date || a.created_at || 0).getTime() || 0;
+    const dateB = new Date(b.published_date || b.created_at || 0).getTime() || 0;
+    const res = dateB - dateA;
     return inverted ? -res : res;
   }
 
@@ -414,10 +397,6 @@
               ${dateText ? `<span>📅 ${escapeHtml(dateText)}</span>` : ''}
               ${item.working_time ? `<span class="badge" style="background: rgba(255,245,247,0.06); color: var(--strawberry-200); border: 1px solid var(--border-card);">${escapeHtml(item.working_time)}</span>` : ''}
             </div>
-          </div>
-          <div style="display: flex; gap: 0.5rem; align-items: center;">
-            <span class="badge badge-cefr">CEFR</span>
-            <span class="badge badge-score">${Math.round(item.score)}%</span>
           </div>
         </div>
 

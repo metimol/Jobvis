@@ -5,23 +5,22 @@
 [![Groq](https://img.shields.io/badge/Groq-openai%2Fgpt--oss--120b%20%2F%20LangChain-F55036?logo=fastapi&logoColor=white)](https://groq.com/)
 [![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0%20Async-d71f00?logo=sqlalchemy&logoColor=white)](https://www.sqlalchemy.org/)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
-[![Tests](https://img.shields.io/badge/Tests-851%20Passing-success?logo=pytest&logoColor=white)](https://docs.pytest.org/)
 [![Code Style](https://img.shields.io/badge/Code%20Style-Ruff-black?logo=ruff&logoColor=white)](https://astral.sh/ruff)
 
-> **Production-grade, AI-driven job discovery & semantic matching engine designed for Jobcenter clients and jobseekers in Germany.**
+> **Production-grade, AI-driven job discovery & matching platform designed for Jobcenter clients and jobseekers in Germany.**
 
-Jobvis bridges the gap between complex bureaucratic job systems and international or local candidates. It automatically ingests candidate CVs (PDF, DOCX, TXT), uses LLMs to synthesize targeted German search parameters for the official **Bundesagentur für Arbeit (BA)** API, strips duplicate postings through a 3-tier normalization engine, and delivers explainable, AI-scored recommendations tailored to skills, commute preferences, and CEFR language proficiencies.
+Jobvis bridges the gap between complex bureaucratic job systems and international or local candidates. It automatically ingests candidate CVs (PDF, DOCX, TXT), uses LLMs to synthesize targeted German search parameters for the official **Bundesagentur für Arbeit (BA)** API, strips duplicate postings through a 3-tier normalization engine, and delivers tailored job recommendations based on skills, commute preferences, and CEFR language proficiencies.
 
 ---
 
 ## 🚀 Key Highlights & Engineering Features
 
-- **🧠 Intelligent Query Synthesis & Match Scoring**: Uses Groq (`openai/gpt-oss-120b`) via LangChain to translate free-form career goals and multilingual CVs into optimal German job keywords (`was`, `wo`, `arbeitszeit`), evaluating match affinity against CEFR German levels (A1–C2) with explainable rationales.
+- **🧠 Intelligent Query Synthesis & CV Extraction**: Uses Groq (`openai/gpt-oss-120b`) via LangChain to translate free-form career goals and multilingual CVs into optimal German job keywords (`was`, `wo`, `arbeitszeit`) and extract candidate skills and CEFR German levels (A1–C2).
 - **📄 Resilient Multi-Format CV Parser**: Streams and sanitizes content from PDF, DOCX, and TXT documents with control character filtering, size validation, and multi-language skill taxonomy extraction.
 - **🛡️ 3-Tier Job Deduplication Engine**: Normalizes German gender markers (e.g., `(m/w/d)`, `[gn]`), strips umlauts, computes canonical hashes, and executes fuzzy similarity comparisons to discard duplicate listings across external postings.
 - **⚡ Async Bundesagentur für Arbeit Client**: Non-blocking REST client with connection pooling, exponential backoff, rate-limit protection (HTTP 429), and automatic multi-page scraping.
 - **⏰ Autonomous Background Matching**: Twice-daily APScheduler cron automation (`06:00` & `18:00` UTC) with concurrent user-level isolation locks to keep candidate feeds fresh without manual intervention.
-- **🌍 Quad-Lingual UI**: Native, zero-reload internationalization across German (`de`), English (`en`), Ukrainian (`uk`), and Russian (`ru`).
+- **🌍 Quad-Lingual UI**: Native internationalization across German (`de`), English (`en`), Ukrainian (`uk`), and Russian (`ru`).
 - **🔐 Enterprise Authentication**: OAuth 2.0 (Google & GitHub) with automatic account linking and tamper-proof, cryptographically signed session cookies via `itsdangerous`.
 - **📦 Production-Ready Architecture**: Multi-stage, non-root Docker build, MySQL 8.4 persistence with healthcheck dependencies, and Sentry error tracking with automatic PII redaction.
 
@@ -31,13 +30,12 @@ Jobvis bridges the gap between complex bureaucratic job systems and internationa
 
 ```mermaid
 flowchart LR
-    A[Candidate CV<br/>PDF / DOCX / TXT] --> B[CV Parser &<br/>Skills Extractor]
+    A[Candidate CV<br/>PDF / DOCX / TXT] --> B[CV Parser &<br/>AI CV Analyzer]
     B --> C[Groq LLM<br/>Query Synthesizer]
     C --> D[Bundesagentur für Arbeit<br/>Jobsuche API]
     D --> E[3-Tier Deduplication<br/>& Canonical Hashing]
-    E --> F[AI Semantic Matcher<br/>Skills + CEFR Level]
-    F --> G[(Database<br/>MySQL / SQLite)]
-    G --> H[Responsive Feed &<br/>Actionable Insights]
+    E --> F[(Database<br/>MySQL / SQLite)]
+    F --> G[Responsive Feed &<br/>Job Details]
 ```
 
 ---
@@ -139,19 +137,9 @@ Access the application in your browser at `http://localhost:8000`.
 
 ---
 
-## 🧪 Testing & Code Quality
+## 🧪 Code Quality
 
-Jobvis enforces strict test coverage, zero-warning asynchronous loops, and repository hygiene (zero actionable TODOs).
-
-### Run Test Suite (850+ Async Tests)
-
-```bash
-# Windows
-.\.venv\Scripts\pytest.exe -n auto
-
-# macOS / Linux
-pytest -n auto
-```
+Jobvis enforces strict static analysis and repository hygiene.
 
 ### Static Analysis & Code Formatting
 

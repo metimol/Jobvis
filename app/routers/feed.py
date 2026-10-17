@@ -32,7 +32,6 @@ class MatchedJobResponse(BaseModel):
     working_time: str | None = None
     description: str | None = None
     external_url: str | None = None
-    score: float
     status: str
     created_at: str
     published_date: str | None = None
@@ -76,13 +75,12 @@ def _compose_description(details: BADetailedJob) -> str | None:
 @router.get("", response_model=FeedListResponse, summary="Get User Matched Jobs Feed")
 async def get_feed(
     status_filter: str | None = Query(None, alias="status"),
-    min_score: float | None = Query(None, ge=0.0, le=100.0),
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> FeedListResponse:
-    """Retrieve personalized AI-ranked job opportunities with multilingual rationale."""
+    """Retrieve personalized matched job opportunities for the authenticated user."""
     # Base query joining MatchedJob with Job
     query = (
         select(MatchedJob, Job)
@@ -96,15 +94,12 @@ async def get_feed(
         # Default: hide dismissed jobs
         query = query.where(MatchedJob.status != "dismissed")
 
-    if min_score is not None:
-        query = query.where(MatchedJob.score >= min_score)
-
     # Count total
     count_query = select(func.count()).select_from(query.subquery())
     total_count = (await db.execute(count_query)).scalar() or 0
 
-    # Paginate and sort by score descending
-    query = query.order_by(desc(MatchedJob.score)).offset((page - 1) * size).limit(size)
+    # Paginate by created_at descending
+    query = query.order_by(desc(MatchedJob.created_at)).offset((page - 1) * size).limit(size)
     results = (await db.execute(query)).all()
 
     items = []
@@ -119,7 +114,6 @@ async def get_feed(
                 working_time=job.working_time,
                 description=job.description,
                 external_url=job.external_url,
-                score=matched_job.score,
                 status=matched_job.status,
                 created_at=matched_job.created_at.isoformat() if matched_job.created_at else "",
                 published_date=job.published_date.isoformat() if job.published_date else None,
@@ -170,7 +164,6 @@ async def update_match_status(
         working_time=job.working_time,
         description=job.description,
         external_url=job.external_url,
-        score=matched_job.score,
         status=matched_job.status,
         created_at=matched_job.created_at.isoformat() if matched_job.created_at else "",
         published_date=job.published_date.isoformat() if job.published_date else None,
@@ -228,7 +221,6 @@ async def get_job(
         working_time=job.working_time,
         description=job.description,
         external_url=job.external_url,
-        score=matched_job.score,
         status=matched_job.status,
         created_at=matched_job.created_at.isoformat() if matched_job.created_at else "",
         published_date=job.published_date.isoformat() if job.published_date else None,
