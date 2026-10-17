@@ -52,6 +52,9 @@ async def update_language(
     db: AsyncSession = Depends(get_db),
 ) -> SettingsResponse:
     """Change user UI language preference (EN, DE, UK, RU)."""
+
+    # TODO: Remove it from the database and use only cookie for language preference, since it is not a sensitive data and can be stored in the cookie for both authenticated and unauthenticated users.
+
     stmt = select(Settings).where(Settings.user_id == current_user.id)
     result = await db.execute(stmt)
     user_settings = result.scalars().first()

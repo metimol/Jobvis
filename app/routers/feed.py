@@ -178,6 +178,9 @@ async def get_job(
     ba_client: ArbeitsagenturClient = Depends(get_ba_client),
 ) -> MatchedJobResponse:
     """Retrieve full details of a single matched job for the current user."""
+
+    # TODO: Add checking layer to ensure the job is still active in BA job listings; if not, mark as 'expired' and return 404.
+
     query = (
         select(MatchedJob, Job)
         .join(Job, MatchedJob.job_id == Job.id)
