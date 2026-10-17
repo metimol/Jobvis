@@ -34,6 +34,8 @@ class MatchedJobResponse(BaseModel):
     external_url: str | None = None
     status: str
     created_at: str
+    # TODO: Remove sorting future from frontend and use created_at instead;
+    #  published_date is not always available from BA API.
     published_date: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
